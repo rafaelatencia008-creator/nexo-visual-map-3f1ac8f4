@@ -68,10 +68,41 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
+const TIPOS: TipoPericia[] = [
+  "engenharia_civil",
+  "grafotecnica",
+  "contabil",
+  "medica",
+  "ambiental",
+  "trabalhista",
+];
+
+const STATUSES: StatusPericia[] = [
+  "agendada",
+  "em_andamento",
+  "laudo_pendente",
+  "concluida",
+  "cancelada",
+];
+
+const ALL = "__all__";
+
 function AgendaPage() {
   const hoje = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState<Date>(hoje);
   const [viewMonth, setViewMonth] = useState<Date>(hoje);
+  const [filtroPerito, setFiltroPerito] = useState<string>(ALL);
+  const [filtroTipo, setFiltroTipo] = useState<string>(ALL);
+  const [filtroStatus, setFiltroStatus] = useState<string>(ALL);
+
+  const filtrosAtivos =
+    filtroPerito !== ALL || filtroTipo !== ALL || filtroStatus !== ALL;
+
+  const limparFiltros = () => {
+    setFiltroPerito(ALL);
+    setFiltroTipo(ALL);
+    setFiltroStatus(ALL);
+  };
 
   const processoMap = useMemo(
     () => new Map(processos.map((p) => [p.id, p])),
@@ -80,33 +111,43 @@ function AgendaPage() {
   const clienteMap = useMemo(() => new Map(clientes.map((c) => [c.id, c])), []);
   const peritoMap = useMemo(() => new Map(peritos.map((p) => [p.id, p])), []);
 
+  // Perícias após filtros
+  const periciasFiltradas = useMemo(() => {
+    return pericias.filter((p) => {
+      if (filtroPerito !== ALL && p.peritoId !== filtroPerito) return false;
+      if (filtroTipo !== ALL && p.tipo !== filtroTipo) return false;
+      if (filtroStatus !== ALL && p.status !== filtroStatus) return false;
+      return true;
+    });
+  }, [filtroPerito, filtroTipo, filtroStatus]);
+
   // Dias com perícias (para destacar no calendário)
   const diasComPericia = useMemo(
-    () => pericias.map((p) => new Date(p.dataAgendada)),
-    [],
+    () => periciasFiltradas.map((p) => new Date(p.dataAgendada)),
+    [periciasFiltradas],
   );
 
   // Perícias do dia selecionado, ordenadas por hora
   const periciasDoDia = useMemo(() => {
-    return pericias
+    return periciasFiltradas
       .filter((p) => sameDay(new Date(p.dataAgendada), selectedDate))
       .sort(
         (a, b) =>
           new Date(a.dataAgendada).getTime() -
           new Date(b.dataAgendada).getTime(),
       );
-  }, [selectedDate]);
+  }, [selectedDate, periciasFiltradas]);
 
   // Perícias no mês visível (para o contador do cabeçalho)
   const periciasDoMes = useMemo(() => {
-    return pericias.filter((p) => {
+    return periciasFiltradas.filter((p) => {
       const d = new Date(p.dataAgendada);
       return (
         d.getFullYear() === viewMonth.getFullYear() &&
         d.getMonth() === viewMonth.getMonth()
       );
     });
-  }, [viewMonth]);
+  }, [viewMonth, periciasFiltradas]);
 
   const dataFormatada = selectedDate.toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -119,6 +160,7 @@ function AgendaPage() {
     month: "long",
     year: "numeric",
   });
+
 
   return (
     <div className="space-y-6">
