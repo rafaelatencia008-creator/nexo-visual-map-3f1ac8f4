@@ -49,8 +49,8 @@ export function SiteHeader() {
           >
             Ver painel (demo)
           </Link>
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-            Área do Cliente
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+            <Link to="/entrar">Área do Cliente</Link>
           </Button>
           <Button size="sm">Solicitar Perícia</Button>
         </div>
