@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -158,9 +158,18 @@ function ProcessosPage() {
                   {filtrados.map((p) => {
                     const cliente = clienteMap.get(p.clienteId);
                     return (
-                      <TableRow key={p.id}>
+                      <TableRow
+                        key={p.id}
+                        className="cursor-pointer hover:bg-muted/60"
+                      >
                         <TableCell className="font-mono text-xs">
-                          {p.numero}
+                          <Link
+                            to="/app/processos/$id"
+                            params={{ id: p.id }}
+                            className="hover:underline"
+                          >
+                            {p.numero}
+                          </Link>
                         </TableCell>
                         <TableCell className="font-medium">
                           {cliente?.nome ?? "—"}

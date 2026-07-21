@@ -22,7 +22,14 @@ import {
   formatCNPJ,
   formatPhone,
 } from "@/lib/format";
-import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+import type {
+  StatusPericia,
+  TipoPericia,
+  Pericia,
+  Processo,
+  Cliente,
+  Perito,
+} from "@/lib/mock/types";
 
 const TIPO_LABEL: Record<TipoPericia, string> = {
   engenharia_civil: "Engenharia Civil",
@@ -51,7 +58,12 @@ const STATUS_TONE: Record<StatusPericia, string> = {
 };
 
 export const Route = createFileRoute("/app/pericias/$id")({
-  loader: ({ params }) => {
+  loader: ({ params }): {
+    pericia: Pericia;
+    processo: Processo | undefined;
+    cliente: Cliente | undefined;
+    perito: Perito | undefined;
+  } => {
     const pericia = pericias.find((p) => p.id === params.id);
     if (!pericia) throw notFound();
     const processo = processos.find((pr) => pr.id === pericia.processoId);
@@ -78,7 +90,12 @@ export const Route = createFileRoute("/app/pericias/$id")({
 });
 
 function PericiaDetalhePage() {
-  const { pericia, processo, cliente, perito } = Route.useLoaderData();
+  const { pericia, processo, cliente, perito } = Route.useLoaderData() as {
+    pericia: Pericia;
+    processo: Processo | undefined;
+    cliente: Cliente | undefined;
+    perito: Perito | undefined;
+  };
 
   const emBreve = (label: string) =>
     toast.info(`${label} — em breve`, {
