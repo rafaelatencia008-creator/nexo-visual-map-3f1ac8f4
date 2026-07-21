@@ -21,6 +21,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppProcessosRouteImport } from './routes/app.processos'
 import { Route as AppPericiasRouteImport } from './routes/app.pericias'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
+import { Route as AppPericiasIdRouteImport } from './routes/app.pericias.$id'
 
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
@@ -82,6 +83,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPericiasIdRoute = AppPericiasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppPericiasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -93,9 +99,10 @@ export interface FileRoutesByFullPath {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/clientes': typeof AppClientesRoute
-  '/app/pericias': typeof AppPericiasRoute
+  '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRoute
   '/app/': typeof AppIndexRoute
+  '/app/pericias/$id': typeof AppPericiasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -106,9 +113,10 @@ export interface FileRoutesByTo {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/clientes': typeof AppClientesRoute
-  '/app/pericias': typeof AppPericiasRoute
+  '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRoute
   '/app': typeof AppIndexRoute
+  '/app/pericias/$id': typeof AppPericiasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -121,9 +129,10 @@ export interface FileRoutesById {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/clientes': typeof AppClientesRoute
-  '/app/pericias': typeof AppPericiasRoute
+  '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRoute
   '/app/': typeof AppIndexRoute
+  '/app/pericias/$id': typeof AppPericiasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/app/pericias'
     | '/app/processos'
     | '/app/'
+    | '/app/pericias/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/app/pericias'
     | '/app/processos'
     | '/app'
+    | '/app/pericias/$id'
   id:
     | '__root__'
     | '/'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/app/pericias'
     | '/app/processos'
     | '/app/'
+    | '/app/pericias/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -266,19 +278,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/pericias/$id': {
+      id: '/app/pericias/$id'
+      path: '/$id'
+      fullPath: '/app/pericias/$id'
+      preLoaderRoute: typeof AppPericiasIdRouteImport
+      parentRoute: typeof AppPericiasRoute
+    }
   }
 }
 
+interface AppPericiasRouteChildren {
+  AppPericiasIdRoute: typeof AppPericiasIdRoute
+}
+
+const AppPericiasRouteChildren: AppPericiasRouteChildren = {
+  AppPericiasIdRoute: AppPericiasIdRoute,
+}
+
+const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
+  AppPericiasRouteChildren,
+)
+
 interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
-  AppPericiasRoute: typeof AppPericiasRoute
+  AppPericiasRoute: typeof AppPericiasRouteWithChildren
   AppProcessosRoute: typeof AppProcessosRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
-  AppPericiasRoute: AppPericiasRoute,
+  AppPericiasRoute: AppPericiasRouteWithChildren,
   AppProcessosRoute: AppProcessosRoute,
   AppIndexRoute: AppIndexRoute,
 }
