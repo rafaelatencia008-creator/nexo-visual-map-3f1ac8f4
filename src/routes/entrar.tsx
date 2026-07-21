@@ -203,12 +203,12 @@ function EntrarPage() {
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
             Ainda não tem conta?{" "}
-            <a
-              href="#"
+            <Link
+              to="/criar-conta"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Criar conta
-            </a>
+            </Link>
           </p>
         </div>
       </main>
