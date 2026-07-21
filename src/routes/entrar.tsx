@@ -140,12 +140,12 @@ function EntrarPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="senha">Senha</Label>
-                <a
-                  href="#"
+                <Link
+                  to="/recuperar-senha"
                   className="text-xs font-medium text-primary underline-offset-4 hover:underline"
                 >
                   Esqueci minha senha
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <Input
