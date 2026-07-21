@@ -19,6 +19,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppPericiasRouteImport } from './routes/app.pericias'
+import { Route as AppClientesRouteImport } from './routes/app.clientes'
 
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
@@ -70,6 +71,11 @@ const AppPericiasRoute = AppPericiasRouteImport.update({
   path: '/pericias',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/clientes': typeof AppClientesRoute
   '/app/pericias': typeof AppPericiasRoute
   '/app/': typeof AppIndexRoute
 }
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/clientes': typeof AppClientesRoute
   '/app/pericias': typeof AppPericiasRoute
   '/app': typeof AppIndexRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/clientes': typeof AppClientesRoute
   '/app/pericias': typeof AppPericiasRoute
   '/app/': typeof AppIndexRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/clientes'
     | '/app/pericias'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/clientes'
     | '/app/pericias'
     | '/app'
   id:
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/clientes'
     | '/app/pericias'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -228,15 +240,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPericiasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/clientes': {
+      id: '/app/clientes'
+      path: '/clientes'
+      fullPath: '/app/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppClientesRoute: typeof AppClientesRoute
   AppPericiasRoute: typeof AppPericiasRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppClientesRoute: AppClientesRoute,
   AppPericiasRoute: AppPericiasRoute,
   AppIndexRoute: AppIndexRoute,
 }
