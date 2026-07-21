@@ -33,7 +33,7 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Gestão",
     items: [
-      { label: "Peritos", icon: UserCog },
+      { label: "Peritos", icon: UserCog, to: "/app/peritos" },
       { label: "Relatórios", icon: FileBarChart },
       { label: "Financeiro", icon: Wallet },
     ],
