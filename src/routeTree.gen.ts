@@ -25,6 +25,7 @@ import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppProcessosIdRouteImport } from './routes/app.processos.$id'
+import { Route as AppPeritosIdRouteImport } from './routes/app.peritos.$id'
 import { Route as AppPericiasNovaRouteImport } from './routes/app.pericias.nova'
 import { Route as AppPericiasIdRouteImport } from './routes/app.pericias.$id'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
@@ -113,6 +114,11 @@ const AppProcessosIdRoute = AppProcessosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppProcessosRoute,
 } as any)
+const AppPeritosIdRoute = AppPeritosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppPeritosRoute,
+} as any)
 const AppPericiasNovaRoute = AppPericiasNovaRouteImport.update({
   id: '/nova',
   path: '/nova',
@@ -161,13 +167,14 @@ export interface FileRoutesByFullPath {
   '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRoute
+  '/app/peritos': typeof AppPeritosRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
+  '/app/peritos/$id': typeof AppPeritosIdRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
@@ -185,13 +192,14 @@ export interface FileRoutesByTo {
   '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRoute
+  '/app/peritos': typeof AppPeritosRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
   '/app': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
+  '/app/peritos/$id': typeof AppPeritosIdRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
@@ -211,13 +219,14 @@ export interface FileRoutesById {
   '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRoute
+  '/app/peritos': typeof AppPeritosRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
+  '/app/peritos/$id': typeof AppPeritosIdRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/pericias/nova'
+    | '/app/peritos/$id'
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/pericias/nova'
+    | '/app/peritos/$id'
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/pericias/nova'
+    | '/app/peritos/$id'
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
@@ -426,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProcessosIdRouteImport
       parentRoute: typeof AppProcessosRoute
     }
+    '/app/peritos/$id': {
+      id: '/app/peritos/$id'
+      path: '/$id'
+      fullPath: '/app/peritos/$id'
+      preLoaderRoute: typeof AppPeritosIdRouteImport
+      parentRoute: typeof AppPeritosRoute
+    }
     '/app/pericias/nova': {
       id: '/app/pericias/nova'
       path: '/nova'
@@ -530,6 +549,18 @@ const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
   AppPericiasRouteChildren,
 )
 
+interface AppPeritosRouteChildren {
+  AppPeritosIdRoute: typeof AppPeritosIdRoute
+}
+
+const AppPeritosRouteChildren: AppPeritosRouteChildren = {
+  AppPeritosIdRoute: AppPeritosIdRoute,
+}
+
+const AppPeritosRouteWithChildren = AppPeritosRoute._addFileChildren(
+  AppPeritosRouteChildren,
+)
+
 interface AppProcessosIdRouteChildren {
   AppProcessosIdEditarRoute: typeof AppProcessosIdEditarRoute
 }
@@ -560,7 +591,7 @@ interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppPericiasRoute: typeof AppPericiasRouteWithChildren
-  AppPeritosRoute: typeof AppPeritosRoute
+  AppPeritosRoute: typeof AppPeritosRouteWithChildren
   AppProcessosRoute: typeof AppProcessosRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -569,7 +600,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppPericiasRoute: AppPericiasRouteWithChildren,
-  AppPeritosRoute: AppPeritosRoute,
+  AppPeritosRoute: AppPeritosRouteWithChildren,
   AppProcessosRoute: AppProcessosRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
