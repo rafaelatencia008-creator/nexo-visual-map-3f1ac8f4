@@ -90,7 +90,12 @@ export const Route = createFileRoute("/app/pericias/$id")({
 });
 
 function PericiaDetalhePage() {
-  const { pericia, processo, cliente, perito } = Route.useLoaderData();
+  const { pericia, processo, cliente, perito } = Route.useLoaderData() as {
+    pericia: Pericia;
+    processo: Processo | undefined;
+    cliente: Cliente | undefined;
+    perito: Perito | undefined;
+  };
 
   const emBreve = (label: string) =>
     toast.info(`${label} — em breve`, {
