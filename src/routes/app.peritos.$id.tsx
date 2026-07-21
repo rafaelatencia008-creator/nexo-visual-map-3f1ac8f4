@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { peritos, pericias, processos, clientes } from "@/lib/mock/data";
 import { formatPhone, formatDateTime, formatCurrency } from "@/lib/format";
-import type { TipoPericia, StatusPericia } from "@/lib/mock/types";
+import type { TipoPericia, StatusPericia, Perito, Pericia } from "@/lib/mock/types";
 
 const ESPECIALIDADE_LABEL: Record<TipoPericia, string> = {
   engenharia_civil: "Engenharia Civil",
@@ -33,7 +33,11 @@ const STATUS_VARIANT: Record<StatusPericia, "default" | "secondary" | "outline" 
 };
 
 export const Route = createFileRoute("/app/peritos/$id")({
-  loader: ({ params }) => {
+  loader: ({ params }): {
+    perito: Perito;
+    periciasDoPerito: Pericia[];
+    totalHonorarios: number;
+  } => {
     const perito = peritos.find((p) => p.id === params.id);
     if (!perito) throw notFound();
     const periciasDoPerito = pericias.filter((pc) => pc.peritoId === perito.id);
@@ -62,7 +66,11 @@ export const Route = createFileRoute("/app/peritos/$id")({
 });
 
 function PeritoDetalhePage() {
-  const { perito, periciasDoPerito, totalHonorarios } = Route.useLoaderData();
+  const { perito, periciasDoPerito, totalHonorarios } = Route.useLoaderData() as {
+    perito: Perito;
+    periciasDoPerito: Pericia[];
+    totalHonorarios: number;
+  };
 
   return (
     <div className="space-y-6">
