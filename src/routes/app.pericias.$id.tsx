@@ -22,7 +22,14 @@ import {
   formatCNPJ,
   formatPhone,
 } from "@/lib/format";
-import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+import type {
+  StatusPericia,
+  TipoPericia,
+  Pericia,
+  Processo,
+  Cliente,
+  Perito,
+} from "@/lib/mock/types";
 
 const TIPO_LABEL: Record<TipoPericia, string> = {
   engenharia_civil: "Engenharia Civil",
