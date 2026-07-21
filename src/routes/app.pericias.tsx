@@ -133,9 +133,11 @@ function PericiasPage() {
             Gerencie todas as perícias em andamento, laudos pendentes e agendamentos.
           </p>
         </div>
-        <Button onClick={() => emBreve("Nova perícia")} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova perícia
+        <Button asChild className="gap-2">
+          <Link to="/app/pericias/nova">
+            <Plus className="h-4 w-4" />
+            Nova perícia
+          </Link>
         </Button>
       </header>
 
