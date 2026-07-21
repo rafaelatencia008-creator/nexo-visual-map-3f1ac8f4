@@ -18,6 +18,7 @@ import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppPericiasRouteImport } from './routes/app.pericias'
 
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
@@ -64,6 +65,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPericiasRoute = AppPericiasRouteImport.update({
+  id: '/pericias',
+  path: '/pericias',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/pericias': typeof AppPericiasRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/pericias': typeof AppPericiasRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/pericias': typeof AppPericiasRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/pericias'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/pericias'
     | '/app'
   id:
     | '__root__'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/pericias'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -209,14 +221,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/pericias': {
+      id: '/app/pericias'
+      path: '/pericias'
+      fullPath: '/app/pericias'
+      preLoaderRoute: typeof AppPericiasRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppPericiasRoute: typeof AppPericiasRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppPericiasRoute: AppPericiasRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
