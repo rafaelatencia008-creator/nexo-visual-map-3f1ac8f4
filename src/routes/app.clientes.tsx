@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search, Mail, Phone, Building2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -94,10 +94,13 @@ function ClientesPage() {
               : formatCPF(cliente.documento);
             const Icon = isPJ ? Building2 : UserIcon;
             return (
-              <Card
+              <Link
                 key={cliente.id}
-                className="transition-shadow hover:shadow-md"
+                to="/app/clientes/$id"
+                params={{ id: cliente.id }}
+                className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
+                <Card className="h-full transition-shadow hover:shadow-md">
                 <CardContent className="space-y-4 p-5">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -129,7 +132,8 @@ function ClientesPage() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              </Link>
             );
           })}
         </div>
