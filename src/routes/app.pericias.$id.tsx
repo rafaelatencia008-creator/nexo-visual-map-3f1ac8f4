@@ -58,7 +58,12 @@ const STATUS_TONE: Record<StatusPericia, string> = {
 };
 
 export const Route = createFileRoute("/app/pericias/$id")({
-  loader: ({ params }) => {
+  loader: ({ params }): {
+    pericia: Pericia;
+    processo: Processo | undefined;
+    cliente: Cliente | undefined;
+    perito: Perito | undefined;
+  } => {
     const pericia = pericias.find((p) => p.id === params.id);
     if (!pericia) throw notFound();
     const processo = processos.find((pr) => pr.id === pericia.processoId);
