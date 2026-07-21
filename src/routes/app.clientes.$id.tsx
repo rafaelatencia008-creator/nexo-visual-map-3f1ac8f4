@@ -51,14 +51,12 @@ const STATUS_PROCESSO_LABEL: Record<StatusProcesso, string> = {
   ativo: "Ativo",
   suspenso: "Suspenso",
   arquivado: "Arquivado",
-  encerrado: "Encerrado",
 };
 
 const STATUS_PROCESSO_TONE: Record<StatusProcesso, string> = {
   ativo: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   suspenso: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   arquivado: "bg-muted text-muted-foreground",
-  encerrado: "bg-muted text-muted-foreground",
 };
 
 export const Route = createFileRoute("/app/clientes/$id")({
