@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -92,12 +91,11 @@ function ProcessosPage() {
             Processos judiciais vinculados às perícias do escritório.
           </p>
         </div>
-        <Button
-          onClick={() => toast.info("Cadastro de processos em breve.")}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Novo processo
+        <Button asChild className="gap-2">
+          <Link to="/app/processos/novo">
+            <Plus className="h-4 w-4" />
+            Novo processo
+          </Link>
         </Button>
       </div>
 
