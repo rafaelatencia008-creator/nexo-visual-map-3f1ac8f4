@@ -21,6 +21,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppProcessosRouteImport } from './routes/app.processos'
 import { Route as AppPericiasRouteImport } from './routes/app.pericias'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
+import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppProcessosIdRouteImport } from './routes/app.processos.$id'
 import { Route as AppPericiasNovaRouteImport } from './routes/app.pericias.nova'
@@ -91,6 +92,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProcessosNovoRoute = AppProcessosNovoRouteImport.update({
   id: '/novo',
   path: '/novo',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/app/agenda': typeof AppAgendaRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/pericias': typeof AppPericiasRouteWithChildren
   '/app/processos': typeof AppProcessosRouteWithChildren
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/agenda'
     | '/app/clientes'
     | '/app/pericias'
     | '/app/processos'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/agenda'
     | '/app/clientes'
     | '/app/pericias'
     | '/app/processos'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/servicos'
     | '/sobre'
+    | '/app/agenda'
     | '/app/clientes'
     | '/app/pericias'
     | '/app/processos'
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/app/clientes'
       preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/agenda': {
+      id: '/app/agenda'
+      path: '/agenda'
+      fullPath: '/app/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/processos/novo': {
@@ -519,6 +538,7 @@ const AppProcessosRouteWithChildren = AppProcessosRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppPericiasRoute: typeof AppPericiasRouteWithChildren
   AppProcessosRoute: typeof AppProcessosRouteWithChildren
@@ -526,6 +546,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppPericiasRoute: AppPericiasRouteWithChildren,
   AppProcessosRoute: AppProcessosRouteWithChildren,
@@ -547,3 +568,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
