@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Building2,
   Mail,
+  Pencil,
   Phone,
   User as UserIcon,
   Briefcase,
@@ -134,6 +135,12 @@ function ClienteDetalhePage() {
             </div>
           </div>
         </div>
+        <Button asChild className="gap-2">
+          <Link to="/app/clientes/$id/editar" params={{ id: cliente.id }}>
+            <Pencil className="h-4 w-4" />
+            Editar cliente
+          </Link>
+        </Button>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">
