@@ -1,12 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, Clock, User, Briefcase } from "lucide-react";
+import { CalendarDays, Clock, User, Briefcase, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { pericias, processos, clientes, peritos } from "@/lib/mock/data";
 import { formatDateTime } from "@/lib/format";
 import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+
 
 export const Route = createFileRoute("/app/agenda")({
   head: () => ({
@@ -59,10 +68,41 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
+const TIPOS: TipoPericia[] = [
+  "engenharia_civil",
+  "grafotecnica",
+  "contabil",
+  "medica",
+  "ambiental",
+  "trabalhista",
+];
+
+const STATUSES: StatusPericia[] = [
+  "agendada",
+  "em_andamento",
+  "laudo_pendente",
+  "concluida",
+  "cancelada",
+];
+
+const ALL = "__all__";
+
 function AgendaPage() {
   const hoje = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState<Date>(hoje);
   const [viewMonth, setViewMonth] = useState<Date>(hoje);
+  const [filtroPerito, setFiltroPerito] = useState<string>(ALL);
+  const [filtroTipo, setFiltroTipo] = useState<string>(ALL);
+  const [filtroStatus, setFiltroStatus] = useState<string>(ALL);
+
+  const filtrosAtivos =
+    filtroPerito !== ALL || filtroTipo !== ALL || filtroStatus !== ALL;
+
+  const limparFiltros = () => {
+    setFiltroPerito(ALL);
+    setFiltroTipo(ALL);
+    setFiltroStatus(ALL);
+  };
 
   const processoMap = useMemo(
     () => new Map(processos.map((p) => [p.id, p])),
@@ -71,33 +111,43 @@ function AgendaPage() {
   const clienteMap = useMemo(() => new Map(clientes.map((c) => [c.id, c])), []);
   const peritoMap = useMemo(() => new Map(peritos.map((p) => [p.id, p])), []);
 
+  // Perícias após filtros
+  const periciasFiltradas = useMemo(() => {
+    return pericias.filter((p) => {
+      if (filtroPerito !== ALL && p.peritoId !== filtroPerito) return false;
+      if (filtroTipo !== ALL && p.tipo !== filtroTipo) return false;
+      if (filtroStatus !== ALL && p.status !== filtroStatus) return false;
+      return true;
+    });
+  }, [filtroPerito, filtroTipo, filtroStatus]);
+
   // Dias com perícias (para destacar no calendário)
   const diasComPericia = useMemo(
-    () => pericias.map((p) => new Date(p.dataAgendada)),
-    [],
+    () => periciasFiltradas.map((p) => new Date(p.dataAgendada)),
+    [periciasFiltradas],
   );
 
   // Perícias do dia selecionado, ordenadas por hora
   const periciasDoDia = useMemo(() => {
-    return pericias
+    return periciasFiltradas
       .filter((p) => sameDay(new Date(p.dataAgendada), selectedDate))
       .sort(
         (a, b) =>
           new Date(a.dataAgendada).getTime() -
           new Date(b.dataAgendada).getTime(),
       );
-  }, [selectedDate]);
+  }, [selectedDate, periciasFiltradas]);
 
   // Perícias no mês visível (para o contador do cabeçalho)
   const periciasDoMes = useMemo(() => {
-    return pericias.filter((p) => {
+    return periciasFiltradas.filter((p) => {
       const d = new Date(p.dataAgendada);
       return (
         d.getFullYear() === viewMonth.getFullYear() &&
         d.getMonth() === viewMonth.getMonth()
       );
     });
-  }, [viewMonth]);
+  }, [viewMonth, periciasFiltradas]);
 
   const dataFormatada = selectedDate.toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -110,6 +160,7 @@ function AgendaPage() {
     month: "long",
     year: "numeric",
   });
+
 
   return (
     <div className="space-y-6">
@@ -135,7 +186,97 @@ function AgendaPage() {
         </div>
       </header>
 
+      {/* Filtros */}
+      <Card className="border-border/70">
+        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Perito
+            </label>
+            <Select value={filtroPerito} onValueChange={setFiltroPerito}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os peritos</SelectItem>
+                {peritos.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Tipo de perícia
+            </label>
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os tipos</SelectItem>
+                {TIPOS.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {TIPO_LABEL[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Status
+            </label>
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os status</SelectItem>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filtrosAtivos && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={limparFiltros}
+              className="gap-1.5"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legenda de status */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border/60 bg-muted/20 px-4 py-3 text-xs">
+        <span className="font-medium text-muted-foreground">Legenda:</span>
+        {STATUSES.map((s) => (
+          <span
+            key={s}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${STATUS_TONE[s]}`}
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
+            {STATUS_LABEL[s]}
+          </span>
+        ))}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[auto,1fr]">
+
         {/* Calendário */}
         <Card className="border-border/70">
           <CardHeader>
