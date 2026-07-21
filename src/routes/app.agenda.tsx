@@ -1,12 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, Clock, User, Briefcase } from "lucide-react";
+import { CalendarDays, Clock, User, Briefcase, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { pericias, processos, clientes, peritos } from "@/lib/mock/data";
 import { formatDateTime } from "@/lib/format";
 import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+
 
 export const Route = createFileRoute("/app/agenda")({
   head: () => ({
