@@ -21,6 +21,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppProcessosRouteImport } from './routes/app.processos'
 import { Route as AppPericiasRouteImport } from './routes/app.pericias'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
+import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppProcessosIdRouteImport } from './routes/app.processos.$id'
 import { Route as AppPericiasIdRouteImport } from './routes/app.pericias.$id'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
@@ -87,6 +88,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProcessosNovoRoute = AppProcessosNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => AppProcessosRoute,
+} as any)
 const AppProcessosIdRoute = AppProcessosIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
   '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
 }
 export interface FileRoutesByTo {
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
   '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
 }
 export interface FileRoutesById {
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
   '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
 }
 export interface FileRouteTypes {
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/processos/$id'
+    | '/app/processos/novo'
     | '/app/clientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/processos/$id'
+    | '/app/processos/novo'
     | '/app/clientes/$id/editar'
   id:
     | '__root__'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/app/clientes/novo'
     | '/app/pericias/$id'
     | '/app/processos/$id'
+    | '/app/processos/novo'
     | '/app/clientes/$id/editar'
   fileRoutesById: FileRoutesById
 }
@@ -326,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/processos/novo': {
+      id: '/app/processos/novo'
+      path: '/novo'
+      fullPath: '/app/processos/novo'
+      preLoaderRoute: typeof AppProcessosNovoRouteImport
+      parentRoute: typeof AppProcessosRoute
+    }
     '/app/processos/$id': {
       id: '/app/processos/$id'
       path: '/$id'
@@ -404,10 +423,12 @@ const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
 
 interface AppProcessosRouteChildren {
   AppProcessosIdRoute: typeof AppProcessosIdRoute
+  AppProcessosNovoRoute: typeof AppProcessosNovoRoute
 }
 
 const AppProcessosRouteChildren: AppProcessosRouteChildren = {
   AppProcessosIdRoute: AppProcessosIdRoute,
+  AppProcessosNovoRoute: AppProcessosNovoRoute,
 }
 
 const AppProcessosRouteWithChildren = AppProcessosRoute._addFileChildren(
@@ -443,13 +464,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
