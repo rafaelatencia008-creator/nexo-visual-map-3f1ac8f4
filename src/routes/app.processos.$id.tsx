@@ -86,7 +86,11 @@ export const Route = createFileRoute("/app/processos/$id")({
 });
 
 function ProcessoDetalhePage() {
-  const { processo, cliente, periciasVinculadas } = Route.useLoaderData();
+  const { processo, cliente, periciasVinculadas } = Route.useLoaderData() as {
+    processo: Processo;
+    cliente: Cliente | undefined;
+    periciasVinculadas: Pericia[];
+  };
 
   const emBreve = (label: string) =>
     toast.info(`${label} — em breve`, {
