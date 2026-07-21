@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search, Eye, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -293,10 +293,15 @@ function PericiasPage() {
                           variant="ghost"
                           size="sm"
                           className="gap-1.5"
-                          onClick={() => emBreve("Detalhes da perícia")}
+                          asChild
                         >
-                          <Eye className="h-4 w-4" />
-                          Ver
+                          <Link
+                            to="/app/pericias/$id"
+                            params={{ id: p.id }}
+                          >
+                            <Eye className="h-4 w-4" />
+                            Ver
+                          </Link>
                         </Button>
                       </TableCell>
                     </TableRow>
