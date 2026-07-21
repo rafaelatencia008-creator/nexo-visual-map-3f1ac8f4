@@ -61,7 +61,7 @@ function PeritosPage() {
           </p>
         </div>
         <Button asChild className="gap-2">
-          <Link to="/app/peritos">
+          <Link to="/app/peritos/novo">
             <Plus className="h-4 w-4" />
             Novo perito
           </Link>
