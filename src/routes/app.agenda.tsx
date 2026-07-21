@@ -186,7 +186,97 @@ function AgendaPage() {
         </div>
       </header>
 
+      {/* Filtros */}
+      <Card className="border-border/70">
+        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Perito
+            </label>
+            <Select value={filtroPerito} onValueChange={setFiltroPerito}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os peritos</SelectItem>
+                {peritos.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Tipo de perícia
+            </label>
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os tipos</SelectItem>
+                {TIPOS.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {TIPO_LABEL[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Status
+            </label>
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os status</SelectItem>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filtrosAtivos && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={limparFiltros}
+              className="gap-1.5"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legenda de status */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border/60 bg-muted/20 px-4 py-3 text-xs">
+        <span className="font-medium text-muted-foreground">Legenda:</span>
+        {STATUSES.map((s) => (
+          <span
+            key={s}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${STATUS_TONE[s]}`}
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
+            {STATUS_LABEL[s]}
+          </span>
+        ))}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[auto,1fr]">
+
         {/* Calendário */}
         <Card className="border-border/70">
           <CardHeader>
