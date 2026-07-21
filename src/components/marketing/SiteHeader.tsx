@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +33,12 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/app"
+            className="hidden text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline lg:inline"
+          >
+            Ver painel (demo)
+          </Link>
           <Button variant="outline" size="sm" className="hidden sm:inline-flex">
             Área do Cliente
           </Button>
