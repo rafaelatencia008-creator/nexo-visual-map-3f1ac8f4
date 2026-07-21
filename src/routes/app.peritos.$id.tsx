@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { peritos, pericias, processos, clientes } from "@/lib/mock/data";
 import { formatPhone, formatDateTime, formatCurrency } from "@/lib/format";
-import type { TipoPericia, StatusPericia } from "@/lib/mock/types";
+import type { TipoPericia, StatusPericia, Perito, Pericia } from "@/lib/mock/types";
 
 const ESPECIALIDADE_LABEL: Record<TipoPericia, string> = {
   engenharia_civil: "Engenharia Civil",
