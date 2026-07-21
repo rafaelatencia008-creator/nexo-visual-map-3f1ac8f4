@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 
-const NAV_ITEMS: { label: string; to?: "/" | "/servicos" | "/app"; href?: string }[] = [
+const NAV_ITEMS: { label: string; to?: "/" | "/servicos" | "/sobre" | "/app"; href?: string }[] = [
   { label: "Início", to: "/" },
   { label: "Serviços", to: "/servicos" },
-  { label: "Sobre", href: "#" },
+  { label: "Sobre", to: "/sobre" },
   { label: "Contato", href: "#" },
 ];
 
