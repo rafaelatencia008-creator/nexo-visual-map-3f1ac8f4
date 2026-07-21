@@ -66,7 +66,11 @@ export const Route = createFileRoute("/app/peritos/$id")({
 });
 
 function PeritoDetalhePage() {
-  const { perito, periciasDoPerito, totalHonorarios } = Route.useLoaderData();
+  const { perito, periciasDoPerito, totalHonorarios } = Route.useLoaderData() as {
+    perito: Perito;
+    periciasDoPerito: Pericia[];
+    totalHonorarios: number;
+  };
 
   return (
     <div className="space-y-6">
