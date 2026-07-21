@@ -162,13 +162,11 @@ function PericiaDetalhePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => emBreve("Editar perícia")}
-          >
-            <Pencil className="h-4 w-4" />
-            Editar
+          <Button variant="outline" className="gap-2" asChild>
+            <Link to="/app/pericias/$id/editar" params={{ id: pericia.id }}>
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Link>
           </Button>
           <Button className="gap-2" onClick={() => emBreve("Gerar laudo")}>
             <FileText className="h-4 w-4" />
