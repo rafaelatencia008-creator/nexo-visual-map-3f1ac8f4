@@ -33,7 +33,11 @@ const STATUS_VARIANT: Record<StatusPericia, "default" | "secondary" | "outline" 
 };
 
 export const Route = createFileRoute("/app/peritos/$id")({
-  loader: ({ params }) => {
+  loader: ({ params }): {
+    perito: Perito;
+    periciasDoPerito: Pericia[];
+    totalHonorarios: number;
+  } => {
     const perito = peritos.find((p) => p.id === params.id);
     if (!perito) throw notFound();
     const periciasDoPerito = pericias.filter((pc) => pc.peritoId === perito.id);
