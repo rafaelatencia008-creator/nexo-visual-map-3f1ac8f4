@@ -17,15 +17,15 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Rigor. Método. Autoridade documental. Perícias judiciais e extrajudiciais conduzidas por especialistas.",
+          "Nexo Pericial 360 entrega perícias judiciais e extrajudiciais com rigor metodológico, rastreabilidade documental e postura institucional.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Nexo Pericial 360" },
+      { name: "twitter:title", content: "Nexo Pericial 360 — Perícia técnica com autoridade documental" },
       {
         name: "twitter:description",
-        content: "Perícias com rigor documental e autoridade técnica.",
+        content: "Nexo Pericial 360 entrega perícias judiciais e extrajudiciais com rigor metodológico, rastreabilidade documental e postura institucional.",
       },
     ],
     links: [{ rel: "canonical", href: "/" }],

@@ -78,12 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Nexo Pericial 360" },
-      { name: "description", content: "Plataforma Nexo Pericial 360." },
-      { property: "og:title", content: "Nexo Pericial 360" },
-      { property: "og:description", content: "Plataforma Nexo Pericial 360." },
+      { title: "Nexo Pericial 360 — Perícia técnica com autoridade documental" },
+      { name: "description", content: "Nexo Pericial 360 entrega perícias judiciais e extrajudiciais com rigor metodológico, rastreabilidade documental e postura institucional." },
+      { property: "og:title", content: "Nexo Pericial 360 — Perícia técnica com autoridade documental" },
+      { property: "og:description", content: "Nexo Pericial 360 entrega perícias judiciais e extrajudiciais com rigor metodológico, rastreabilidade documental e postura institucional." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Nexo Pericial 360 — Perícia técnica com autoridade documental" },
+      { name: "twitter:description", content: "Nexo Pericial 360 entrega perícias judiciais e extrajudiciais com rigor metodológico, rastreabilidade documental e postura institucional." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0104c045-3f41-4d24-802f-479d7303c270/id-preview-2e2f50fe--09ca21a0-2543-483a-ba6f-efcb4eb2ed7d.lovable.app-1784658048478.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0104c045-3f41-4d24-802f-479d7303c270/id-preview-2e2f50fe--09ca21a0-2543-483a-ba6f-efcb4eb2ed7d.lovable.app-1784658048478.png" },
     ],
     links: [
       {
