@@ -25,6 +25,9 @@ import type {
   StatusProcesso,
   StatusPericia,
   TipoPericia,
+  Processo,
+  Cliente,
+  Pericia,
 } from "@/lib/mock/types";
 
 const STATUS_PROCESSO_LABEL: Record<StatusProcesso, string> = {
