@@ -27,7 +27,7 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
       { label: "Perícias", icon: ClipboardList, to: "/app/pericias" },
       { label: "Processos", icon: Gavel, to: "/app/processos" },
       { label: "Clientes", icon: Users, to: "/app/clientes" },
-      { label: "Agenda", icon: Calendar },
+      { label: "Agenda", icon: Calendar, to: "/app/agenda" },
     ],
   },
   {
