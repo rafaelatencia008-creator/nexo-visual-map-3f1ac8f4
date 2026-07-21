@@ -32,6 +32,7 @@ import { Route as AppPericiasIdRouteImport } from './routes/app.pericias.$id'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppProcessosIdEditarRouteImport } from './routes/app.processos.$id.editar'
+import { Route as AppPeritosIdEditarRouteImport } from './routes/app.peritos.$id.editar'
 import { Route as AppPericiasIdEditarRouteImport } from './routes/app.pericias.$id.editar'
 import { Route as AppClientesIdEditarRouteImport } from './routes/app.clientes.$id.editar'
 
@@ -150,6 +151,11 @@ const AppProcessosIdEditarRoute = AppProcessosIdEditarRouteImport.update({
   path: '/editar',
   getParentRoute: () => AppProcessosIdRoute,
 } as any)
+const AppPeritosIdEditarRoute = AppPeritosIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => AppPeritosIdRoute,
+} as any)
 const AppPericiasIdEditarRoute = AppPericiasIdEditarRouteImport.update({
   id: '/editar',
   path: '/editar',
@@ -180,12 +186,13 @@ export interface FileRoutesByFullPath {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
-  '/app/peritos/$id': typeof AppPeritosIdRoute
+  '/app/peritos/$id': typeof AppPeritosIdRouteWithChildren
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
+  '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
   '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRoutesByTo {
@@ -206,12 +213,13 @@ export interface FileRoutesByTo {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
-  '/app/peritos/$id': typeof AppPeritosIdRoute
+  '/app/peritos/$id': typeof AppPeritosIdRouteWithChildren
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
+  '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
   '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRoutesById {
@@ -234,12 +242,13 @@ export interface FileRoutesById {
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRouteWithChildren
   '/app/pericias/nova': typeof AppPericiasNovaRoute
-  '/app/peritos/$id': typeof AppPeritosIdRoute
+  '/app/peritos/$id': typeof AppPeritosIdRouteWithChildren
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
+  '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
   '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRouteTypes {
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
+    | '/app/peritos/$id/editar'
     | '/app/processos/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
+    | '/app/peritos/$id/editar'
     | '/app/processos/$id/editar'
   id:
     | '__root__'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
+    | '/app/peritos/$id/editar'
     | '/app/processos/$id/editar'
   fileRoutesById: FileRoutesById
 }
@@ -499,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProcessosIdEditarRouteImport
       parentRoute: typeof AppProcessosIdRoute
     }
+    '/app/peritos/$id/editar': {
+      id: '/app/peritos/$id/editar'
+      path: '/editar'
+      fullPath: '/app/peritos/$id/editar'
+      preLoaderRoute: typeof AppPeritosIdEditarRouteImport
+      parentRoute: typeof AppPeritosIdRoute
+    }
     '/app/pericias/$id/editar': {
       id: '/app/pericias/$id/editar'
       path: '/editar'
@@ -568,13 +587,25 @@ const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
   AppPericiasRouteChildren,
 )
 
+interface AppPeritosIdRouteChildren {
+  AppPeritosIdEditarRoute: typeof AppPeritosIdEditarRoute
+}
+
+const AppPeritosIdRouteChildren: AppPeritosIdRouteChildren = {
+  AppPeritosIdEditarRoute: AppPeritosIdEditarRoute,
+}
+
+const AppPeritosIdRouteWithChildren = AppPeritosIdRoute._addFileChildren(
+  AppPeritosIdRouteChildren,
+)
+
 interface AppPeritosRouteChildren {
-  AppPeritosIdRoute: typeof AppPeritosIdRoute
+  AppPeritosIdRoute: typeof AppPeritosIdRouteWithChildren
   AppPeritosNovoRoute: typeof AppPeritosNovoRoute
 }
 
 const AppPeritosRouteChildren: AppPeritosRouteChildren = {
-  AppPeritosIdRoute: AppPeritosIdRoute,
+  AppPeritosIdRoute: AppPeritosIdRouteWithChildren,
   AppPeritosNovoRoute: AppPeritosNovoRoute,
 }
 
