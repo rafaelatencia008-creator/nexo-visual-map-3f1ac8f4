@@ -1,7 +1,8 @@
-# src/components/marketing
+# Marketing / Shell público
 
-Componentes da área pública do site (cabeçalho, rodapé, seções de landing, blocos institucionais).
+Componentes visuais do site institucional público.
 
-Serão criados no bloco **LV-03**. Devem compor as rotas públicas (`/`, `/produto`, `/recursos`, `/profissoes`, `/planos`, `/seguranca`, `/contato`, `/termos`, `/privacidade`, `/acessibilidade`, `/aviso-profissional`).
+- **SiteHeader** — cabeçalho fixo (logo + navegação + CTA). Links apontam para `#` até o Bloco LV-04 definir rotas.
+- **SiteFooter** — rodapé institucional com 3 colunas, marca e copyright.
 
-**Não colocar aqui:** componentes do `/app`, primitivos do design system, lógica de sessão ou dados reais.
+Os componentes ainda **não** são montados em nenhuma rota — isso ocorrerá em LV-03.03.
