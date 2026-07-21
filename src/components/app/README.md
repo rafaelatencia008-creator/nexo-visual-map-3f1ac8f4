@@ -1,7 +1,8 @@
-# src/components/app
+# App / Shell do painel interno
 
-Componentes específicos da área interna `/app` (shell/sidebar, dashboard, cards de processo, painéis de análise, editor, etc.).
+Componentes visuais da área logada (dashboard do perito/cliente).
 
-Serão criados a partir do bloco **LV-06**. Podem consumir mocks de `src/lib/mock` e primitivos de `src/components/ui`.
+- **AppSidebar** — barra lateral com marca, 3 grupos de navegação (Principal, Gestão, Sistema) e cartão de usuário no rodapé. Todos os links apontam para `#`.
+- **AppTopbar** — barra superior com botão de recolher (visual), busca global, tema, notificações e avatar.
 
-**Não colocar aqui:** componentes de marketing, primitivos do design system, chamadas a APIs reais, integrações com banco.
+Os componentes serão montados em rota interna no LV-03.04.
