@@ -103,7 +103,7 @@ function PeritoDetalhePage() {
           </div>
         </div>
         <Button asChild variant="outline" className="gap-2">
-          <Link to="/app/peritos/$id" params={{ id: perito.id }}>
+          <Link to="/app/peritos/$id/editar" params={{ id: perito.id }}>
             <Pencil className="h-4 w-4" />
             Editar perito
           </Link>
