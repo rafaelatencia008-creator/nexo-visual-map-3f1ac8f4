@@ -10,39 +10,46 @@ import {
   Settings,
   HelpCircle,
 } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/Logo";
 
-type NavItem = { label: string; icon: React.ComponentType<{ className?: string }>; href: string; active?: boolean };
+type NavItem = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  to?: string;
+};
 
 const GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Principal",
     items: [
-      { label: "Dashboard", icon: LayoutDashboard, href: "#", active: true },
-      { label: "Perícias", icon: ClipboardList, href: "#" },
-      { label: "Processos", icon: Gavel, href: "#" },
-      { label: "Clientes", icon: Users, href: "#" },
-      { label: "Agenda", icon: Calendar, href: "#" },
+      { label: "Dashboard", icon: LayoutDashboard, to: "/app" },
+      { label: "Perícias", icon: ClipboardList, to: "/app/pericias" },
+      { label: "Processos", icon: Gavel },
+      { label: "Clientes", icon: Users },
+      { label: "Agenda", icon: Calendar },
     ],
   },
   {
     title: "Gestão",
     items: [
-      { label: "Peritos", icon: UserCog, href: "#" },
-      { label: "Relatórios", icon: FileBarChart, href: "#" },
-      { label: "Financeiro", icon: Wallet, href: "#" },
+      { label: "Peritos", icon: UserCog },
+      { label: "Relatórios", icon: FileBarChart },
+      { label: "Financeiro", icon: Wallet },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { label: "Configurações", icon: Settings, href: "#" },
-      { label: "Ajuda", icon: HelpCircle, href: "#" },
+      { label: "Configurações", icon: Settings },
+      { label: "Ajuda", icon: HelpCircle },
     ],
   },
 ];
 
 export function AppSidebar() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border/60 bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
@@ -59,20 +66,34 @@ export function AppSidebar() {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
+                const active =
+                  item.to === "/app"
+                    ? pathname === "/app" || pathname === "/app/"
+                    : item.to
+                      ? pathname === item.to || pathname.startsWith(`${item.to}/`)
+                      : false;
+                const className =
+                  "flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors " +
+                  (active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground");
                 return (
                   <li key={item.label}>
-                    <a
-                      href={item.href}
-                      className={
-                        "flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors " +
-                        (item.active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground")
-                      }
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </a>
+                    {item.to ? (
+                      <Link to={item.to} className={className}>
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <span
+                        className={`${className} cursor-not-allowed opacity-60`}
+                        aria-disabled="true"
+                        title="Em breve"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </span>
+                    )}
                   </li>
                 );
               })}
