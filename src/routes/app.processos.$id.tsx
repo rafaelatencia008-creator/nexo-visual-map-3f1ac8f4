@@ -134,13 +134,11 @@ function ProcessoDetalhePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => emBreve("Editar processo")}
-          >
-            <Pencil className="h-4 w-4" />
-            Editar
+          <Button variant="outline" className="gap-2" asChild>
+            <Link to="/app/processos/$id/editar" params={{ id: processo.id }}>
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Link>
           </Button>
           <Button
             className="gap-2"
