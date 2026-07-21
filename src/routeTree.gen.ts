@@ -26,6 +26,7 @@ import { Route as AppProcessosIdRouteImport } from './routes/app.processos.$id'
 import { Route as AppPericiasIdRouteImport } from './routes/app.pericias.$id'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
+import { Route as AppProcessosIdEditarRouteImport } from './routes/app.processos.$id.editar'
 import { Route as AppClientesIdEditarRouteImport } from './routes/app.clientes.$id.editar'
 
 const SobreRoute = SobreRouteImport.update({
@@ -113,6 +114,11 @@ const AppClientesIdRoute = AppClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppClientesRoute,
 } as any)
+const AppProcessosIdEditarRoute = AppProcessosIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => AppProcessosIdRoute,
+} as any)
 const AppClientesIdEditarRoute = AppClientesIdEditarRouteImport.update({
   id: '/editar',
   path: '/editar',
@@ -135,9 +141,10 @@ export interface FileRoutesByFullPath {
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
-  '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
+  '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -154,9 +161,10 @@ export interface FileRoutesByTo {
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
-  '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
+  '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -175,9 +183,10 @@ export interface FileRoutesById {
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/$id': typeof AppPericiasIdRoute
-  '/app/processos/$id': typeof AppProcessosIdRoute
+  '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
+  '/app/processos/$id/editar': typeof AppProcessosIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
+    | '/app/processos/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
+    | '/app/processos/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/app/processos/$id'
     | '/app/processos/novo'
     | '/app/clientes/$id/editar'
+    | '/app/processos/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -373,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesIdRouteImport
       parentRoute: typeof AppClientesRoute
     }
+    '/app/processos/$id/editar': {
+      id: '/app/processos/$id/editar'
+      path: '/editar'
+      fullPath: '/app/processos/$id/editar'
+      preLoaderRoute: typeof AppProcessosIdEditarRouteImport
+      parentRoute: typeof AppProcessosIdRoute
+    }
     '/app/clientes/$id/editar': {
       id: '/app/clientes/$id/editar'
       path: '/editar'
@@ -421,13 +440,25 @@ const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
   AppPericiasRouteChildren,
 )
 
+interface AppProcessosIdRouteChildren {
+  AppProcessosIdEditarRoute: typeof AppProcessosIdEditarRoute
+}
+
+const AppProcessosIdRouteChildren: AppProcessosIdRouteChildren = {
+  AppProcessosIdEditarRoute: AppProcessosIdEditarRoute,
+}
+
+const AppProcessosIdRouteWithChildren = AppProcessosIdRoute._addFileChildren(
+  AppProcessosIdRouteChildren,
+)
+
 interface AppProcessosRouteChildren {
-  AppProcessosIdRoute: typeof AppProcessosIdRoute
+  AppProcessosIdRoute: typeof AppProcessosIdRouteWithChildren
   AppProcessosNovoRoute: typeof AppProcessosNovoRoute
 }
 
 const AppProcessosRouteChildren: AppProcessosRouteChildren = {
-  AppProcessosIdRoute: AppProcessosIdRoute,
+  AppProcessosIdRoute: AppProcessosIdRouteWithChildren,
   AppProcessosNovoRoute: AppProcessosNovoRoute,
 }
 
@@ -464,13 +495,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
