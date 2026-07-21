@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search, Mail, Phone, Building2, User as UserIcon } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,12 +49,11 @@ function ClientesPage() {
             Pessoas físicas e jurídicas atendidas pelo escritório.
           </p>
         </div>
-        <Button
-          onClick={() => toast.info("Cadastro de clientes em breve.")}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Novo cliente
+        <Button asChild className="gap-2">
+          <Link to="/app/clientes/novo">
+            <Plus className="h-4 w-4" />
+            Novo cliente
+          </Link>
         </Button>
       </div>
 
