@@ -78,4 +78,15 @@ void _s;
 // @ts-expect-error `StatusProcesso` não existe como tipo do domínio oficial
 type _Legacy = StatusProcesso;
 
+// 7) LV-08.2.1 — decideProcessCreateExit é totalmente tipada.
+const decision: "leave" | "confirm" | "blocked" = decideProcessCreateExit({
+  isDirty: true,
+  isSubmitting: false,
+});
+void decision;
+
+// @ts-expect-error decisão inexistente
+const invalidDecision: ProcessCreateExitDecision = "discard";
+void invalidDecision;
+
 export {};
