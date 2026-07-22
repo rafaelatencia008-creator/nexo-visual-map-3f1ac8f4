@@ -26,9 +26,9 @@ const _okStatus: ProcessListFilterInput = {
   sortId: "updated-desc",
 };
 void _okStatus;
-// @ts-expect-error status desconhecido não é CaseStatus
 const _badStatus: ProcessListFilterInput = {
   search: "",
+  // @ts-expect-error status desconhecido não é CaseStatus
   status: "ativo",
   confidentiality: "all",
   sortId: "x",
