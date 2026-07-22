@@ -35,11 +35,15 @@ import {
   validatePageRequest,
   isSortDirection,
   isPermissionAction,
+  isPermissionRequest,
   PERMISSION_ACTIONS,
+  PERMISSION_REQUEST_ALLOWED_KEYS,
+  PAGE_REQUEST_ALLOWED_KEYS,
   SERVICE_ERROR_CODES,
   SORT_DIRECTIONS,
   PAGE_LIMIT_MAX,
   CASE_SORT_FIELDS,
+  CASE_READINESS_ISSUES,
   type ServiceContext,
   type ServiceResult,
   type ServiceError,
@@ -59,7 +63,9 @@ import {
   type CreateCasePersonInput,
   type CreateAssignmentInput,
   type CaseListRequest,
+  type CaseReadinessIssue,
 } from "@/domain/services";
+import type { CaseReadiness } from "@/domain/core";
 import * as servicesBarrel from "@/domain/services";
 
 const F = fixtures;
