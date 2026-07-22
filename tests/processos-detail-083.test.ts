@@ -424,7 +424,7 @@ describe("LV-08.3.1 · efeitos colaterais do checklist", () => {
       await env.services.assignments.listByCase(
         DEMO_CONTEXT,
         SEED_CASE_ALFA_1_ID,
-        { page: { limit: 50 } },
+        { limit: 50 },
       ),
     );
     const input = buildCaseChecklistUpdateInput(before, {
@@ -437,7 +437,7 @@ describe("LV-08.3.1 · efeitos colaterais do checklist", () => {
       await env.services.assignments.listByCase(
         DEMO_CONTEXT,
         SEED_CASE_ALFA_1_ID,
-        { page: { limit: 50 } },
+        { limit: 50 },
       ),
     );
     expect(afterAssignments.items.length).toBe(beforeAssignments.items.length);
