@@ -18,6 +18,7 @@ import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as ProfissoesRouteImport } from './routes/profissoes'
 import { Route as ProdutoRouteImport } from './routes/produto'
 import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as CriarContaRouteImport } from './routes/criar-conta'
@@ -26,7 +27,10 @@ import { Route as ConflitoRouteImport } from './routes/conflito'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AcessoNegadoRouteImport } from './routes/acesso-negado'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OnboardingIndexRouteImport } from './routes/onboarding.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as OnboardingPerfilRouteImport } from './routes/onboarding.perfil'
+import { Route as OnboardingFormaDeTrabalhoRouteImport } from './routes/onboarding.forma-de-trabalho'
 import { Route as AppRelatoriosRouteImport } from './routes/app.relatorios'
 import { Route as AppQuesitosRouteImport } from './routes/app.quesitos'
 import { Route as AppPreferenciasRouteImport } from './routes/app.preferencias'
@@ -104,6 +108,11 @@ const PlanosRoute = PlanosRouteImport.update({
   path: '/planos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OfflineRoute = OfflineRouteImport.update({
   id: '/offline',
   path: '/offline',
@@ -144,11 +153,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OnboardingRoute,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const OnboardingPerfilRoute = OnboardingPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingFormaDeTrabalhoRoute =
+  OnboardingFormaDeTrabalhoRouteImport.update({
+    id: '/forma-de-trabalho',
+    path: '/forma-de-trabalho',
+    getParentRoute: () => OnboardingRoute,
+  } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -314,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
   '/offline': typeof OfflineRoute
+  '/onboarding': typeof OnboardingRouteWithChildren
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
@@ -338,7 +364,10 @@ export interface FileRoutesByFullPath {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
   '/app/': typeof AppIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -388,7 +417,10 @@ export interface FileRoutesByTo {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
   '/app': typeof AppIndexRoute
+  '/onboarding': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -416,6 +448,7 @@ export interface FileRoutesById {
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
   '/offline': typeof OfflineRoute
+  '/onboarding': typeof OnboardingRouteWithChildren
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
@@ -440,7 +473,10 @@ export interface FileRoutesById {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
   '/app/': typeof AppIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -469,6 +505,7 @@ export interface FileRouteTypes {
     | '/criar-conta'
     | '/entrar'
     | '/offline'
+    | '/onboarding'
     | '/planos'
     | '/produto'
     | '/profissoes'
@@ -493,7 +530,10 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
     | '/app/'
+    | '/onboarding/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -543,7 +583,10 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
     | '/app'
+    | '/onboarding'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -570,6 +613,7 @@ export interface FileRouteTypes {
     | '/criar-conta'
     | '/entrar'
     | '/offline'
+    | '/onboarding'
     | '/planos'
     | '/produto'
     | '/profissoes'
@@ -594,7 +638,10 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
     | '/app/'
+    | '/onboarding/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -622,6 +669,7 @@ export interface RootRouteChildren {
   CriarContaRoute: typeof CriarContaRoute
   EntrarRoute: typeof EntrarRoute
   OfflineRoute: typeof OfflineRoute
+  OnboardingRoute: typeof OnboardingRouteWithChildren
   PlanosRoute: typeof PlanosRoute
   ProdutoRoute: typeof ProdutoRoute
   ProfissoesRoute: typeof ProfissoesRoute
@@ -698,6 +746,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/offline': {
       id: '/offline'
       path: '/offline'
@@ -754,12 +809,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding/': {
+      id: '/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof OnboardingIndexRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
     '/app/': {
       id: '/app/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/onboarding/perfil': {
+      id: '/onboarding/perfil'
+      path: '/perfil'
+      fullPath: '/onboarding/perfil'
+      preLoaderRoute: typeof OnboardingPerfilRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/forma-de-trabalho': {
+      id: '/onboarding/forma-de-trabalho'
+      path: '/forma-de-trabalho'
+      fullPath: '/onboarding/forma-de-trabalho'
+      preLoaderRoute: typeof OnboardingFormaDeTrabalhoRouteImport
+      parentRoute: typeof OnboardingRoute
     }
     '/app/relatorios': {
       id: '/app/relatorios'
@@ -1053,6 +1129,22 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface OnboardingRouteChildren {
+  OnboardingFormaDeTrabalhoRoute: typeof OnboardingFormaDeTrabalhoRoute
+  OnboardingPerfilRoute: typeof OnboardingPerfilRoute
+  OnboardingIndexRoute: typeof OnboardingIndexRoute
+}
+
+const OnboardingRouteChildren: OnboardingRouteChildren = {
+  OnboardingFormaDeTrabalhoRoute: OnboardingFormaDeTrabalhoRoute,
+  OnboardingPerfilRoute: OnboardingPerfilRoute,
+  OnboardingIndexRoute: OnboardingIndexRoute,
+}
+
+const OnboardingRouteWithChildren = OnboardingRoute._addFileChildren(
+  OnboardingRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessoNegadoRoute: AcessoNegadoRoute,
@@ -1062,6 +1154,7 @@ const rootRouteChildren: RootRouteChildren = {
   CriarContaRoute: CriarContaRoute,
   EntrarRoute: EntrarRoute,
   OfflineRoute: OfflineRoute,
+  OnboardingRoute: OnboardingRouteWithChildren,
   PlanosRoute: PlanosRoute,
   ProdutoRoute: ProdutoRoute,
   ProfissoesRoute: ProfissoesRoute,
