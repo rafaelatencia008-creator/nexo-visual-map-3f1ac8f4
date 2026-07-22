@@ -62,6 +62,32 @@ export const PROCESS_SORT_OPTIONS: readonly ProcessSortOption[] = [
 export const DEFAULT_SORT_ID: string = PROCESS_SORT_OPTIONS[0]!.id;
 export const PROCESS_PAGE_LIMIT = 8;
 
+// ---- Classificação do estado vazio ------------------------------------------
+
+export type ProcessListEmptyKind = "overall" | "filtered";
+
+export function classifyProcessListEmpty(
+  input: Readonly<{
+    hasFilters: boolean;
+    filteredTotal: number;
+    overallTotal?: number;
+  }>,
+): ProcessListEmptyKind | undefined {
+  if (input.filteredTotal > 0) return undefined;
+  if (!input.hasFilters) return "overall";
+  if (input.overallTotal === undefined) return undefined;
+  if (input.overallTotal > 0) return "filtered";
+  return "overall";
+}
+
+export function buildOverallCaseCountRequest(): CaseListRequest {
+  return {
+    page: { limit: 1 },
+    sortBy: "updatedAt",
+    sortDir: "desc",
+  };
+}
+
 export function getSortOption(id: string): ProcessSortOption {
   const found = PROCESS_SORT_OPTIONS.find((o) => o.id === id);
   return found ?? PROCESS_SORT_OPTIONS[0]!;
