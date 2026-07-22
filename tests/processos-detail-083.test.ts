@@ -558,9 +558,13 @@ describe("LV-08.3.1 · auditoria da rota app.processos.$id.index.tsx", () => {
   it("continua usando `cases.update`", () => {
     expect(src.includes("environment.services.cases.update")).toBe(true);
   });
-  it("não usa `notFound()` nem `throw notFound`", () => {
-    expect(src.includes("throw notFound")).toBe(false);
+  it("não importa `notFound` de `@tanstack/react-router`", () => {
     expect(/from\s+"@tanstack\/react-router"[^;]*notFound/.test(src)).toBe(false);
+    expect(/\bnotFound\s*\(/.test(src)).toBe(false);
+    expect(src.includes("throw notFound")).toBe(false);
+  });
+  it("usa `Route.useParams()` para ler o parâmetro da rota", () => {
+    expect(src.includes("Route.useParams()")).toBe(true);
   });
 });
 

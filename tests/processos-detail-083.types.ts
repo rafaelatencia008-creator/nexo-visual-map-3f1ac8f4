@@ -87,23 +87,38 @@ import type { UpdateCaseInput } from "../src/domain/services/inputs";
 import type { CaseReadinessView } from "../src/domain/services/case-service";
 import { isCaseId } from "../src/domain/core/ids";
 import type { CaseId } from "../src/domain/core/ids";
+import type { CaseReadinessIssue } from "../src/domain/services/case-service";
+import {
+  CASE_READINESS_LABELS_PT,
+  getCaseReadinessProgress,
+} from "../src/features/processos/process-detail-model";
 
 // CaseChecklistUpdateInput deve ser atribuível a UpdateCaseInput.
-declare const _checklistInput: CaseChecklistUpdateInput;
-const _assignable: UpdateCaseInput = _checklistInput;
-void _assignable;
+declare const checklistInput: CaseChecklistUpdateInput;
+const officialUpdateInput: UpdateCaseInput = checklistInput;
+void officialUpdateInput;
+
+// getCaseReadinessProgress recebe CaseReadinessView e devolve CaseReadinessProgress.
+declare const readinessView: CaseReadinessView;
+const progress: CaseReadinessProgress = getCaseReadinessProgress(readinessView);
+void progress;
+
+// Rótulos oficiais cobrem todo o enum CaseReadinessIssue.
+const labels: Readonly<Record<CaseReadinessIssue, string>> = CASE_READINESS_LABELS_PT;
+void labels;
 
 // CaseReadinessView.issues é readonly.
 type _IssuesReadonly = Expect<
   Equal<CaseReadinessView["issues"], Readonly<CaseReadinessView["issues"]>>
 >;
 
-// isCaseId é um type guard que estreita para CaseId.
-declare const _unknown: unknown;
-if (isCaseId(_unknown)) {
-  const _id: CaseId = _unknown;
-  void _id;
+// isCaseId estreita uma string comum para CaseId.
+declare const rawId: string;
+if (isCaseId(rawId)) {
+  const caseId: CaseId = rawId;
+  void caseId;
 }
+
 
 // @ts-expect-error — checklist não aceita `reference`.
 const _rej1: CaseChecklistUpdateInput = { expectedVersion: 1, reference: "x" };
