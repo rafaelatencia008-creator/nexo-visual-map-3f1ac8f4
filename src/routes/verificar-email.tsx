@@ -114,6 +114,7 @@ function VerificarEmailPage() {
     setLoading(true);
     window.setTimeout(() => {
       // Sessão neutra — nome padrão, perfil apenas se ainda presente em memória.
+      // onboardingDone permanece false → redireciona para /onboarding.
       signInAsUser({
         name: "Usuário de demonstração",
         perfil: perfilRef.current,
@@ -121,7 +122,7 @@ function VerificarEmailPage() {
       });
       toast.success("E-mail verificado (demo)");
       setLoading(false);
-      navigate({ to: "/app" });
+      navigate({ to: "/onboarding" });
     }, 500);
   };
 

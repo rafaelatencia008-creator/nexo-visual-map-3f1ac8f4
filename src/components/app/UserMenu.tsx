@@ -69,9 +69,9 @@ export function UserMenu() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/app/organizacao" className="cursor-pointer">
+            <Link to="/selecionar-contexto" className="cursor-pointer">
               <Building2 className="mr-2 h-4 w-4" />
-              Organização
+              Organização / contexto
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

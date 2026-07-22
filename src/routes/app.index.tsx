@@ -12,6 +12,7 @@ import {
   Calendar,
   UploadCloud,
   FileSignature,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,13 @@ import { pericias, processos, clientes, peritos } from "@/lib/mock/data";
 import { pendencias as ALL_PEND, TIPO_LABEL as PEND_TIPO } from "@/lib/mock/pendencias";
 import { formatDateTime, formatCurrency, formatDate } from "@/lib/format";
 import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+import { useSession } from "@/hooks/use-session";
+import { getContextById } from "@/services/context-service";
+import {
+  PERFIL_LABEL,
+  WORK_MODE_LABEL,
+  ROLE_LABEL,
+} from "@/domain/onboarding";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
@@ -122,6 +130,9 @@ function DashboardPage() {
   const totalPendencias = ALL_PEND.filter((p) => p.status !== "concluida").length;
   const atrasadas = ALL_PEND.filter((p) => p.status === "atrasada").length;
 
+  const { session } = useSession();
+  const currentContext = getContextById(session?.currentContextId);
+
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -141,6 +152,38 @@ function DashboardPage() {
           Demonstração visual
         </Badge>
       </header>
+
+      {/* Resumo da sessão / contexto */}
+      {currentContext && (
+        <Card className="border-border/70">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                  Contexto atual
+                </p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {currentContext.nome}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {WORK_MODE_LABEL[currentContext.tipo]}
+                  {session?.perfil ? ` · ${PERFIL_LABEL[session.perfil]}` : ""}
+                  {session?.role ? ` · ${ROLE_LABEL[session.role]}` : ""}
+                  {session?.mode === "guest" ? " · Modo convidado" : " · Sessão simulada"}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild className="w-fit">
+              <Link to="/selecionar-contexto">Trocar contexto</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       {/* KPIs */}
       <section aria-label="Indicadores">

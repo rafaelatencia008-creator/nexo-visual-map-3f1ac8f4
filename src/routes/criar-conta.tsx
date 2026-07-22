@@ -18,8 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GoogleSimuladoDialog } from "@/components/auth/GoogleSimuladoDialog";
-import { useSession } from "@/hooks/use-session";
-import { setPendingPerfil } from "@/lib/auth-transient";
+import { useSession, setOnboardingReturn } from "@/hooks/use-session";
+import { setPendingPerfil, clearAuthTransient } from "@/lib/auth-transient";
 
 export const Route = createFileRoute("/criar-conta")({
   head: () => ({
@@ -154,28 +154,28 @@ function CriarContaPage() {
 
     setErrors({});
     setLoading(true);
-    // Guarda o perfil profissional apenas em memória (não persiste, não vai à URL).
+    // Um novo cadastro descarta qualquer transient anterior.
+    clearAuthTransient();
     setPendingPerfil(parsed.data.perfil);
-    // Limpa campos sensíveis do estado local antes de navegar.
     setSenha("");
     setConfirmar("");
     window.setTimeout(() => {
       setLoading(false);
-      // Nenhum dado pessoal transita pela URL.
       navigate({ to: "/verificar-email" });
     }, 500);
   };
 
   const confirmarGoogle = () => {
     setGoogleOpen(false);
-    setPendingPerfil(perfil || undefined);
+    // Google simulado (a partir do cadastro): limpa transient antigo.
+    clearAuthTransient();
     signInAsUser({
       name: "Usuário de demonstração",
-      perfil: perfil || undefined,
       remember: false,
     });
     toast.success("Cadastro simulado com Google iniciado");
-    navigate({ to: "/app" });
+    setOnboardingReturn(undefined);
+    navigate({ to: "/onboarding" });
   };
 
   return (

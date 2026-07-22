@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerificarEmailRouteImport } from './routes/verificar-email'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as SelecionarContextoRouteImport } from './routes/selecionar-contexto'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as RecursosRouteImport } from './routes/recursos'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as ProfissoesRouteImport } from './routes/profissoes'
 import { Route as ProdutoRouteImport } from './routes/produto'
 import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as CriarContaRouteImport } from './routes/criar-conta'
@@ -26,7 +28,13 @@ import { Route as ConflitoRouteImport } from './routes/conflito'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AcessoNegadoRouteImport } from './routes/acesso-negado'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OnboardingIndexRouteImport } from './routes/onboarding.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as OnboardingRevisaoRouteImport } from './routes/onboarding.revisao'
+import { Route as OnboardingPreferenciasRouteImport } from './routes/onboarding.preferencias'
+import { Route as OnboardingPerfilRouteImport } from './routes/onboarding.perfil'
+import { Route as OnboardingFormaDeTrabalhoRouteImport } from './routes/onboarding.forma-de-trabalho'
+import { Route as OnboardingContextoRouteImport } from './routes/onboarding.contexto'
 import { Route as AppRelatoriosRouteImport } from './routes/app.relatorios'
 import { Route as AppQuesitosRouteImport } from './routes/app.quesitos'
 import { Route as AppPreferenciasRouteImport } from './routes/app.preferencias'
@@ -74,6 +82,11 @@ const ServicosRoute = ServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SelecionarContextoRoute = SelecionarContextoRouteImport.update({
+  id: '/selecionar-contexto',
+  path: '/selecionar-contexto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SegurancaRoute = SegurancaRouteImport.update({
   id: '/seguranca',
   path: '/seguranca',
@@ -102,6 +115,11 @@ const ProdutoRoute = ProdutoRouteImport.update({
 const PlanosRoute = PlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OfflineRoute = OfflineRouteImport.update({
@@ -144,10 +162,41 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OnboardingRoute,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const OnboardingRevisaoRoute = OnboardingRevisaoRouteImport.update({
+  id: '/revisao',
+  path: '/revisao',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingPreferenciasRoute = OnboardingPreferenciasRouteImport.update({
+  id: '/preferencias',
+  path: '/preferencias',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingPerfilRoute = OnboardingPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingFormaDeTrabalhoRoute =
+  OnboardingFormaDeTrabalhoRouteImport.update({
+    id: '/forma-de-trabalho',
+    path: '/forma-de-trabalho',
+    getParentRoute: () => OnboardingRoute,
+  } as any)
+const OnboardingContextoRoute = OnboardingContextoRouteImport.update({
+  id: '/contexto',
+  path: '/contexto',
+  getParentRoute: () => OnboardingRoute,
 } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
@@ -314,12 +363,14 @@ export interface FileRoutesByFullPath {
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
   '/offline': typeof OfflineRoute
+  '/onboarding': typeof OnboardingRouteWithChildren
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -338,7 +389,13 @@ export interface FileRoutesByFullPath {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -370,6 +427,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -388,7 +446,13 @@ export interface FileRoutesByTo {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app': typeof AppIndexRoute
+  '/onboarding': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -416,12 +480,14 @@ export interface FileRoutesById {
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
   '/offline': typeof OfflineRoute
+  '/onboarding': typeof OnboardingRouteWithChildren
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -440,7 +506,13 @@ export interface FileRoutesById {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
+  '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
+  '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -469,12 +541,14 @@ export interface FileRouteTypes {
     | '/criar-conta'
     | '/entrar'
     | '/offline'
+    | '/onboarding'
     | '/planos'
     | '/produto'
     | '/profissoes'
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -493,7 +567,13 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app/'
+    | '/onboarding/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -525,6 +605,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -543,7 +624,13 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app'
+    | '/onboarding'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -570,12 +657,14 @@ export interface FileRouteTypes {
     | '/criar-conta'
     | '/entrar'
     | '/offline'
+    | '/onboarding'
     | '/planos'
     | '/produto'
     | '/profissoes'
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -594,7 +683,13 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
+    | '/onboarding/forma-de-trabalho'
+    | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app/'
+    | '/onboarding/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -622,12 +717,14 @@ export interface RootRouteChildren {
   CriarContaRoute: typeof CriarContaRoute
   EntrarRoute: typeof EntrarRoute
   OfflineRoute: typeof OfflineRoute
+  OnboardingRoute: typeof OnboardingRouteWithChildren
   PlanosRoute: typeof PlanosRoute
   ProdutoRoute: typeof ProdutoRoute
   ProfissoesRoute: typeof ProfissoesRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RecursosRoute: typeof RecursosRoute
   SegurancaRoute: typeof SegurancaRoute
+  SelecionarContextoRoute: typeof SelecionarContextoRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
   VerificarEmailRoute: typeof VerificarEmailRoute
@@ -654,6 +751,13 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/selecionar-contexto': {
+      id: '/selecionar-contexto'
+      path: '/selecionar-contexto'
+      fullPath: '/selecionar-contexto'
+      preLoaderRoute: typeof SelecionarContextoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/seguranca': {
@@ -696,6 +800,13 @@ declare module '@tanstack/react-router' {
       path: '/planos'
       fullPath: '/planos'
       preLoaderRoute: typeof PlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/offline': {
@@ -754,12 +865,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding/': {
+      id: '/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof OnboardingIndexRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
     '/app/': {
       id: '/app/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/onboarding/revisao': {
+      id: '/onboarding/revisao'
+      path: '/revisao'
+      fullPath: '/onboarding/revisao'
+      preLoaderRoute: typeof OnboardingRevisaoRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/preferencias': {
+      id: '/onboarding/preferencias'
+      path: '/preferencias'
+      fullPath: '/onboarding/preferencias'
+      preLoaderRoute: typeof OnboardingPreferenciasRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/perfil': {
+      id: '/onboarding/perfil'
+      path: '/perfil'
+      fullPath: '/onboarding/perfil'
+      preLoaderRoute: typeof OnboardingPerfilRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/forma-de-trabalho': {
+      id: '/onboarding/forma-de-trabalho'
+      path: '/forma-de-trabalho'
+      fullPath: '/onboarding/forma-de-trabalho'
+      preLoaderRoute: typeof OnboardingFormaDeTrabalhoRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/contexto': {
+      id: '/onboarding/contexto'
+      path: '/contexto'
+      fullPath: '/onboarding/contexto'
+      preLoaderRoute: typeof OnboardingContextoRouteImport
+      parentRoute: typeof OnboardingRoute
     }
     '/app/relatorios': {
       id: '/app/relatorios'
@@ -1053,6 +1206,28 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface OnboardingRouteChildren {
+  OnboardingContextoRoute: typeof OnboardingContextoRoute
+  OnboardingFormaDeTrabalhoRoute: typeof OnboardingFormaDeTrabalhoRoute
+  OnboardingPerfilRoute: typeof OnboardingPerfilRoute
+  OnboardingPreferenciasRoute: typeof OnboardingPreferenciasRoute
+  OnboardingRevisaoRoute: typeof OnboardingRevisaoRoute
+  OnboardingIndexRoute: typeof OnboardingIndexRoute
+}
+
+const OnboardingRouteChildren: OnboardingRouteChildren = {
+  OnboardingContextoRoute: OnboardingContextoRoute,
+  OnboardingFormaDeTrabalhoRoute: OnboardingFormaDeTrabalhoRoute,
+  OnboardingPerfilRoute: OnboardingPerfilRoute,
+  OnboardingPreferenciasRoute: OnboardingPreferenciasRoute,
+  OnboardingRevisaoRoute: OnboardingRevisaoRoute,
+  OnboardingIndexRoute: OnboardingIndexRoute,
+}
+
+const OnboardingRouteWithChildren = OnboardingRoute._addFileChildren(
+  OnboardingRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessoNegadoRoute: AcessoNegadoRoute,
@@ -1062,12 +1237,14 @@ const rootRouteChildren: RootRouteChildren = {
   CriarContaRoute: CriarContaRoute,
   EntrarRoute: EntrarRoute,
   OfflineRoute: OfflineRoute,
+  OnboardingRoute: OnboardingRouteWithChildren,
   PlanosRoute: PlanosRoute,
   ProdutoRoute: ProdutoRoute,
   ProfissoesRoute: ProfissoesRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RecursosRoute: RecursosRoute,
   SegurancaRoute: SegurancaRoute,
+  SelecionarContextoRoute: SelecionarContextoRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,
   VerificarEmailRoute: VerificarEmailRoute,
