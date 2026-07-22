@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app/AppSidebar";
 import { AppTopbar } from "@/components/app/AppTopbar";
 import { BottomNav } from "@/components/app/BottomNav";
 import { AuthGate } from "@/components/app/AuthGate";
+import { MockDomainProvider } from "@/components/app/MockDomainProvider";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
