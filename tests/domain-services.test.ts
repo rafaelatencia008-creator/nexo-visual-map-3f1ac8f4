@@ -618,7 +618,8 @@ const FakeAssignmentService: AssignmentService = {
     if (input.expectedVersion !== 1) return conflict<Assignment>(1, input.expectedVersion);
     return serviceOk(F.assignmentFixture);
   },
-  async changeStatus(_ctx, input) {
+  async changeStatus(_ctx, caseId, input) {
+    if (caseId !== F.CASE_001_ID) return notFound<Assignment>("case");
     if (input.expectedVersion !== 1) return conflict<Assignment>(1, input.expectedVersion);
     return serviceOk(F.assignmentFixture);
   },
