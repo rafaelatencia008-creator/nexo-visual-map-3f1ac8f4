@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { SessionProvider } from "@/hooks/use-session";
+import { PwaUpdatePrompt } from "@/components/pwa/PwaUpdatePrompt";
+import { NEXO_THEME_COLOR } from "@/pwa/pwa-config";
 
 function NotFoundComponent() {
   return (
@@ -81,7 +83,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { name: "theme-color", content: NEXO_THEME_COLOR },
+      { name: "application-name", content: "Nexo Pericial 360" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
+      },
+      { name: "apple-mobile-web-app-title", content: "Nexo 360" },
       { title: "Nexo Pericial 360 — Plataforma de apoio ao trabalho pericial" },
       {
         name: "description",
@@ -111,7 +126,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+      {
+        rel: "icon",
+        href: "/favicon.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+      },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "preconnect",
@@ -154,6 +177,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <Toaster position="top-right" richColors closeButton />
+          <PwaUpdatePrompt />
         </SessionProvider>
       </ThemeProvider>
     </QueryClientProvider>
