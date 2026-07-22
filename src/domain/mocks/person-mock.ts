@@ -119,21 +119,23 @@ export function createPersonServiceMock(
           error: { code: "validation_error", message: "invalid_person_input" },
         };
       }
-      const id = ids.next("person");
-      const now = clock.next();
-      const next: Person = {
-        id,
+      const previewId = ids.previewNext("person");
+      const previewTime = clock.previewNext();
+      const preview: Person = {
+        id: previewId,
         organizationId: v.data.context.organizationId,
         displayLabel: input.displayLabel,
         ageClassification: input.ageClassification,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validatePerson(next);
+      const check = validatePerson(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.persons.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("person");
+      clock.next();
+      store.persons.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,
