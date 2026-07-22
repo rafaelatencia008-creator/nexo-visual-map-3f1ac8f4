@@ -35,7 +35,18 @@ export function AppTopbar() {
     <header
       className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:gap-4 sm:px-6"
     >
-      <SidebarTrigger aria-label="Alternar navegação" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={toggleSidebar}
+        className="h-9 w-9 shrink-0 sm:hidden"
+        aria-label="Abrir navegação do Nexo Pericial 360"
+        title="Nexo Pericial 360"
+      >
+        <Logo variant="mark" className="h-7 w-7" aria-hidden="true" />
+      </Button>
+      <SidebarTrigger className="hidden sm:inline-flex" aria-label="Alternar navegação" />
 
       <button
         type="button"
