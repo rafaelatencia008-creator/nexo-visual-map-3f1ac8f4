@@ -123,9 +123,9 @@ function EntrarPage() {
 
   const confirmarGoogle = () => {
     setGoogleOpen(false);
+    // Google simulado: sem e-mail fictício, apenas nome neutro.
     signInAsUser({
-      email: "demo.google@nexo.local",
-      name: "Usuário Google (simulado)",
+      name: "Usuário de demonstração",
       remember: false,
     });
     toast.success("Sessão Google simulada iniciada");
