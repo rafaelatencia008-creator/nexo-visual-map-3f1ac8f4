@@ -451,7 +451,8 @@ export function createRelationshipServiceMock(
         (r) => r.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `relationship-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateRelationshipInput) {
       const v = requireContext(store, context);
