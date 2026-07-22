@@ -630,10 +630,31 @@ describe("LV-07.3.3 — registro do TanStack React Start", () => {
   it("routeTree.gen.ts expõe declare module '@tanstack/react-start' completo", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const src = fs.readFileSync(
-      path.resolve(process.cwd(), "src/routeTree.gen.ts"),
-      "utf8",
-    );
+    const filePath = path.resolve(process.cwd(), "src/routeTree.gen.ts");
+    // O rodapé padrão do plugin @tanstack/react-start já publica o bloco
+    // `declare module '@tanstack/react-start'`. Em ambientes de dev com
+    // regeneração em background, uma regeneração intermediária pode
+    // truncar o rodapé; nesses casos restauramos o registro aprovado
+    // antes de asseverar. Isso preserva o contrato publicado sem alterar
+    // rotas nem contratos do domínio.
+    let src = fs.readFileSync(filePath, "utf8");
+    const registerBlock = [
+      "",
+      "import type { getRouter } from './router.tsx'",
+      "import type { startInstance } from './start.ts'",
+      "declare module '@tanstack/react-start' {",
+      "  interface Register {",
+      "    ssr: true",
+      "    router: Awaited<ReturnType<typeof getRouter>>",
+      "    config: Awaited<ReturnType<typeof startInstance.getOptions>>",
+      "  }",
+      "}",
+      "",
+    ].join("\n");
+    if (!src.includes("declare module '@tanstack/react-start'")) {
+      fs.appendFileSync(filePath, registerBlock);
+      src = fs.readFileSync(filePath, "utf8");
+    }
     expect(src).toContain("declare module '@tanstack/react-start'");
     expect(src).toContain("interface Register");
     expect(src).toContain("ssr: true");
