@@ -465,8 +465,9 @@ const FakeMembershipService: MembershipService = {
     if (input.expectedVersion !== 1) return conflict<Membership>(1, input.expectedVersion);
     return serviceOk(F.membershipFixture);
   },
-  async revoke(_ctx, id) {
-    if (id !== F.MEMBERSHIP_ID) return forbidden<Membership>();
+  async revoke(_ctx, input) {
+    if (input.membershipId !== F.MEMBERSHIP_ID) return forbidden<Membership>();
+    if (input.expectedVersion !== 1) return conflict<Membership>(1, input.expectedVersion);
     return serviceOk(F.membershipFixture);
   },
 };
