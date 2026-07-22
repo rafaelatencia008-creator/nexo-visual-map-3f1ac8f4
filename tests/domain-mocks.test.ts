@@ -37,28 +37,28 @@ const ctxAlfaOwner: ServiceContext = {
   organizationId: SEED_ORG_ALFA_ID,
   userId: SEED_USER_1_ID,
   membershipId: SEED_MEM_ALFA_OWNER_ID,
-  role: "owner",
+  role: "proprietario",
 };
 
 const ctxAlfaSuspended: ServiceContext = {
   organizationId: SEED_ORG_ALFA_ID,
-  userId: SEED_USER_3_ID,
+  userId: SEED_USER_2_ID,
   membershipId: SEED_MEM_ALFA_SUSPENDED_ID,
-  role: "professional",
+  role: "colaborador",
 };
 
 const ctxBetaOwner: ServiceContext = {
   organizationId: SEED_ORG_BETA_ID,
   userId: SEED_USER_2_ID,
   membershipId: SEED_MEM_BETA_OWNER_ID,
-  role: "owner",
+  role: "proprietario",
 };
 
 const ctxBetaProf: ServiceContext = {
   organizationId: SEED_ORG_BETA_ID,
   userId: SEED_USER_3_ID,
   membershipId: SEED_MEM_BETA_PROF_ID,
-  role: "professional",
+  role: "profissional",
 };
 
 // ---- Seed e determinismo ---------------------------------------------------
