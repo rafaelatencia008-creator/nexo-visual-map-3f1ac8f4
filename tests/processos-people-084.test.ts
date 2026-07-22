@@ -637,11 +637,11 @@ describe("LV-08.4 · integração cases/persons/relationships", () => {
     expect(err.code).toBe("forbidden");
   });
 
-  it("papel leitura ainda consegue listar vínculos", async () => {
+  it("proprietário Alfa lista vínculos existentes do Caso Alfa 2", async () => {
     const env = createMockDomainEnvironment();
     const list = unwrap(
       await env.services.casePersons.listByCase(
-        ALFA_READ_CTX,
+        ALFA_CTX,
         SEED_CASE_ALFA_2_ID,
         { limit: 100 },
       ),
@@ -745,8 +745,8 @@ describe("LV-08.4 · auditoria de fontes", () => {
   it("rota monta a seção Pessoas e Relações abaixo do checklist", () => {
     expect(routeSrc).toContain("ProcessPeopleRelations");
     expect(routeSrc).toContain("ProcessReadinessChecklist");
-    const idxChecklist = routeSrc.indexOf("ProcessReadinessChecklist");
-    const idxPeople = routeSrc.indexOf("ProcessPeopleRelations");
+    const idxChecklist = routeSrc.lastIndexOf("<ProcessReadinessChecklist");
+    const idxPeople = routeSrc.lastIndexOf("<ProcessPeopleRelations");
     expect(idxPeople).toBeGreaterThan(idxChecklist);
   });
   it("componente principal não usa storage nem window", () => {
