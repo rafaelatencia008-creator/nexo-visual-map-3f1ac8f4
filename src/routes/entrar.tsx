@@ -62,7 +62,7 @@ function EntrarPage() {
 
   const jaLogado = status === "signed_in";
 
-  const redirectTarget = from && from.startsWith("/app") ? from : "/app";
+  const redirectTarget = safeRedirectTarget(from);
 
   const preencherDemo = () => {
     setEmail(DEMO_CREDENTIALS.email);
