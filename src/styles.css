@@ -83,6 +83,12 @@
 }
 
 :root {
+  /* PWA-01 — áreas seguras (notch, barra de gestos). Padrão 0px quando
+     o dispositivo não fornecer valor. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
   --radius: 0.625rem;
   /* Tema Claro — Nexo Pericial 360 */
   --background: oklch(0.985 0.003 90);        /* branco quente #FAFAF7 */
@@ -175,6 +181,9 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    /* PWA-01 — janela do app: usa dvh quando disponível, com fallback. */
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }
 

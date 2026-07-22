@@ -30,7 +30,9 @@ export function AppTopbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/85 px-3 backdrop-blur sm:gap-4 sm:px-6">
+    <header
+      className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:gap-4 sm:px-6"
+    >
       <SidebarTrigger aria-label="Alternar navegação" />
 
       <button
