@@ -242,6 +242,6 @@ describe("LV-07.3.2 — registro do TanStack React Start", () => {
       "utf8",
     );
     expect(src).toContain("declare module '@tanstack/react-router'");
-    expect(src).toContain("interface Register");
+    expect(src).toContain("interface FileRoutesByPath");
   });
 });
