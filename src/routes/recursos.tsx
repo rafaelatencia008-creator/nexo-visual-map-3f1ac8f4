@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { GuestDemoButton } from "@/components/marketing/GuestDemoButton";
 import {
   ClipboardList,
   Users,
