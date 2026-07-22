@@ -1,11 +1,17 @@
 /**
- * Paginação por cursor opaco. Contratos puros.
+ * Paginação por cursor opaco. Contratos puros com validação estrita.
  */
 
+import { containsForbiddenKey, hasOnlyAllowedKeys } from "../core/common";
 import type { ServiceError } from "./result";
 
 export const PAGE_LIMIT_MIN = 1;
 export const PAGE_LIMIT_MAX = 100;
+
+export const PAGE_REQUEST_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "cursor",
+  "limit",
+]);
 
 export type PageRequest = Readonly<{
   cursor?: string;
@@ -26,9 +32,17 @@ export function isSortDirection(v: unknown): v is SortDirection {
 }
 
 /**
- * Validação pura do PageRequest. Devolve `ok: true` ou um `ServiceError`
- * com código `validation_error`. O cursor é opaco — não interpretamos
- * conteúdo, apenas exigimos string não vazia quando informado.
+ * Validação pura e estrita do PageRequest.
+ *
+ * Rejeita:
+ * - valor não-objeto ou array;
+ * - qualquer chave fora de `PAGE_REQUEST_ALLOWED_KEYS`;
+ * - qualquer chave proibida em qualquer nível de aninhamento
+ *   (`token`, `password`, `secret` etc.);
+ * - `limit` fora de [1, 100] ou não inteiro;
+ * - `cursor` vazio ou não string quando informado.
+ *
+ * Cursor permanece opaco: não interpretamos seu conteúdo.
  */
 export function validatePageRequest(
   req: unknown,
@@ -39,6 +53,24 @@ export function validatePageRequest(
     return {
       ok: false,
       error: { code: "validation_error", message: "invalid_page_request" },
+    };
+  }
+  if (containsForbiddenKey(req)) {
+    return {
+      ok: false,
+      error: {
+        code: "validation_error",
+        message: "forbidden_key_in_page_request",
+      },
+    };
+  }
+  if (!hasOnlyAllowedKeys(req, PAGE_REQUEST_ALLOWED_KEYS)) {
+    return {
+      ok: false,
+      error: {
+        code: "validation_error",
+        message: "unknown_key_in_page_request",
+      },
     };
   }
   const r = req as Record<string, unknown>;

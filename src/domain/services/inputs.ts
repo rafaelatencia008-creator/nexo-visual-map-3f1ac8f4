@@ -68,6 +68,11 @@ export type ChangeMembershipStatusInput = Readonly<{
   expectedVersion: number;
 }>;
 
+export type RevokeMembershipInput = Readonly<{
+  membershipId: MembershipId;
+  expectedVersion: number;
+}>;
+
 export type MembershipFilter = Readonly<{
   roles?: readonly Role[];
   statuses?: readonly MembershipStatus[];

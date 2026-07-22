@@ -35,11 +35,15 @@ import {
   validatePageRequest,
   isSortDirection,
   isPermissionAction,
+  isPermissionRequest,
   PERMISSION_ACTIONS,
+  PERMISSION_REQUEST_ALLOWED_KEYS,
+  PAGE_REQUEST_ALLOWED_KEYS,
   SERVICE_ERROR_CODES,
   SORT_DIRECTIONS,
   PAGE_LIMIT_MAX,
   CASE_SORT_FIELDS,
+  CASE_READINESS_ISSUES,
   type ServiceContext,
   type ServiceResult,
   type ServiceError,
@@ -59,7 +63,9 @@ import {
   type CreateCasePersonInput,
   type CreateAssignmentInput,
   type CaseListRequest,
+  type CaseReadinessIssue,
 } from "@/domain/services";
+import type { CaseReadiness } from "@/domain/core";
 import * as servicesBarrel from "@/domain/services";
 
 const F = fixtures;
@@ -258,12 +264,23 @@ describe("Permissões", () => {
     expect(isPermissionAction("case.explode")).toBe(false);
     expect(isPermissionAction("")).toBe(false);
   });
-  it("S24) PermissionRequest é estrito no tipo", () => {
-    const req = { action: "case.read" as const, caseId: F.CASE_001_ID } as const;
-    expect(req.action).toBe("case.read");
-    // @ts-expect-error — ação inválida rejeitada no tipo
-    const _bad = { action: "invalid.action" } satisfies { action: string };
-    void _bad;
+  it("S24) isPermissionRequest valida em runtime", () => {
+    // Verificações de tipo estão em tests/domain-services.types.ts. Aqui
+    // validamos o guard em runtime.
+    expect(isPermissionRequest({ action: "case.read", caseId: F.CASE_001_ID })).toBe(true);
+    expect(isPermissionRequest({ action: "invalid.action" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", caseId: "not_branded" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", extraField: "x" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", resourceId: "" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", resourceId: "res_1" })).toBe(true);
+    expect(isPermissionRequest(null)).toBe(false);
+    expect(isPermissionRequest([])).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", nested: { token: "x" } })).toBe(false);
+    // allow-list exposta
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("action")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("caseId")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("resourceId")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.size).toBe(3);
   });
   it("S25) fake local de PermissionPolicy retorna decisão", async () => {
     const policy: PermissionPolicy = {
@@ -448,8 +465,9 @@ const FakeMembershipService: MembershipService = {
     if (input.expectedVersion !== 1) return conflict<Membership>(1, input.expectedVersion);
     return serviceOk(F.membershipFixture);
   },
-  async revoke(_ctx, id) {
-    if (id !== F.MEMBERSHIP_ID) return forbidden<Membership>();
+  async revoke(_ctx, input) {
+    if (input.membershipId !== F.MEMBERSHIP_ID) return forbidden<Membership>();
+    if (input.expectedVersion !== 1) return conflict<Membership>(1, input.expectedVersion);
     return serviceOk(F.membershipFixture);
   },
 };
@@ -600,7 +618,8 @@ const FakeAssignmentService: AssignmentService = {
     if (input.expectedVersion !== 1) return conflict<Assignment>(1, input.expectedVersion);
     return serviceOk(F.assignmentFixture);
   },
-  async changeStatus(_ctx, input) {
+  async changeStatus(_ctx, caseId, input) {
+    if (caseId !== F.CASE_001_ID) return notFound<Assignment>("case");
     if (input.expectedVersion !== 1) return conflict<Assignment>(1, input.expectedVersion);
     return serviceOk(F.assignmentFixture);
   },
@@ -687,7 +706,10 @@ describe("Fakes locais e conformidade das interfaces", () => {
   });
 
   it("S47) permissão negada não lança exceção", async () => {
-    const r = await FakeMembershipService.revoke(CTX, GHOST_MEMBERSHIP_ID);
+    const r = await FakeMembershipService.revoke(CTX, {
+      membershipId: GHOST_MEMBERSHIP_ID,
+      expectedVersion: 1,
+    });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
   });
@@ -732,6 +754,164 @@ describe("Fakes locais e conformidade das interfaces", () => {
     expect(typeof servicesBarrel.serviceOk).toBe("function");
     expect(typeof servicesBarrel.isServiceContext).toBe("function");
     expect(Array.isArray(servicesBarrel.PERMISSION_ACTIONS)).toBe(true);
+  });
+});
+
+// =========================================================================
+// LV-07.2.1 — testes comportamentais adicionais
+// =========================================================================
+
+describe("LV-07.2.1 — PageRequest estrito", () => {
+  it("S51) rejeita propriedade extra", () => {
+    const r = validatePageRequest({ limit: 20, extraField: true });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("validation_error");
+  });
+  it("S52) rejeita token aninhado (chave proibida)", () => {
+    const r = validatePageRequest({ limit: 20, cursor: "abc" } as unknown);
+    expect(r.ok).toBe(true);
+    const bad = validatePageRequest({ limit: 20, cursor: "abc", metadata: { token: "x" } });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error.code).toBe("validation_error");
+  });
+  it("S53) aceita somente limit", () => {
+    const r = validatePageRequest({ limit: 10 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.limit).toBe(10);
+      expect(r.value.cursor).toBeUndefined();
+    }
+  });
+  it("S54) aceita limit e cursor opaco", () => {
+    const r = validatePageRequest({ limit: 10, cursor: "opaque-xyz" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.cursor).toBe("opaque-xyz");
+  });
+  it("S55) PAGE_REQUEST_ALLOWED_KEYS expõe allow-list", () => {
+    expect(PAGE_REQUEST_ALLOWED_KEYS.has("limit")).toBe(true);
+    expect(PAGE_REQUEST_ALLOWED_KEYS.has("cursor")).toBe(true);
+    expect(PAGE_REQUEST_ALLOWED_KEYS.size).toBe(2);
+  });
+});
+
+describe("LV-07.2.1 — PermissionRequest estrito (guard)", () => {
+  it("S56) aceita objeto válido", () => {
+    expect(isPermissionRequest({ action: "case.read", caseId: F.CASE_001_ID })).toBe(true);
+  });
+  it("S57) rejeita ação inválida", () => {
+    expect(isPermissionRequest({ action: "case.explode" })).toBe(false);
+  });
+  it("S58) rejeita campo desconhecido", () => {
+    expect(isPermissionRequest({ action: "case.read", extra: 1 })).toBe(false);
+  });
+  it("S59) rejeita caseId inválido", () => {
+    expect(isPermissionRequest({ action: "case.read", caseId: "no_prefix" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", caseId: 42 })).toBe(false);
+  });
+  it("S60) rejeita resourceId vazio", () => {
+    expect(isPermissionRequest({ action: "case.read", resourceId: "" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", resourceId: "ok" })).toBe(true);
+  });
+  it("S61) rejeita chave proibida aninhada (token)", () => {
+    expect(isPermissionRequest({ action: "case.read", resourceId: "r", nested: { token: "x" } })).toBe(false);
+  });
+  it("S62) rejeita null, primitivos e array", () => {
+    expect(isPermissionRequest(null)).toBe(false);
+    expect(isPermissionRequest(undefined)).toBe(false);
+    expect(isPermissionRequest("case.read")).toBe(false);
+    expect(isPermissionRequest([])).toBe(false);
+  });
+});
+
+describe("LV-07.2.1 — MembershipService.revoke com expectedVersion", () => {
+  it("S63) aceita versão correta", async () => {
+    const r = await FakeMembershipService.revoke(CTX, {
+      membershipId: F.MEMBERSHIP_ID,
+      expectedVersion: 1,
+    });
+    expect(r.ok).toBe(true);
+  });
+  it("S64) retorna conflict em versão divergente", async () => {
+    const r = await FakeMembershipService.revoke(CTX, {
+      membershipId: F.MEMBERSHIP_ID,
+      expectedVersion: 99,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("conflict");
+  });
+  it("S65) erro conflict carrega expectedVersion e actualVersion", async () => {
+    const r = await FakeMembershipService.revoke(CTX, {
+      membershipId: F.MEMBERSHIP_ID,
+      expectedVersion: 42,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok && r.error.code === "conflict") {
+      expect(r.error.expectedVersion).toBe(42);
+      expect(r.error.actualVersion).toBe(1);
+    }
+  });
+});
+
+describe("LV-07.2.1 — AssignmentService.changeStatus com caseId", () => {
+  it("S66) sucesso com caso correto", async () => {
+    const r = await FakeAssignmentService.changeStatus(CTX, F.CASE_001_ID, {
+      assignmentId: F.ASSIGNMENT_ID,
+      status: "active",
+      expectedVersion: 1,
+    });
+    expect(r.ok).toBe(true);
+  });
+  it("S67) retorna not_found para caso divergente", async () => {
+    const r = await FakeAssignmentService.changeStatus(CTX, GHOST_CASE_ID, {
+      assignmentId: F.ASSIGNMENT_ID,
+      status: "active",
+      expectedVersion: 1,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("not_found");
+  });
+  it("S68) conflito continua usando expectedVersion", async () => {
+    const r = await FakeAssignmentService.changeStatus(CTX, F.CASE_001_ID, {
+      assignmentId: F.ASSIGNMENT_ID,
+      status: "active",
+      expectedVersion: 77,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok && r.error.code === "conflict") {
+      expect(r.error.expectedVersion).toBe(77);
+      expect(r.error.actualVersion).toBe(1);
+    }
+  });
+});
+
+describe("LV-07.2.1 — Readiness catálogo", () => {
+  it("S69) CASE_READINESS_ISSUES não tem duplicatas", () => {
+    expect(new Set(CASE_READINESS_ISSUES).size).toBe(CASE_READINESS_ISSUES.length);
+  });
+  it("S70) todos os valores pertencem a keyof CaseReadiness", () => {
+    const readinessKeys: readonly (keyof CaseReadiness)[] = [
+      "professionalRoleDefined",
+      "objectDefined",
+      "deadlineReviewed",
+      "confidentialityReviewed",
+      "conflictOfInterestReviewed",
+    ];
+    for (const issue of CASE_READINESS_ISSUES) {
+      expect(readinessKeys.includes(issue)).toBe(true);
+    }
+    // e todas as chaves de CaseReadiness estão cobertas
+    for (const key of readinessKeys) {
+      expect((CASE_READINESS_ISSUES as readonly string[]).includes(key)).toBe(true);
+    }
+  });
+  it("S71) getReadiness usa CaseReadinessIssue no tipo", async () => {
+    const r = await FakeCaseService.getReadiness(CTX, F.CASE_001_ID);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      // TypeScript garante o tipo; runtime só confirma que é array.
+      const issues: readonly CaseReadinessIssue[] = r.data.issues;
+      expect(Array.isArray(issues)).toBe(true);
+    }
   });
 });
 

@@ -8,6 +8,7 @@ import type {
   ChangeMembershipStatusInput,
   CreateMembershipInput,
   MembershipFilter,
+  RevokeMembershipInput,
 } from "./inputs";
 
 export const MEMBERSHIP_SORT_FIELDS = ["createdAt", "role", "status"] as const;
@@ -48,6 +49,6 @@ export interface MembershipService {
 
   revoke(
     context: ServiceContext,
-    membershipId: MembershipId,
+    input: RevokeMembershipInput,
   ): Promise<ServiceResult<Membership>>;
 }

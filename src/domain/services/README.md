@@ -36,26 +36,47 @@ ServiceResult<T> = { ok: true; data } | { ok: false; error: ServiceError }
 ## Permissões como contrato
 
 `PermissionPolicy.evaluate(context, request)` devolve uma decisão. O
-catálogo `PERMISSION_ACTIONS` é a única fonte de ações válidas — não
-existe união manual separada do array. A matriz real vem depois.
+catálogo `PERMISSION_ACTIONS` é a única fonte de ações válidas. O guard
+`isPermissionRequest()` valida em runtime a forma da requisição
+(allow-list `PERMISSION_REQUEST_ALLOWED_KEYS`, `caseId` branded,
+`resourceId` não-vazio, ausência de chaves proibidas). A matriz real
+vem depois.
 
 ## Concorrência otimista por `expectedVersion`
 
-DTOs de atualização de entidades persistíveis exigem `expectedVersion`.
-Conflitos devem virar `ServiceError { code: "conflict", expectedVersion,
-actualVersion }` — sem exceção.
+DTOs de atualização de entidades persistíveis exigem `expectedVersion`
+— incluindo `RevokeMembershipInput`, já que revogar altera estado
+persistido. Conflitos viram `ServiceError { code: "conflict",
+expectedVersion, actualVersion }` — sem exceção.
 
 ## Paginação por cursor opaco
 
 `PageRequest { cursor?, limit }` + `PageResult<T> { items, nextCursor?,
 total? }`. Cursor é opaco: nenhum consumidor deste barrel interpreta o
-conteúdo. Limites: 1 ≤ `limit` ≤ 100.
+conteúdo. Limites: 1 ≤ `limit` ≤ 100. `validatePageRequest()` é
+estrito: rejeita chaves desconhecidas (allow-list
+`PAGE_REQUEST_ALLOWED_KEYS`) e chaves proibidas em qualquer nível.
 
 ## Ordenação restrita
 
 Cada serviço define seu próprio enum de campos de ordenação
 (`CASE_SORT_FIELDS`, `MEMBERSHIP_SORT_FIELDS` etc.). Strings arbitrárias
 como `sortBy` são proibidas por tipagem.
+
+## Prontidão de caso tipada
+
+`CASE_READINESS_ISSUES` cataloga em compile-time as pendências, com
+`satisfies readonly (keyof CaseReadiness)[]`. `CaseReadinessView.issues`
+é `readonly CaseReadinessIssue[]` — strings arbitrárias são rejeitadas
+tanto pelo tipo quanto pela conformidade com `CaseReadiness`.
+
+## Testes de tipo verificáveis
+
+Asserções de tipo do domínio de serviços vivem em
+`tests/domain-services.types.ts` e são incluídas no `tsc --noEmit`
+via `tsconfig.json`. Diretivas `@ts-expect-error` fora desse arquivo
+não são verificadas e devem ser evitadas — coloque-as no arquivo
+`.types.ts`.
 
 ## Sem implementação concreta
 
