@@ -155,10 +155,9 @@ function CriarContaPage() {
                   <SelectValue placeholder="Selecione seu perfil" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="perito-judicial">Perito Judicial</SelectItem>
-                  <SelectItem value="perito-assistente">Perito Assistente</SelectItem>
-                  <SelectItem value="escritorio">Escritório de Advocacia</SelectItem>
-                  <SelectItem value="cliente">Cliente / Parte</SelectItem>
+                  <SelectItem value="psicologia">Psicologia</SelectItem>
+                  <SelectItem value="servico-social">Serviço Social</SelectItem>
+                  <SelectItem value="multi">Equipe multiprofissional</SelectItem>
                   <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
