@@ -108,25 +108,25 @@ services.cases.create(ctx, {
   title: "T",
   confidentiality: "standard",
 });
-// @ts-expect-error — DTO não aceita organizationId
 services.cases.create(ctx, {
   reference: "REF",
   title: "T",
   confidentiality: "standard",
+  // @ts-expect-error — DTO não aceita organizationId
   organizationId: "org_y" as OrganizationId,
 });
-// @ts-expect-error — DTO não aceita id
 services.cases.create(ctx, {
   reference: "REF",
   title: "T",
   confidentiality: "standard",
+  // @ts-expect-error — DTO não aceita id
   id: "case_z" as CaseId,
 });
-// @ts-expect-error — DTO não aceita metadata
 services.cases.create(ctx, {
   reference: "REF",
   title: "T",
   confidentiality: "standard",
+  // @ts-expect-error — DTO não aceita metadata
   metadata: {},
 });
 
