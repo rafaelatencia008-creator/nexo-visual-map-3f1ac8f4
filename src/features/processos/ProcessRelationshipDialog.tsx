@@ -58,6 +58,7 @@ export function ProcessRelationshipDialog({
   submitting,
   error,
   onSubmit,
+  onReloadFromConflict,
   onCancel,
 }: ProcessRelationshipDialogProps) {
   const initialFrom: PersonId | "" =
