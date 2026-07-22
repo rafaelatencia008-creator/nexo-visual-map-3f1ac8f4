@@ -124,7 +124,20 @@ const _rej8: CaseChecklistUpdateInput = { expectedVersion: 1, deadlineStatus: "p
 // @ts-expect-error — conflictCheck não aceita "unknown".
 const _rej9: CaseChecklistUpdateInput = { expectedVersion: 1, conflictCheck: "unknown" };
 
-void _IssuesReadonly;
+type __use_IssuesReadonly = _IssuesReadonly;
+type __use_FormShape = _FormShape;
+type __use_UpdateShape = _UpdateShape;
+type __use_ProgressShape = _ProgressShape;
+type __use_ErrorKinds = _ErrorKinds;
+type __use_PublicErrorShape = _PublicErrorShape;
+export type {
+  __use_IssuesReadonly,
+  __use_FormShape,
+  __use_UpdateShape,
+  __use_ProgressShape,
+  __use_ErrorKinds,
+  __use_PublicErrorShape,
+};
 void _rej1;
 void _rej2;
 void _rej3;
