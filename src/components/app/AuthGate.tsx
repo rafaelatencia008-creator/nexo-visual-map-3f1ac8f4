@@ -1,13 +1,15 @@
 import * as React from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useSession } from "@/hooks/use-session";
+import { useSession, needsOnboarding, setOnboardingReturn } from "@/hooks/use-session";
 
 /**
  * Guarda visual (NÃO é segurança) do painel /app/**.
+ * - Sem sessão → /entrar preservando "from" interno.
+ * - Sessão autenticada sem onboarding → guarda "from" e envia para /onboarding.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { status, session } = useSession();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -15,14 +17,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (status === "signed_out") {
       const qs = typeof window !== "undefined" ? window.location.search : "";
       const candidate = `${pathname}${qs}`;
-      // Só propaga como "from" caminhos internos que comecem com /app.
       const from =
         pathname.startsWith("/app") && !pathname.startsWith("//") && !pathname.includes(":")
           ? candidate
           : undefined;
       navigate({ to: "/entrar", search: from ? { from } : {}, replace: true });
+      return;
     }
-  }, [status, navigate, pathname]);
+    if (status === "signed_in" && session && needsOnboarding(session)) {
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const candidate = `${pathname}${qs}`;
+      if (pathname.startsWith("/app")) {
+        setOnboardingReturn(candidate);
+      }
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [status, session, navigate, pathname]);
 
   if (status !== "signed_in") {
     return (
@@ -38,6 +48,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  if (session && needsOnboarding(session)) return null;
 
   return <>{children}</>;
 }

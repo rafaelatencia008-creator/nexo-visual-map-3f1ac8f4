@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GoogleSimuladoDialog } from "@/components/auth/GoogleSimuladoDialog";
-import { useSession, DEMO_CREDENTIALS, safeRedirectTarget } from "@/hooks/use-session";
+import { useSession, DEMO_CREDENTIALS, safeRedirectTarget, needsOnboarding, setOnboardingReturn } from "@/hooks/use-session";
+import { clearAuthTransient } from "@/lib/auth-transient";
 
 type EntrarSearch = { from?: string };
 
