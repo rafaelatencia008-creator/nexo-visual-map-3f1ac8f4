@@ -142,17 +142,18 @@ type CaseIsPromise = CaseReturn extends Promise<ServiceResult<Case>> ? true : fa
 const tt19: CaseIsPromise = true;
 void tt19;
 
-// TT20 — Snapshot é Readonly (assign a snapshot.cases falha)
-const _readonlyProbe: TT20 = null as never;
-type TT20 =
-  Readonly<{ cases: readonly Case[] }> extends Pick<MockDomainSnapshot, "cases">
-    ? true
-    : false;
-void _readonlyProbe;
+// TT20 — Snapshot é Readonly a nível de propriedade (não permite reassign).
+// @ts-expect-error — snapshot.cases não é atribuível
+snap.cases = [] as unknown as MockDomainSnapshot["cases"];
 
-// TT21 — MockDomainSnapshot mantém readonly em todos os arrays
+// TT21 — MockDomainSnapshot mantém readonly em todos os arrays: aceitar
+// somente `readonly` na coluna esquerda prova que o snapshot não expõe
+// Array mutável.
 const snapArr: readonly Case[] = snap.cases;
 void snapArr;
+// @ts-expect-error — não é atribuível a Array mutável
+const _mutableProbe: Case[] = snap.cases;
+void _mutableProbe;
 
 // TT22 — createMockDomainEnvironment aceita zero argumentos e retorna
 // exatamente MockDomainEnvironment (não uma união mais ampla)
