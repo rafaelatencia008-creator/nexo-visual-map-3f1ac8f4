@@ -60,7 +60,7 @@ const STATUS_PROCESSO_TONE: Record<StatusProcesso, string> = {
   arquivado: "bg-muted text-muted-foreground",
 };
 
-export const Route = createFileRoute("/app/clientes/$id")({
+export const Route = createFileRoute("/app/clientes/$id/")({
   loader: ({ params }): {
     cliente: Cliente;
     processosDoCliente: Processo[];

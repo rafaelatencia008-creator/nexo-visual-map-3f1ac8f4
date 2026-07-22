@@ -24,7 +24,7 @@ import { pericias, processos, clientes, peritos } from "@/lib/mock/data";
 import { formatCurrency, formatDateTime, formatCNPJ, formatCPF } from "@/lib/format";
 import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
 
-export const Route = createFileRoute("/app/pericias")({
+export const Route = createFileRoute("/app/pericias/")({
   head: () => ({
     meta: [
       { title: "Perícias — Nexo Pericial 360" },

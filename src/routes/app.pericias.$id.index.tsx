@@ -57,7 +57,7 @@ const STATUS_TONE: Record<StatusPericia, string> = {
   cancelada: "bg-muted text-muted-foreground",
 };
 
-export const Route = createFileRoute("/app/pericias/$id")({
+export const Route = createFileRoute("/app/pericias/$id/")({
   loader: ({ params }): {
     pericia: Pericia;
     processo: Processo | undefined;

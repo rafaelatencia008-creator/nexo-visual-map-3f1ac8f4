@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { clientes } from "@/lib/mock/data";
 import { formatCPF, formatCNPJ, formatPhone } from "@/lib/format";
 
-export const Route = createFileRoute("/app/clientes")({
+export const Route = createFileRoute("/app/clientes/")({
   head: () => ({
     meta: [
       { title: "Clientes — Nexo Pericial 360" },
