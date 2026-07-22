@@ -202,11 +202,12 @@ describe("LV-08.3 · mapCaseDetailError", () => {
   ];
   for (const [code, kind] of cases) {
     it(`código ${code} → kind ${kind}`, () => {
-      const out = mapCaseDetailError({ code, message: "x" } as ServiceError);
+      const secret = "SEGREDOxyz123";
+      const out = mapCaseDetailError({ code, message: secret } as ServiceError);
       expect(out.kind).toBe(kind as never);
       expect(typeof out.message).toBe("string");
       expect(out.message.length).toBeGreaterThan(0);
-      expect(out.message).not.toContain("x"); // não vaza `message` interna
+      expect(out.message).not.toContain(secret); // não vaza `message` interna
     });
   }
 });
