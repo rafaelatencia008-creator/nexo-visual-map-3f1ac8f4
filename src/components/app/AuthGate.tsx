@@ -10,14 +10,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const searchStr = useRouterState({ select: (s) => s.location.searchStr });
 
   React.useEffect(() => {
     if (status === "signed_out") {
-      const from = `${pathname}${searchStr ?? ""}`;
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const from = `${pathname}${qs}`;
       navigate({ to: "/entrar", search: { from }, replace: true });
     }
-  }, [status, navigate, pathname, searchStr]);
+  }, [status, navigate, pathname]);
 
   if (status !== "signed_in") {
     return (
