@@ -203,12 +203,9 @@ function Index() {
                   Segurança
                 </Link>
                 <span aria-hidden>·</span>
-                <Link
-                  to="/app"
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                >
+                <GuestDemoButton className="font-medium text-foreground underline-offset-4 hover:underline">
                   Ver painel de demonstração
-                </Link>
+                </GuestDemoButton>
               </div>
 
               <p className="mt-8 text-xs text-muted-foreground">
