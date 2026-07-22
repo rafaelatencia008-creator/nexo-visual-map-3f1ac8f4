@@ -125,6 +125,7 @@ export function BottomNav() {
       <Sheet open={maisOpen} onOpenChange={setMaisOpen}>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <SheetHeader className="text-left">
+            <Logo variant="full" className="mb-2 h-10 w-auto max-w-[200px]" />
             <SheetTitle>Todos os módulos</SheetTitle>
             <SheetDescription>Navegue por todas as áreas do sistema.</SheetDescription>
           </SheetHeader>
