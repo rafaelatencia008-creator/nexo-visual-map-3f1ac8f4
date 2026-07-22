@@ -11,6 +11,22 @@ import type {
   UpdateCaseInput,
 } from "./inputs";
 
+/**
+ * Catálogo central de pendências de prontidão de caso. Cada valor é
+ * comprovadamente uma chave de `CaseReadiness` — a asserção
+ * `satisfies readonly (keyof CaseReadiness)[]` mantém os dois em sincronia
+ * em tempo de compilação.
+ */
+export const CASE_READINESS_ISSUES = [
+  "professionalRoleDefined",
+  "objectDefined",
+  "deadlineReviewed",
+  "confidentialityReviewed",
+  "conflictOfInterestReviewed",
+] as const satisfies readonly (keyof CaseReadiness)[];
+
+export type CaseReadinessIssue = (typeof CASE_READINESS_ISSUES)[number];
+
 export type CaseListRequest = Readonly<{
   filter?: CaseFilter;
   page: PageRequest;
@@ -20,7 +36,7 @@ export type CaseListRequest = Readonly<{
 
 export type CaseReadinessView = Readonly<{
   readiness: CaseReadiness;
-  issues: readonly string[];
+  issues: readonly CaseReadinessIssue[];
 }>;
 
 export interface CaseService {

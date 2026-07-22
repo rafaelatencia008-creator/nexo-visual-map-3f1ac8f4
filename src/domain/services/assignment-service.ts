@@ -35,6 +35,7 @@ export interface AssignmentService {
 
   changeStatus(
     context: ServiceContext,
+    caseId: CaseId,
     input: ChangeAssignmentStatusInput,
   ): Promise<ServiceResult<Assignment>>;
 }

@@ -1,9 +1,12 @@
 /**
- * Catálogo central de ações de permissão e contratos de política.
- * Nenhuma matriz real: apenas contrato.
+ * Catálogo central de ações de permissão, contratos de política e
+ * validação estrita de `PermissionRequest`.
+ *
+ * Sem matriz real de permissões.
  */
 
-import type { CaseId } from "../core/ids";
+import { containsForbiddenKey, hasOnlyAllowedKeys } from "../core/common";
+import { isCaseId, type CaseId } from "../core/ids";
 import type { ServiceContext } from "./context";
 import type { ServiceResult } from "./result";
 
@@ -77,6 +80,36 @@ export type PermissionRequest = Readonly<{
   caseId?: CaseId;
   resourceId?: string;
 }>;
+
+export const PERMISSION_REQUEST_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "action",
+  "caseId",
+  "resourceId",
+]);
+
+/**
+ * Type guard estrito de `PermissionRequest`. Rejeita:
+ * - `null`, primitivos, arrays;
+ * - qualquer chave fora do allow-list;
+ * - qualquer chave proibida em qualquer nível de aninhamento;
+ * - `action` fora do catálogo `PERMISSION_ACTIONS`;
+ * - `caseId` sem prefixo `case_` ou não branded;
+ * - `resourceId` que não seja string, ou seja string vazia.
+ */
+export function isPermissionRequest(value: unknown): value is PermissionRequest {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (containsForbiddenKey(value)) return false;
+  if (!hasOnlyAllowedKeys(value, PERMISSION_REQUEST_ALLOWED_KEYS)) return false;
+  const r = value as Record<string, unknown>;
+  if (!isPermissionAction(r.action)) return false;
+  if (r.caseId !== undefined && !isCaseId(r.caseId)) return false;
+  if (r.resourceId !== undefined) {
+    if (typeof r.resourceId !== "string" || r.resourceId.length === 0) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export type PermissionDecision = Readonly<{
   allowed: boolean;
