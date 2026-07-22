@@ -231,6 +231,7 @@ function ProcessoDetalhePage() {
         onReloadReadiness={reloadReadiness}
         onReloadAll={retryLoad}
       />
+      <ProcessPeopleRelations case={state.case} />
     </div>
   );
 }
