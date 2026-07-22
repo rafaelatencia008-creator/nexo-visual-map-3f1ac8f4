@@ -127,7 +127,29 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
   const disabled = submitting;
 
   return (
-    <>
+    <div className="space-y-6">
+      <div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={requestExit}
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Voltar para processos
+        </Button>
+      </div>
+
+      <header>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+          Novo processo
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Cadastre as informações iniciais para começar a organizar o trabalho pericial.
+        </p>
+      </header>
+
       <Form {...form}>
         <form
           onSubmit={handleFormSubmit}
