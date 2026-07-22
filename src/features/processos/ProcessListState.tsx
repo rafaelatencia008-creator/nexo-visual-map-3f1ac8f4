@@ -1,6 +1,19 @@
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, FolderOpen, Plus, Search } from "lucide-react";
+import { AlertCircle, FolderOpen, Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export function ProcessListRefreshingIndicator() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground"
+    >
+      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+      <span>Atualizando processos…</span>
+    </div>
+  );
+}
 
 export function ProcessListSkeleton() {
   return (
