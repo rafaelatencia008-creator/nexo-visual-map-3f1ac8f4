@@ -370,5 +370,57 @@ describe("LV-08.2 — auditoria da rota /app/processos/novo", () => {
   });
 });
 
+describe("LV-08.2.1 — decideProcessCreateExit", () => {
+  it("26) formulário limpo retorna leave", () => {
+    expect(decideProcessCreateExit({ isDirty: false, isSubmitting: false })).toBe("leave");
+  });
+  it("27) formulário alterado retorna confirm", () => {
+    expect(decideProcessCreateExit({ isDirty: true, isSubmitting: false })).toBe("confirm");
+  });
+  it("28) formulário enviando retorna blocked (mesmo com dirty)", () => {
+    expect(decideProcessCreateExit({ isDirty: true, isSubmitting: true })).toBe("blocked");
+    expect(decideProcessCreateExit({ isDirty: false, isSubmitting: true })).toBe("blocked");
+  });
+});
+
+describe("LV-08.2.1 — auditoria da unificação de saída", () => {
+  const routeSrc = readFileSync(
+    resolve(process.cwd(), "src/routes/app.processos.novo.tsx"),
+    "utf8",
+  );
+  const formSrc = readFileSync(
+    resolve(process.cwd(), "src/features/processos/ProcessCreateForm.tsx"),
+    "utf8",
+  );
+
+  it("29) a rota não contém Link direto para /app/processos", () => {
+    // Sem componente <Link ... to="/app/processos"
+    expect(/<Link\b[^>]*\bto\s*=\s*["']\/app\/processos["']/.test(routeSrc)).toBe(false);
+    // Sem import nomeado de Link em @tanstack/react-router
+    expect(/from\s+["']@tanstack\/react-router["']/.test(routeSrc)).toBe(true);
+    expect(/\bLink\b/.test(routeSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, ""))).toBe(false);
+  });
+
+  it("30) ProcessCreateForm contém os dois rótulos de saída", () => {
+    const clean = formSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(clean.includes("Voltar para processos")).toBe(true);
+    expect(clean.includes("Cancelar")).toBe(true);
+  });
+
+  it("31) os dois controles usam o mesmo handler requestExit", () => {
+    const clean = formSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const occurrences = clean.match(/onClick=\{requestExit\}/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    // Não há mais handler paralelo requestCancel
+    expect(/requestCancel/.test(clean)).toBe(false);
+  });
+
+  it("32) somente um AlertDialog no formulário", () => {
+    const clean = formSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const opens = clean.match(/<AlertDialog\b(?!Content|Header|Footer|Title|Description|Cancel|Action|Trigger|Overlay|Portal)/g) ?? [];
+    expect(opens.length).toBe(1);
+  });
+});
+
 // Marca de compilação: garante que os tipos combinam sem drift.
 void (null as unknown as Case);
