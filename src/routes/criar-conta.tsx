@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { GoogleSimuladoDialog } from "@/components/auth/GoogleSimuladoDialog";
 import { useSession } from "@/hooks/use-session";
+import { setPendingPerfil } from "@/lib/auth-transient";
 
 export const Route = createFileRoute("/criar-conta")({
   head: () => ({
