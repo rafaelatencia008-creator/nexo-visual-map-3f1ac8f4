@@ -58,7 +58,12 @@ function RevisaoStep() {
       theme,
     };
     completeOnboarding(result);
-    if (theme !== "keep") setTheme(theme);
+    if (theme === "light" || theme === "dark") {
+      setTheme(theme);
+    } else if (theme === "system" && typeof window !== "undefined") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      setTheme(prefersDark ? "dark" : "light");
+    }
     clearAuthTransient();
     toast.success("Configuração concluída (demo)");
 
