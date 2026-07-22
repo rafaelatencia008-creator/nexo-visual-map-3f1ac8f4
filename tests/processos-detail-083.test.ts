@@ -1,0 +1,323 @@
+/**
+ * LV-08.3 — testes do resumo e checklist de prontidão de Processo.
+ *
+ * Somente funções puras e superfície pública dos serviços do domínio.
+ * Não renderiza React, não usa storage.
+ */
+
+import { describe, it, expect } from "bun:test";
+import { createMockDomainEnvironment } from "../src/domain/mocks";
+import {
+  SEED_CASE_ALFA_1_ID,
+  SEED_CASE_ALFA_2_ID,
+  SEED_CASE_BETA_1_ID,
+  SEED_MEM_ALFA_OWNER_ID,
+  SEED_ORG_ALFA_ID,
+  SEED_USER_1_ID,
+} from "../src/domain/mocks/seed";
+import { isActionAllowedForRole } from "../src/domain/mocks/permission-mock";
+import type { ServiceContext } from "../src/domain/services/context";
+import type { ServiceError } from "../src/domain/services/result";
+import { CASE_READINESS_ISSUES } from "../src/domain/services/case-service";
+import type { Case } from "../src/domain/core/case";
+import {
+  CASE_READINESS_DESCRIPTIONS_PT,
+  CASE_READINESS_LABELS_PT,
+  CASE_STATUS_LABELS_PT,
+  CONFIDENTIALITY_LABELS_PT,
+  CONFLICT_CHECK_LABELS_PT,
+  DEADLINE_STATUS_LABELS_PT,
+  OBJECT_DEFINED_LABELS_PT,
+  buildCaseChecklistUpdateInput,
+  caseToChecklistFormValues,
+  getCaseReadinessProgress,
+  mapCaseDetailError,
+  type CaseChecklistUpdateInput,
+} from "../src/features/processos/process-detail-model";
+
+const DEMO_CONTEXT: ServiceContext = Object.freeze({
+  organizationId: SEED_ORG_ALFA_ID,
+  userId: SEED_USER_1_ID,
+  membershipId: SEED_MEM_ALFA_OWNER_ID,
+  role: "proprietario",
+});
+
+function unwrap<T>(r: { ok: true; data: T } | { ok: false; error: ServiceError }): T {
+  if (!r.ok) throw new Error(`unexpected error: ${r.error.code}/${r.error.message}`);
+  return r.data;
+}
+
+describe("LV-08.3 · rótulos e descrições", () => {
+  it("cobre todos os itens de prontidão com rótulo em português", () => {
+    for (const key of CASE_READINESS_ISSUES) {
+      expect(typeof CASE_READINESS_LABELS_PT[key]).toBe("string");
+      expect(CASE_READINESS_LABELS_PT[key].length).toBeGreaterThan(0);
+    }
+  });
+  it("cobre todos os itens com descrição pública", () => {
+    for (const key of CASE_READINESS_ISSUES) {
+      expect(typeof CASE_READINESS_DESCRIPTIONS_PT[key]).toBe("string");
+      expect(CASE_READINESS_DESCRIPTIONS_PT[key].length).toBeGreaterThan(0);
+    }
+  });
+  it("expõe rótulos oficiais para prazo, conflito e objeto", () => {
+    expect(DEADLINE_STATUS_LABELS_PT.not_reviewed).toBe("Não revisado");
+    expect(DEADLINE_STATUS_LABELS_PT.extended).toBe("Prazo prorrogado");
+    expect(DEADLINE_STATUS_LABELS_PT.expired).toBe("Prazo expirado");
+    expect(CONFLICT_CHECK_LABELS_PT.no_conflict).toBe("Sem conflito identificado");
+    expect(CONFLICT_CHECK_LABELS_PT.conflict_detected).toBe("Conflito identificado");
+    expect(OBJECT_DEFINED_LABELS_PT.true).toBe("Definido");
+    expect(OBJECT_DEFINED_LABELS_PT.false).toBe("A definir");
+  });
+  it("reaproveita os rótulos de status e confidencialidade da listagem", () => {
+    expect(CASE_STATUS_LABELS_PT.draft).toBe("Rascunho");
+    expect(CONFIDENTIALITY_LABELS_PT.standard.length).toBeGreaterThan(0);
+  });
+});
+
+describe("LV-08.3 · progresso do checklist", () => {
+  it("Alfa 1 (rascunho, incompleto) → 4 pendências, 1 concluído", async () => {
+    const env = createMockDomainEnvironment();
+    const view = unwrap(
+      await env.services.cases.getReadiness(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const p = getCaseReadinessProgress(view);
+    expect(p.total).toBe(5);
+    expect(p.pending).toBe(4);
+    expect(p.complete).toBe(1);
+    expect(p.isReady).toBe(false);
+    const set = new Set(view.issues);
+    expect(set.has("professionalRoleDefined")).toBe(true);
+    expect(set.has("objectDefined")).toBe(true);
+    expect(set.has("deadlineReviewed")).toBe(true);
+    expect(set.has("conflictOfInterestReviewed")).toBe(true);
+    expect(set.has("confidentialityReviewed")).toBe(false);
+  });
+  it("Alfa 2 (ativo, completo) → 0 pendências, checklist pronto", async () => {
+    const env = createMockDomainEnvironment();
+    const view = unwrap(
+      await env.services.cases.getReadiness(DEMO_CONTEXT, SEED_CASE_ALFA_2_ID),
+    );
+    const p = getCaseReadinessProgress(view);
+    expect(p.pending).toBe(0);
+    expect(p.complete).toBe(5);
+    expect(p.isReady).toBe(true);
+    expect(view.issues).toEqual([]);
+  });
+});
+
+describe("LV-08.3 · form values e input restrito", () => {
+  it("caseToChecklistFormValues reflete os três campos editáveis", async () => {
+    const env = createMockDomainEnvironment();
+    const c = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const v = caseToChecklistFormValues(c);
+    expect(v).toEqual({
+      objectDefined: false,
+      deadlineStatus: "not_reviewed",
+      conflictCheck: "not_reviewed",
+    });
+  });
+
+  it("buildCaseChecklistUpdateInput → null quando nada mudou", async () => {
+    const env = createMockDomainEnvironment();
+    const c = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const v = caseToChecklistFormValues(c);
+    expect(buildCaseChecklistUpdateInput(c, v)).toBeNull();
+  });
+
+  it("inclui apenas campos alterados + expectedVersion", async () => {
+    const env = createMockDomainEnvironment();
+    const c = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const input = buildCaseChecklistUpdateInput(c, {
+      objectDefined: true,
+      deadlineStatus: c.deadlineStatus,
+      conflictCheck: c.conflictCheck,
+    });
+    expect(input).toEqual({ objectDefined: true, expectedVersion: c.metadata.version });
+  });
+
+  it("nunca expõe id/organizationId/title/status/confidentiality/metadata", async () => {
+    const env = createMockDomainEnvironment();
+    const c = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const input = buildCaseChecklistUpdateInput(c, {
+      objectDefined: true,
+      deadlineStatus: "reviewed",
+      conflictCheck: "no_conflict",
+    });
+    expect(input).not.toBeNull();
+    const keys = new Set(Object.keys(input!));
+    for (const forbidden of [
+      "id",
+      "organizationId",
+      "reference",
+      "title",
+      "status",
+      "confidentiality",
+      "metadata",
+    ]) {
+      expect(keys.has(forbidden)).toBe(false);
+    }
+    for (const allowed of ["objectDefined", "deadlineStatus", "conflictCheck", "expectedVersion"]) {
+      expect(keys.has(allowed)).toBe(true);
+    }
+  });
+
+  it("aceita todos os três campos quando todos mudam", async () => {
+    const env = createMockDomainEnvironment();
+    const c = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const input = buildCaseChecklistUpdateInput(c, {
+      objectDefined: true,
+      deadlineStatus: "reviewed",
+      conflictCheck: "no_conflict",
+    });
+    expect(input).toEqual({
+      objectDefined: true,
+      deadlineStatus: "reviewed",
+      conflictCheck: "no_conflict",
+      expectedVersion: c.metadata.version,
+    });
+  });
+});
+
+describe("LV-08.3 · mapCaseDetailError", () => {
+  const cases: ReadonlyArray<[ServiceError["code"], string]> = [
+    ["not_found", "not_found"],
+    ["conflict", "conflict"],
+    ["unauthorized", "unauthorized"],
+    ["forbidden", "forbidden"],
+    ["offline", "offline"],
+    ["unavailable", "unavailable"],
+    ["validation_error", "validation"],
+    ["internal_error", "generic"],
+  ];
+  for (const [code, kind] of cases) {
+    it(`código ${code} → kind ${kind}`, () => {
+      const out = mapCaseDetailError({ code, message: "x" } as ServiceError);
+      expect(out.kind).toBe(kind as never);
+      expect(typeof out.message).toBe("string");
+      expect(out.message.length).toBeGreaterThan(0);
+      expect(out.message).not.toContain("x"); // não vaza `message` interna
+    });
+  }
+});
+
+describe("LV-08.3 · atualização e concorrência", () => {
+  it("atualização promove versão e recalcula checklist", async () => {
+    const env = createMockDomainEnvironment();
+    const before = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const input = buildCaseChecklistUpdateInput(before, {
+      objectDefined: true,
+      deadlineStatus: "reviewed",
+      conflictCheck: "no_conflict",
+    })!;
+    const updated = unwrap(
+      await env.services.cases.update(DEMO_CONTEXT, before.id, input),
+    );
+    expect(updated.metadata.version).toBe(before.metadata.version + 1);
+    expect(updated.objectDefined).toBe(true);
+    expect(updated.deadlineStatus).toBe("reviewed");
+    expect(updated.conflictCheck).toBe("no_conflict");
+    const view = unwrap(
+      await env.services.cases.getReadiness(DEMO_CONTEXT, before.id),
+    );
+    // Sem assignment ativo, permanece 1 pendência (professionalRoleDefined).
+    expect(view.issues).toEqual(["professionalRoleDefined"]);
+  });
+
+  it("segunda atualização com versão antiga → conflict", async () => {
+    const env = createMockDomainEnvironment();
+    const original = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    const input: CaseChecklistUpdateInput = {
+      objectDefined: true,
+      expectedVersion: original.metadata.version,
+    };
+    unwrap(await env.services.cases.update(DEMO_CONTEXT, original.id, input));
+    const second = await env.services.cases.update(DEMO_CONTEXT, original.id, {
+      objectDefined: false,
+      expectedVersion: original.metadata.version,
+    });
+    expect(second.ok).toBe(false);
+    if (!second.ok) {
+      expect(second.error.code).toBe("conflict");
+    }
+    // Nenhum efeito colateral em campos não incluídos no input.
+    const after = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, original.id),
+    );
+    expect(after.deadlineStatus).toBe(original.deadlineStatus);
+    expect(after.conflictCheck).toBe(original.conflictCheck);
+  });
+
+  it("caso de outra organização → not_found no escopo Alfa", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_BETA_1_ID);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("not_found");
+    const r2 = await env.services.cases.getReadiness(
+      DEMO_CONTEXT,
+      SEED_CASE_BETA_1_ID,
+    );
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error.code).toBe("not_found");
+  });
+});
+
+describe("LV-08.3 · permissões", () => {
+  it("papel proprietario permite case.update", () => {
+    expect(isActionAllowedForRole("case.update", "proprietario")).toBe(true);
+  });
+  it("papel leitura bloqueia case.update", () => {
+    expect(isActionAllowedForRole("case.update", "leitura")).toBe(false);
+  });
+  it("papel leitura mantém leitura de case.read", () => {
+    expect(isActionAllowedForRole("case.read", "leitura")).toBe(true);
+  });
+  it("evaluate real via serviço concorda com a política pura", async () => {
+    const env = createMockDomainEnvironment();
+    const decision = unwrap(
+      await env.services.permissions.evaluate(DEMO_CONTEXT, {
+        action: "case.update",
+        caseId: SEED_CASE_ALFA_1_ID,
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+});
+
+describe("LV-08.3 · imutabilidade e neutralidade", () => {
+  it("Case retornado por getById é uma cópia (mutação local não afeta o store)", async () => {
+    const env = createMockDomainEnvironment();
+    const c: Case = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    // mutação local:
+    (c as { title: string }).title = "hackeado";
+    const again = unwrap(
+      await env.services.cases.getById(DEMO_CONTEXT, SEED_CASE_ALFA_1_ID),
+    );
+    expect(again.title).not.toBe("hackeado");
+  });
+  it("descrições e rótulos não contêm nomes reais de partes ou PII", () => {
+    const joined =
+      Object.values(CASE_READINESS_LABELS_PT).join(" · ") +
+      " · " +
+      Object.values(CASE_READINESS_DESCRIPTIONS_PT).join(" · ");
+    for (const forbidden of ["Silva", "João", "Maria", "CPF", "@", "555"]) {
+      expect(joined.includes(forbidden)).toBe(false);
+    }
+  });
+});
