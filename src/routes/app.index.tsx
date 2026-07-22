@@ -12,6 +12,7 @@ import {
   Calendar,
   UploadCloud,
   FileSignature,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,13 @@ import { pericias, processos, clientes, peritos } from "@/lib/mock/data";
 import { pendencias as ALL_PEND, TIPO_LABEL as PEND_TIPO } from "@/lib/mock/pendencias";
 import { formatDateTime, formatCurrency, formatDate } from "@/lib/format";
 import type { StatusPericia, TipoPericia } from "@/lib/mock/types";
+import { useSession } from "@/hooks/use-session";
+import { getContextById } from "@/services/context-service";
+import {
+  PERFIL_LABEL,
+  WORK_MODE_LABEL,
+  ROLE_LABEL,
+} from "@/domain/onboarding";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
