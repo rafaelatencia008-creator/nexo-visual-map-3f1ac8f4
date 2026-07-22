@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GoogleSimuladoDialog } from "@/components/auth/GoogleSimuladoDialog";
-import { useSession, DEMO_CREDENTIALS } from "@/hooks/use-session";
+import { useSession, DEMO_CREDENTIALS, safeRedirectTarget } from "@/hooks/use-session";
 
 type EntrarSearch = { from?: string };
 
@@ -62,7 +62,7 @@ function EntrarPage() {
 
   const jaLogado = status === "signed_in";
 
-  const redirectTarget = from && from.startsWith("/app") ? from : "/app";
+  const redirectTarget = safeRedirectTarget(from);
 
   const preencherDemo = () => {
     setEmail(DEMO_CREDENTIALS.email);
@@ -99,9 +99,11 @@ function EntrarPage() {
 
     setErrors({});
     setLoading(true);
+    // E-mail e senha foram usados APENAS para comparar com a credencial demo;
+    // não são gravados em lugar nenhum.
+    setSenha("");
     window.setTimeout(() => {
       signInAsUser({
-        email: cleanEmail,
         name: "Usuário de demonstração",
         remember,
       });
@@ -121,9 +123,9 @@ function EntrarPage() {
 
   const confirmarGoogle = () => {
     setGoogleOpen(false);
+    // Google simulado: sem e-mail fictício, apenas nome neutro.
     signInAsUser({
-      email: "demo.google@nexo.local",
-      name: "Usuário Google (simulado)",
+      name: "Usuário de demonstração",
       remember: false,
     });
     toast.success("Sessão Google simulada iniciada");

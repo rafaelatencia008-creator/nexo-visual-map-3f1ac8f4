@@ -6,18 +6,13 @@ import { toast } from "sonner";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSession, DEMO_VERIFICATION_CODE } from "@/hooks/use-session";
-
-type Search = { email?: string; nome?: string; perfil?: string };
+import { takePendingPerfil } from "@/lib/auth-transient";
 
 export const Route = createFileRoute("/verificar-email")({
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    email: typeof s.email === "string" ? s.email : undefined,
-    nome: typeof s.nome === "string" ? s.nome : undefined,
-    perfil: typeof s.perfil === "string" ? s.perfil : undefined,
-  }),
+  // Ignora completamente qualquer parâmetro que venha na URL — não expomos PII aqui.
+  validateSearch: () => ({}),
   head: () => ({
     meta: [
       { title: "Verificar e-mail (demo) — Nexo Pericial 360" },
@@ -44,8 +39,13 @@ const codeSchema = z
 
 function VerificarEmailPage() {
   const navigate = useNavigate();
-  const { email, nome, perfil } = Route.useSearch();
   const { signInAsUser } = useSession();
+
+  // Perfil apenas em memória — pode ser undefined se a página foi aberta direta/atualizada.
+  const perfilRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    perfilRef.current = takePendingPerfil();
+  }, []);
 
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [error, setError] = useState<string | null>(null);
@@ -113,10 +113,10 @@ function VerificarEmailPage() {
     }
     setLoading(true);
     window.setTimeout(() => {
+      // Sessão neutra — nome padrão, perfil apenas se ainda presente em memória.
       signInAsUser({
-        email: email ?? "demo@nexo.local",
-        name: nome || "Usuário de demonstração",
-        perfil,
+        name: "Usuário de demonstração",
+        perfil: perfilRef.current,
         remember: false,
       });
       toast.success("E-mail verificado (demo)");
@@ -182,9 +182,7 @@ function VerificarEmailPage() {
               Verificar e-mail
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {email
-                ? <>Enviamos um código simulado para <strong className="text-foreground">{email}</strong>.</>
-                : "Enviamos um código simulado para o e-mail informado."}
+              Digite o código de demonstração para continuar.
             </p>
           </div>
 
@@ -198,6 +196,7 @@ function VerificarEmailPage() {
                 </p>
                 <p className="mt-2 text-muted-foreground">
                   Nenhum e-mail real foi enviado. Nenhum endereço foi armazenado.
+                  O código serve somente para testar a interface.
                 </p>
               </div>
             </AlertDescription>
@@ -274,4 +273,3 @@ function VerificarEmailPage() {
     </div>
   );
 }
-

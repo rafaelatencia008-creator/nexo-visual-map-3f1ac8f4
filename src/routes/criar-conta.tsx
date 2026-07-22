@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { GoogleSimuladoDialog } from "@/components/auth/GoogleSimuladoDialog";
 import { useSession } from "@/hooks/use-session";
+import { setPendingPerfil } from "@/lib/auth-transient";
 
 export const Route = createFileRoute("/criar-conta")({
   head: () => ({
@@ -153,25 +154,23 @@ function CriarContaPage() {
 
     setErrors({});
     setLoading(true);
+    // Guarda o perfil profissional apenas em memória (não persiste, não vai à URL).
+    setPendingPerfil(parsed.data.perfil);
+    // Limpa campos sensíveis do estado local antes de navegar.
+    setSenha("");
+    setConfirmar("");
     window.setTimeout(() => {
       setLoading(false);
-      // Não armazena senha nem confirma. Passa dados neutros para a verificação.
-      navigate({
-        to: "/verificar-email",
-        search: {
-          email: parsed.data.email.toLowerCase(),
-          nome: parsed.data.nome,
-          perfil: parsed.data.perfil,
-        },
-      });
+      // Nenhum dado pessoal transita pela URL.
+      navigate({ to: "/verificar-email" });
     }, 500);
   };
 
   const confirmarGoogle = () => {
     setGoogleOpen(false);
+    setPendingPerfil(perfil || undefined);
     signInAsUser({
-      email: "demo.google@nexo.local",
-      name: "Usuário Google (simulado)",
+      name: "Usuário de demonstração",
       perfil: perfil || undefined,
       remember: false,
     });
