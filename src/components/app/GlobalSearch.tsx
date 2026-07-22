@@ -162,12 +162,7 @@ export function GlobalSearch({
   };
 
   return (
-    <CommandDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Busca global"
-      description="Localize processos, clientes, perícias, peritos, compromissos e módulos."
-    >
+    <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
         placeholder="Buscar processos, clientes, perícias, peritos..."
         value={query}
