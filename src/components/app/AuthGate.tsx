@@ -14,8 +14,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (status === "signed_out") {
       const qs = typeof window !== "undefined" ? window.location.search : "";
-      const from = `${pathname}${qs}`;
-      navigate({ to: "/entrar", search: { from }, replace: true });
+      const candidate = `${pathname}${qs}`;
+      // Só propaga como "from" caminhos internos que comecem com /app.
+      const from =
+        pathname.startsWith("/app") && !pathname.startsWith("//") && !pathname.includes(":")
+          ? candidate
+          : undefined;
+      navigate({ to: "/entrar", search: from ? { from } : {}, replace: true });
     }
   }, [status, navigate, pathname]);
 
