@@ -100,8 +100,8 @@ function EntrarPage() {
 
     setErrors({});
     setLoading(true);
-    // E-mail e senha foram usados APENAS para comparar com a credencial demo;
-    // não são gravados em lugar nenhum.
+    // Cadastro anterior não deve deixar perfil transitório.
+    clearAuthTransient();
     setSenha("");
     window.setTimeout(() => {
       signInAsUser({
@@ -110,11 +110,22 @@ function EntrarPage() {
       });
       toast.success("Bem-vindo à demonstração");
       setLoading(false);
-      navigate({ to: redirectTarget });
+      // Rota de destino: se ainda precisa de onboarding, guarda o "from" interno
+      // e envia para /onboarding; senão, vai direto para o destino solicitado.
+      const needsOb = true; // usuário simulado sempre entra sem onboarding
+      if (needsOb) {
+        if (redirectTarget && redirectTarget.startsWith("/app")) {
+          setOnboardingReturn(redirectTarget);
+        }
+        navigate({ to: "/onboarding" });
+      } else {
+        navigate({ to: redirectTarget });
+      }
     }, 500);
   };
 
   const seguirComoConvidado = () => {
+    clearAuthTransient();
     signInAsGuest();
     toast.info("Modo convidado ativo", {
       description: "Todos os dados exibidos são fictícios.",
@@ -124,13 +135,17 @@ function EntrarPage() {
 
   const confirmarGoogle = () => {
     setGoogleOpen(false);
-    // Google simulado: sem e-mail fictício, apenas nome neutro.
+    // Google simulado: limpa transient antigo e não gera perfil pré-selecionado.
+    clearAuthTransient();
     signInAsUser({
       name: "Usuário de demonstração",
       remember: false,
     });
     toast.success("Sessão Google simulada iniciada");
-    navigate({ to: redirectTarget });
+    if (redirectTarget && redirectTarget.startsWith("/app")) {
+      setOnboardingReturn(redirectTarget);
+    }
+    navigate({ to: "/onboarding" });
   };
 
   return (
