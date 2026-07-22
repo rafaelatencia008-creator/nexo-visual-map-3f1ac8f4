@@ -110,22 +110,24 @@ export function createProfessionalProfileServiceMock(
           };
         }
       }
-      const id = ids.next("professionalProfile");
-      const now = clock.next();
-      const next: ProfessionalProfile = {
-        id,
+      const previewId = ids.previewNext("professionalProfile");
+      const previewTime = clock.previewNext();
+      const preview: ProfessionalProfile = {
+        id: previewId,
         organizationId: orgId,
         userId: input.userId,
         area: input.area,
         status: "active",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateProfessionalProfile(next);
+      const check = validateProfessionalProfile(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.professionalProfiles.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("professionalProfile");
+      clock.next();
+      store.professionalProfiles.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,
