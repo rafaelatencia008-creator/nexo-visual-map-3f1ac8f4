@@ -218,13 +218,21 @@ function CriarContaPage() {
               />
               <Label htmlFor="aceite" className="text-sm font-normal leading-relaxed text-muted-foreground">
                 Li e aceito os{" "}
-                <a href="#" className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/seguranca"
+                  hash="termos"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   Termos de Uso
-                </a>{" "}
+                </Link>{" "}
                 e a{" "}
-                <a href="#" className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/seguranca"
+                  hash="privacidade"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   Política de Privacidade
-                </a>
+                </Link>
                 .
               </Label>
             </div>
