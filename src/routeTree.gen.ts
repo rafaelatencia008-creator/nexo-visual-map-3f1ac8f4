@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerificarEmailRouteImport } from './routes/verificar-email'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as SelecionarContextoRouteImport } from './routes/selecionar-contexto'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as RecursosRouteImport } from './routes/recursos'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
@@ -29,8 +30,11 @@ import { Route as AcessoNegadoRouteImport } from './routes/acesso-negado'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as OnboardingRevisaoRouteImport } from './routes/onboarding.revisao'
+import { Route as OnboardingPreferenciasRouteImport } from './routes/onboarding.preferencias'
 import { Route as OnboardingPerfilRouteImport } from './routes/onboarding.perfil'
 import { Route as OnboardingFormaDeTrabalhoRouteImport } from './routes/onboarding.forma-de-trabalho'
+import { Route as OnboardingContextoRouteImport } from './routes/onboarding.contexto'
 import { Route as AppRelatoriosRouteImport } from './routes/app.relatorios'
 import { Route as AppQuesitosRouteImport } from './routes/app.quesitos'
 import { Route as AppPreferenciasRouteImport } from './routes/app.preferencias'
@@ -76,6 +80,11 @@ const SobreRoute = SobreRouteImport.update({
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
   path: '/servicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelecionarContextoRoute = SelecionarContextoRouteImport.update({
+  id: '/selecionar-contexto',
+  path: '/selecionar-contexto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SegurancaRoute = SegurancaRouteImport.update({
@@ -163,6 +172,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const OnboardingRevisaoRoute = OnboardingRevisaoRouteImport.update({
+  id: '/revisao',
+  path: '/revisao',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingPreferenciasRoute = OnboardingPreferenciasRouteImport.update({
+  id: '/preferencias',
+  path: '/preferencias',
+  getParentRoute: () => OnboardingRoute,
+} as any)
 const OnboardingPerfilRoute = OnboardingPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -174,6 +193,11 @@ const OnboardingFormaDeTrabalhoRoute =
     path: '/forma-de-trabalho',
     getParentRoute: () => OnboardingRoute,
   } as any)
+const OnboardingContextoRoute = OnboardingContextoRouteImport.update({
+  id: '/contexto',
+  path: '/contexto',
+  getParentRoute: () => OnboardingRoute,
+} as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -346,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -364,8 +389,11 @@ export interface FileRoutesByFullPath {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
   '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
   '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -399,6 +427,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -417,8 +446,11 @@ export interface FileRoutesByTo {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
   '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
   '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app': typeof AppIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -455,6 +487,7 @@ export interface FileRoutesById {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/recursos': typeof RecursosRoute
   '/seguranca': typeof SegurancaRoute
+  '/selecionar-contexto': typeof SelecionarContextoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
@@ -473,8 +506,11 @@ export interface FileRoutesById {
   '/app/preferencias': typeof AppPreferenciasRoute
   '/app/quesitos': typeof AppQuesitosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/onboarding/contexto': typeof OnboardingContextoRoute
   '/onboarding/forma-de-trabalho': typeof OnboardingFormaDeTrabalhoRoute
   '/onboarding/perfil': typeof OnboardingPerfilRoute
+  '/onboarding/preferencias': typeof OnboardingPreferenciasRoute
+  '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -512,6 +548,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -530,8 +567,11 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
     | '/onboarding/forma-de-trabalho'
     | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app/'
     | '/onboarding/'
     | '/app/clientes/novo'
@@ -565,6 +605,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -583,8 +624,11 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
     | '/onboarding/forma-de-trabalho'
     | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app'
     | '/onboarding'
     | '/app/clientes/novo'
@@ -620,6 +664,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/recursos'
     | '/seguranca'
+    | '/selecionar-contexto'
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
@@ -638,8 +683,11 @@ export interface FileRouteTypes {
     | '/app/preferencias'
     | '/app/quesitos'
     | '/app/relatorios'
+    | '/onboarding/contexto'
     | '/onboarding/forma-de-trabalho'
     | '/onboarding/perfil'
+    | '/onboarding/preferencias'
+    | '/onboarding/revisao'
     | '/app/'
     | '/onboarding/'
     | '/app/clientes/novo'
@@ -676,6 +724,7 @@ export interface RootRouteChildren {
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RecursosRoute: typeof RecursosRoute
   SegurancaRoute: typeof SegurancaRoute
+  SelecionarContextoRoute: typeof SelecionarContextoRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
   VerificarEmailRoute: typeof VerificarEmailRoute
@@ -702,6 +751,13 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/selecionar-contexto': {
+      id: '/selecionar-contexto'
+      path: '/selecionar-contexto'
+      fullPath: '/selecionar-contexto'
+      preLoaderRoute: typeof SelecionarContextoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/seguranca': {
@@ -823,6 +879,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/onboarding/revisao': {
+      id: '/onboarding/revisao'
+      path: '/revisao'
+      fullPath: '/onboarding/revisao'
+      preLoaderRoute: typeof OnboardingRevisaoRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/preferencias': {
+      id: '/onboarding/preferencias'
+      path: '/preferencias'
+      fullPath: '/onboarding/preferencias'
+      preLoaderRoute: typeof OnboardingPreferenciasRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
     '/onboarding/perfil': {
       id: '/onboarding/perfil'
       path: '/perfil'
@@ -835,6 +905,13 @@ declare module '@tanstack/react-router' {
       path: '/forma-de-trabalho'
       fullPath: '/onboarding/forma-de-trabalho'
       preLoaderRoute: typeof OnboardingFormaDeTrabalhoRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/onboarding/contexto': {
+      id: '/onboarding/contexto'
+      path: '/contexto'
+      fullPath: '/onboarding/contexto'
+      preLoaderRoute: typeof OnboardingContextoRouteImport
       parentRoute: typeof OnboardingRoute
     }
     '/app/relatorios': {
@@ -1130,14 +1207,20 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface OnboardingRouteChildren {
+  OnboardingContextoRoute: typeof OnboardingContextoRoute
   OnboardingFormaDeTrabalhoRoute: typeof OnboardingFormaDeTrabalhoRoute
   OnboardingPerfilRoute: typeof OnboardingPerfilRoute
+  OnboardingPreferenciasRoute: typeof OnboardingPreferenciasRoute
+  OnboardingRevisaoRoute: typeof OnboardingRevisaoRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
 }
 
 const OnboardingRouteChildren: OnboardingRouteChildren = {
+  OnboardingContextoRoute: OnboardingContextoRoute,
   OnboardingFormaDeTrabalhoRoute: OnboardingFormaDeTrabalhoRoute,
   OnboardingPerfilRoute: OnboardingPerfilRoute,
+  OnboardingPreferenciasRoute: OnboardingPreferenciasRoute,
+  OnboardingRevisaoRoute: OnboardingRevisaoRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
 }
 
@@ -1161,6 +1244,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RecursosRoute: RecursosRoute,
   SegurancaRoute: SegurancaRoute,
+  SelecionarContextoRoute: SelecionarContextoRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,
   VerificarEmailRoute: VerificarEmailRoute,
