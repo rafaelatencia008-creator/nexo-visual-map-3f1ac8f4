@@ -361,8 +361,8 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
   it("[C1] MembershipService.create — falha inválida não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
-    // preparação idêntica: nenhuma além do seed.
     const invalidRole = "papel_invalido" as unknown as Role;
+    const before = envA.snapshot().memberships.length;
     const errA = unwrapErr(
       await envA.services.memberships.create(ctxAlfa, {
         userId: SEED_USER_3_ID,
@@ -370,12 +370,14 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
       }),
     );
     expect(errA.code).toBe("validation_error");
+    expect(envA.snapshot().memberships.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.memberships.create(ctxAlfa, {
         userId: SEED_USER_3_ID,
         role: "colaborador",
       }),
     );
+    expect(envA.snapshot().memberships.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.memberships.create(ctxAlfa, {
         userId: SEED_USER_3_ID,
@@ -386,30 +388,28 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
     expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
-    // snapshot de A não contém a tentativa inválida
-    const only = envA
-      .snapshot()
-      .memberships.filter((m) => m.userId === SEED_USER_3_ID && m.organizationId === SEED_ORG_ALFA_ID);
-    expect(only.length).toBe(1);
-    expect(only[0]!.id).toBe(validA.id);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C2] ProfessionalProfileService.create — falha inválida não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
     const invalidArea = "area_invalida" as unknown as Perfil;
+    const before = envA.snapshot().professionalProfiles.length;
     unwrapErr(
       await envA.services.professionalProfiles.create(ctxAlfa, {
         userId: SEED_USER_2_ID,
         area: invalidArea,
       }),
     );
+    expect(envA.snapshot().professionalProfiles.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.professionalProfiles.create(ctxAlfa, {
         userId: SEED_USER_2_ID,
         area: "servico-social",
       }),
     );
+    expect(envA.snapshot().professionalProfiles.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.professionalProfiles.create(ctxAlfa, {
         userId: SEED_USER_2_ID,
@@ -420,29 +420,27 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
     expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
-    const rec = envA
-      .snapshot()
-      .professionalProfiles.filter(
-        (p) => p.userId === SEED_USER_2_ID && p.organizationId === SEED_ORG_ALFA_ID,
-      );
-    expect(rec.length).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C3] CredentialService.create — referência inválida não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
     const fakeProfId = "professionalProfile_xxx" as unknown as ProfessionalProfileId;
+    const before = envA.snapshot().credentials.length;
     const err = unwrapErr(
       await envA.services.credentials.create(ctxAlfa, {
         professionalProfileId: fakeProfId,
       }),
     );
     expect(err.code).toBe("not_found");
+    expect(envA.snapshot().credentials.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.credentials.create(ctxAlfa, {
         professionalProfileId: SEED_PROF_ALFA_ID,
       }),
     );
+    expect(envA.snapshot().credentials.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.credentials.create(ctxAlfa, {
         professionalProfileId: SEED_PROF_ALFA_ID,
@@ -452,12 +450,14 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
     expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C4] CaseService.create — confidencialidade inválida não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
     const invalidConf = "hiper_secreto" as unknown as ConfidentialityLevel;
+    const before = envA.snapshot().cases.length;
     unwrapErr(
       await envA.services.cases.create(ctxAlfa, {
         reference: "NP-C4A",
@@ -465,6 +465,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         confidentiality: invalidConf,
       }),
     );
+    expect(envA.snapshot().cases.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.cases.create(ctxAlfa, {
         reference: "NP-C4",
@@ -472,6 +473,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         confidentiality: "standard",
       }),
     );
+    expect(envA.snapshot().cases.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.cases.create(ctxAlfa, {
         reference: "NP-C4",
@@ -481,27 +483,30 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     );
     expect(validA.id).toBe(validB.id);
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
+    expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
-    const rec = envA.snapshot().cases.filter((c) => c.reference === "NP-C4A");
-    expect(rec.length).toBe(0);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C5] PersonService.create — classificação etária inválida não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
     const invalidAge = "matusalem" as unknown as AgeClassification;
+    const before = envA.snapshot().persons.length;
     unwrapErr(
       await envA.services.persons.create(ctxAlfa, {
         displayLabel: "P5",
         ageClassification: invalidAge,
       }),
     );
+    expect(envA.snapshot().persons.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.persons.create(ctxAlfa, {
         displayLabel: "P5",
         ageClassification: "adult",
       }),
     );
+    expect(envA.snapshot().persons.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.persons.create(ctxAlfa, {
         displayLabel: "P5",
@@ -510,14 +515,16 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     );
     expect(validA.id).toBe(validB.id);
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
+    expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C6] CasePersonService.create — papel inválido não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
-    // preparação idêntica: usar SEED_CASE_ALFA_1_ID + SEED_PERSON_ALFA_1_ID
     const invalidRole = "papel_x" as unknown as CasePersonRole;
+    const before = envA.snapshot().casePersons.length;
     unwrapErr(
       await envA.services.casePersons.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -526,6 +533,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         restrictedByDefault: false,
       }),
     );
+    expect(envA.snapshot().casePersons.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.casePersons.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -534,6 +542,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         restrictedByDefault: false,
       }),
     );
+    expect(envA.snapshot().casePersons.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.casePersons.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -544,13 +553,16 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     );
     expect(validA.id).toBe(validB.id);
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
+    expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C7] RelationshipService.create — tipo inválido não consome id/relógio", async () => {
     const envA = createMockDomainEnvironment();
     const envB = createMockDomainEnvironment();
     const invalidType = "amizade_forte" as unknown as RelationshipType;
+    const before = envA.snapshot().relationships.length;
     unwrapErr(
       await envA.services.relationships.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_2_ID,
@@ -559,25 +571,29 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         type: invalidType,
       }),
     );
+    expect(envA.snapshot().relationships.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.relationships.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_2_ID,
         fromPersonId: SEED_PERSON_ALFA_1_ID,
         toPersonId: SEED_PERSON_ALFA_2_ID,
-        type: "sibling",
+        type: "guardian",
       }),
     );
+    expect(envA.snapshot().relationships.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.relationships.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_2_ID,
         fromPersonId: SEED_PERSON_ALFA_1_ID,
         toPersonId: SEED_PERSON_ALFA_2_ID,
-        type: "sibling",
+        type: "guardian",
       }),
     );
     expect(validA.id).toBe(validB.id);
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
+    expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 
   it("[C8] AssignmentService.create — papel inválido não consome id/relógio", async () => {
@@ -585,6 +601,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     const envB = createMockDomainEnvironment();
     const invalidRole = "papel_zzz" as unknown as AssignmentRole;
     const startedOn = "2026-02-01" as IsoDate;
+    const before = envA.snapshot().assignments.length;
     unwrapErr(
       await envA.services.assignments.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -593,6 +610,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         startedOn,
       }),
     );
+    expect(envA.snapshot().assignments.length).toBe(before);
     const validA = unwrapOk(
       await envA.services.assignments.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -601,6 +619,7 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
         startedOn,
       }),
     );
+    expect(envA.snapshot().assignments.length).toBe(before + 1);
     const validB = unwrapOk(
       await envB.services.assignments.create(ctxAlfa, {
         caseId: SEED_CASE_ALFA_1_ID,
@@ -611,43 +630,22 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
     );
     expect(validA.id).toBe(validB.id);
     expect(validA.metadata.createdAt).toBe(validB.metadata.createdAt);
+    expect(validA.metadata.updatedAt).toBe(validB.metadata.updatedAt);
     expect(validA.metadata.version).toBe(1);
+    expect(validB.metadata.version).toBe(1);
   });
 });
 
 // ============================================================================
-// 3) Registro literal do TanStack React Start
+// 3) Registro literal do TanStack React Start (somente leitura)
 // ============================================================================
 
 describe("LV-07.3.3 — registro do TanStack React Start", () => {
-  it("routeTree.gen.ts expõe declare module '@tanstack/react-start' completo", async () => {
+  it("routeTree.gen.ts contém o registro completo do React Start", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const filePath = path.resolve(process.cwd(), "src/routeTree.gen.ts");
-    // O rodapé padrão do plugin @tanstack/react-start já publica o bloco
-    // `declare module '@tanstack/react-start'`. Em ambientes de dev com
-    // regeneração em background, uma regeneração intermediária pode
-    // truncar o rodapé; nesses casos restauramos o registro aprovado
-    // antes de asseverar. Isso preserva o contrato publicado sem alterar
-    // rotas nem contratos do domínio.
-    let src = fs.readFileSync(filePath, "utf8");
-    const registerBlock = [
-      "",
-      "import type { getRouter } from './router.tsx'",
-      "import type { startInstance } from './start.ts'",
-      "declare module '@tanstack/react-start' {",
-      "  interface Register {",
-      "    ssr: true",
-      "    router: Awaited<ReturnType<typeof getRouter>>",
-      "    config: Awaited<ReturnType<typeof startInstance.getOptions>>",
-      "  }",
-      "}",
-      "",
-    ].join("\n");
-    if (!src.includes("declare module '@tanstack/react-start'")) {
-      fs.appendFileSync(filePath, registerBlock);
-      src = fs.readFileSync(filePath, "utf8");
-    }
+    const src = fs.readFileSync(filePath, "utf8");
     expect(src).toContain("declare module '@tanstack/react-start'");
     expect(src).toContain("interface Register");
     expect(src).toContain("ssr: true");
@@ -657,3 +655,4 @@ describe("LV-07.3.3 — registro do TanStack React Start", () => {
     );
   });
 });
+
