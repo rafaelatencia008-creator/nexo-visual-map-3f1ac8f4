@@ -86,7 +86,8 @@ export function createAssignmentServiceMock(
         (a) => a.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `assignment-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateAssignmentInput) {
       const v = requireContext(store, context);
