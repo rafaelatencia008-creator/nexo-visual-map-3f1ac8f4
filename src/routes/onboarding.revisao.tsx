@@ -57,7 +57,13 @@ function RevisaoStep() {
       startPage: draft.startPage!,
       theme,
     };
-    completeOnboarding(result);
+    const ok = completeOnboarding(result);
+    if (!ok) {
+      toast.error(
+        "Não foi possível concluir. Verifique se o contexto escolhido é compatível com a forma de trabalho.",
+      );
+      return;
+    }
     if (theme === "light" || theme === "dark") {
       setTheme(theme);
     } else if (theme === "system" && typeof window !== "undefined") {
@@ -71,6 +77,7 @@ function RevisaoStep() {
     const destino = returnTo ?? START_PAGE_PATH[result.startPage];
     navigate({ to: destino });
   };
+
 
   const cancelar = () => {
     signOut();

@@ -5,7 +5,7 @@ import { Loader2, Check, Building2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useSession, safeRedirectTarget } from "@/hooks/use-session";
+import { useSession, safeRedirectTarget, needsOnboarding } from "@/hooks/use-session";
 import { listContexts, isValidContextId } from "@/services/context-service";
 import { WORK_MODE_LABEL, ROLE_LABEL } from "@/domain/onboarding";
 
@@ -37,8 +37,12 @@ function SelecionarContextoPage() {
         search: pathname.startsWith("/app") ? { from: pathname } : {},
         replace: true,
       });
+      return;
     }
-  }, [status, navigate, pathname]);
+    if (status === "signed_in" && session && needsOnboarding(session)) {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [status, session, navigate, pathname]);
 
   if (status !== "signed_in" || !session) {
     return (
@@ -49,6 +53,7 @@ function SelecionarContextoPage() {
       </div>
     );
   }
+  if (needsOnboarding(session)) return null;
 
   const contextos = listContexts();
   const atual = session.currentContextId;
@@ -59,10 +64,15 @@ function SelecionarContextoPage() {
       toast.error("Contexto inválido.");
       return;
     }
-    setCurrentContext(id);
+    const ok = setCurrentContext(id);
+    if (!ok) {
+      toast.error("Não foi possível atualizar o contexto.");
+      return;
+    }
     toast.success("Contexto atualizado (demo)");
     navigate({ to: destino });
   };
+
 
   return (
     <div className="min-h-screen bg-background">
