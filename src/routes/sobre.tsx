@@ -4,17 +4,14 @@ import {
   Eye,
   HeartHandshake,
   ShieldCheck,
-  FileLock2,
-  History,
-  LayoutDashboard,
-  Scale,
-  BadgeCheck,
+  UserCheck,
+  Sparkles,
   ArrowRight,
 } from "lucide-react";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/sobre")({
   head: () => ({
@@ -23,24 +20,25 @@ export const Route = createFileRoute("/sobre")({
       {
         name: "description",
         content:
-          "Conheça o Nexo Pericial 360: missão, visão, valores e diferenciais de uma plataforma pericial pautada por rigor, rastreabilidade e conformidade.",
+          "O Nexo Pericial 360 é uma plataforma que apoia o trabalho pericial de profissionais e equipes. Conheça o propósito, os princípios e a proposta da plataforma.",
       },
       { property: "og:title", content: "Sobre — Nexo Pericial 360" },
       {
         property: "og:description",
         content:
-          "Missão, visão, valores e diferenciais da plataforma Nexo Pericial 360.",
+          "Propósito, princípios e proposta da plataforma Nexo Pericial 360.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://nexo-visual-map.lovable.app/sobre" },
+      { property: "og:url", content: "/sobre" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Sobre — Nexo Pericial 360" },
       {
         name: "twitter:description",
-        content: "Rigor pericial, rastreabilidade e conformidade em uma única plataforma.",
+        content:
+          "Propósito, princípios e proposta da plataforma Nexo Pericial 360.",
       },
     ],
-    links: [{ rel: "canonical", href: "https://nexo-visual-map.lovable.app/sobre" }],
+    links: [{ rel: "canonical", href: "/sobre" }],
   }),
   component: SobrePage,
 });
@@ -48,61 +46,26 @@ export const Route = createFileRoute("/sobre")({
 const PILLARS = [
   {
     icon: Target,
-    title: "Missão",
-    description:
-      "Elevar o padrão da prática pericial no Brasil por meio de uma plataforma que une método científico, tecnologia e rastreabilidade documental.",
+    title: "Propósito",
+    text: "Apoiar o trabalho pericial com uma plataforma que organiza processos, pessoas, documentos, prazos e entregas.",
   },
   {
     icon: Eye,
     title: "Visão",
-    description:
-      "Ser a referência nacional em gestão pericial 360°, reconhecida por peritos, escritórios e tribunais pela confiabilidade dos seus registros.",
+    text: "Ser uma ferramenta de referência para profissionais periciais que valorizam método, clareza e rastreabilidade.",
   },
   {
     icon: HeartHandshake,
     title: "Valores",
-    description:
-      "Rigor técnico, imparcialidade, transparência processual, proteção de dados e responsabilidade com cada laudo produzido.",
+    text: "Rigor técnico, transparência, respeito à responsabilidade profissional e uso responsável de tecnologia.",
   },
 ];
 
-const DIFERENCIAIS = [
-  {
-    icon: History,
-    title: "Timeline auditável",
-    description:
-      "Cada movimentação do processo pericial fica registrada em linha do tempo imutável, pronta para auditoria.",
-  },
-  {
-    icon: FileLock2,
-    title: "Conformidade LGPD",
-    description:
-      "Tratamento de dados sensíveis com controles de acesso, minimização e finalidade documentada.",
-  },
-  {
-    icon: LayoutDashboard,
-    title: "Gestão 360°",
-    description:
-      "Peritos, clientes, processos, prazos e financeiro concentrados em um único painel operacional.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Rastreabilidade documental",
-    description:
-      "Versionamento de documentos e histórico de alterações garantem defensabilidade em qualquer instância.",
-  },
-  {
-    icon: Scale,
-    title: "Método pericial rigoroso",
-    description:
-      "Modelos e checklists alinhados às boas práticas técnicas, com quesitos e conclusões auditáveis.",
-  },
-  {
-    icon: BadgeCheck,
-    title: "Autoridade profissional",
-    description:
-      "Ambiente pensado para reforçar a credibilidade do perito perante juízo, partes e assistentes técnicos.",
-  },
+const NAO_SOMOS = [
+  "Não somos um escritório de perícias.",
+  "Não realizamos perícias diretamente.",
+  "Não substituímos o profissional habilitado.",
+  "Não emitimos laudos de forma automática.",
 ];
 
 function SobrePage() {
@@ -111,7 +74,6 @@ function SobrePage() {
       <SiteHeader />
 
       <main className="flex-1">
-        {/* Hero */}
         <section className="relative overflow-hidden border-b border-border/60">
           <div
             aria-hidden
@@ -130,31 +92,31 @@ function SobrePage() {
               <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                 Sobre o Nexo Pericial 360
               </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-                Uma plataforma dedicada a peritos e escritórios que valorizam método,
-                documentação impecável e autoridade técnica em cada laudo entregue.
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Somos uma plataforma dedicada a apoiar profissionais e
+                equipes que atuam com perícias — não somos um escritório e
+                não realizamos perícias diretamente.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Missão / Visão / Valores */}
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <div className="grid gap-6 md:grid-cols-3">
-            {PILLARS.map((pillar) => {
-              const Icon = pillar.icon;
+            {PILLARS.map((p) => {
+              const Icon = p.icon;
               return (
-                <Card key={pillar.title} className="border-border/60">
-                  <CardHeader>
+                <Card key={p.title} className="border-border/60">
+                  <CardContent className="p-6">
                     <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <CardTitle className="font-display text-xl">{pillar.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-sm leading-relaxed">
-                      {pillar.description}
-                    </CardDescription>
+                    <h2 className="font-display text-xl font-semibold text-foreground">
+                      {p.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {p.text}
+                    </p>
                   </CardContent>
                 </Card>
               );
@@ -162,62 +124,78 @@ function SobrePage() {
           </div>
         </section>
 
-        {/* Diferenciais */}
         <section className="border-t border-border/60 bg-muted/30">
-          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Nossos diferenciais
-              </h2>
-              <p className="mt-4 text-base text-muted-foreground">
-                Pilares que sustentam a confiança de quem opera com o Nexo Pericial 360.
-              </p>
+          <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div>
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                  Responsabilidade profissional
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  O profissional habilitado permanece o único responsável
+                  pelo conteúdo técnico de laudos, pareceres e relatórios
+                  produzidos com apoio da plataforma. O Nexo Pericial 360
+                  organiza o trabalho e apoia a produção — nunca substitui
+                  o profissional.
+                </p>
+              </div>
+              <div>
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                  IA sob revisão humana
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  Recursos de inteligência artificial funcionam como
+                  assistência: geram rascunhos, resumos e sugestões que
+                  precisam passar pela revisão do profissional antes de
+                  qualquer entrega. Nada é publicado como conteúdo técnico
+                  sem essa revisão.
+                </p>
+              </div>
             </div>
-
-            <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
-              {DIFERENCIAIS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li
-                    key={item.title}
-                    className="flex gap-4 rounded-lg border border-border/60 bg-background p-5"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-display text-base font-semibold text-foreground">
-                        {item.title}
-                      </h3>
-                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
           </div>
         </section>
 
-        {/* CTA */}
+        <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <h2 className="text-center font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            O que o Nexo Pericial 360 não é
+          </h2>
+          <ul className="mx-auto mt-8 grid max-w-2xl gap-3 sm:grid-cols-2">
+            {NAO_SOMOS.map((n) => (
+              <li
+                key={n}
+                className="rounded-lg border border-border/60 bg-background p-4 text-sm text-foreground"
+              >
+                {n}
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <section className="border-t border-border/60">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-            <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Conheça o que entregamos
-              </h2>
-              <p className="mt-4 max-w-xl text-base text-muted-foreground">
-                Explore as modalidades periciais disponíveis na plataforma.
-              </p>
-              <div className="mt-8">
-                <Button size="lg" className="min-w-[220px] gap-2" asChild>
-                  <Link to="/servicos">
-                    Conheça os serviços
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
+          <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 text-center">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Quer conhecer a plataforma?
+            </h2>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Explore o produto, os recursos previstos e a proposta geral
+              de trabalho.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Button asChild>
+                <Link to="/produto" className="gap-2">
+                  Conhecer a plataforma
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/recursos">Ver recursos</Link>
+              </Button>
             </div>
           </div>
         </section>
