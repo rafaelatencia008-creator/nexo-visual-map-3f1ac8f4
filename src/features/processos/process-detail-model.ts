@@ -150,8 +150,7 @@ export type CaseDetailPublicError = Readonly<{
   message: string;
 }>;
 
-const GENERIC = "Não foi possível concluír esta operação. Tente novamente.";
-const GENERIC_FIXED = "Não foi possível concluir esta operação. Tente novamente.";
+const GENERIC = "Não foi possível concluir esta operação. Tente novamente.";
 
 export function mapCaseDetailError(error: ServiceError): CaseDetailPublicError {
   switch (error.code) {
@@ -192,12 +191,9 @@ export function mapCaseDetailError(error: ServiceError): CaseDetailPublicError {
       };
     case "internal_error":
     default:
-      return { kind: "generic", message: GENERIC_FIXED };
+      return { kind: "generic", message: GENERIC };
   }
 }
-
-// Evita "variável não usada" caso a mensagem antiga tenha ficado no bundle.
-void GENERIC;
 
 // ---- Guardas em tempo de módulo -------------------------------------------
 
