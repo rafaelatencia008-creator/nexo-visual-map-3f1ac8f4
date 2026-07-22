@@ -275,5 +275,3 @@ function VerificarEmailPage() {
   );
 }
 
-// Reusa o componente X para futura auditoria (mantém o ícone importado).
-export const _keepImport = X;
