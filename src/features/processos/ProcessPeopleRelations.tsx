@@ -396,11 +396,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
     }
     setRemoving(false);
     if (error) {
-      toast({
-        title: "Não foi possível remover",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Não foi possível remover", { description: error.message });
       setConfirm({ kind: "closed" });
       return;
     }
