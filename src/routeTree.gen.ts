@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerificarEmailRouteImport } from './routes/verificar-email'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
@@ -58,6 +59,11 @@ import { Route as AppPeritosIdEditarRouteImport } from './routes/app.peritos.$id
 import { Route as AppPericiasIdEditarRouteImport } from './routes/app.pericias.$id.editar'
 import { Route as AppClientesIdEditarRouteImport } from './routes/app.clientes.$id.editar'
 
+const VerificarEmailRoute = VerificarEmailRouteImport.update({
+  id: '/verificar-email',
+  path: '/verificar-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
   path: '/sobre',
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/verificar-email': typeof VerificarEmailRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
@@ -365,6 +372,7 @@ export interface FileRoutesByTo {
   '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/verificar-email': typeof VerificarEmailRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
@@ -416,6 +424,7 @@ export interface FileRoutesById {
   '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
+  '/verificar-email': typeof VerificarEmailRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/servicos'
     | '/sobre'
+    | '/verificar-email'
     | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/servicos'
     | '/sobre'
+    | '/verificar-email'
     | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
@@ -567,6 +578,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/servicos'
     | '/sobre'
+    | '/verificar-email'
     | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
@@ -618,10 +630,18 @@ export interface RootRouteChildren {
   SegurancaRoute: typeof SegurancaRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
+  VerificarEmailRoute: typeof VerificarEmailRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verificar-email': {
+      id: '/verificar-email'
+      path: '/verificar-email'
+      fullPath: '/verificar-email'
+      preLoaderRoute: typeof VerificarEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sobre': {
       id: '/sobre'
       path: '/sobre'
@@ -1050,6 +1070,7 @@ const rootRouteChildren: RootRouteChildren = {
   SegurancaRoute: SegurancaRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,
+  VerificarEmailRoute: VerificarEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
