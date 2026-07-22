@@ -249,7 +249,8 @@ export function createCasePersonServiceMock(
         (cp) => cp.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `casePerson-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateCasePersonInput) {
       const v = requireContext(store, context);
