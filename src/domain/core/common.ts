@@ -1,15 +1,15 @@
 /**
- * Tipos comuns do domínio — datas ISO e metadados persistíveis.
+ * Tipos comuns do domínio — datas ISO, metadados persistíveis e helpers
+ * de segurança estrutural (chaves proibidas / allow-list).
  *
- * Puro TypeScript. Nenhum acesso a Date global fora dos validadores.
+ * Puro TypeScript.
  */
 
 import type { OrganizationId, CaseId } from "./ids";
 
-/** Data ISO no formato `YYYY-MM-DD`. */
-export type IsoDate = string & { readonly __brand: "IsoDate" };
+// ---- Datas ISO -------------------------------------------------------------
 
-/** Datetime ISO 8601 completo, ex.: `2026-08-05T14:00:00.000Z`. */
+export type IsoDate = string & { readonly __brand: "IsoDate" };
 export type IsoDateTime = string & { readonly __brand: "IsoDateTime" };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,38 +28,43 @@ export function isIsoDateTime(v: unknown): v is IsoDateTime {
   return !Number.isNaN(d.getTime());
 }
 
-/** Versão de entidade: inteiro positivo (>= 1). */
 export function isValidVersion(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 1;
 }
 
-/**
- * Metadados comuns a toda entidade persistível futura. Não implicam
- * banco: apenas descrevem o contrato.
- */
+// ---- Metadados persistíveis (allow-list estrita) --------------------------
+
 export type EntityMetadata = {
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
   version: number;
 };
 
+export const ENTITY_METADATA_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "createdAt",
+  "updatedAt",
+  "version",
+]);
+
 export function isEntityMetadata(v: unknown): v is EntityMetadata {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   const m = v as Record<string, unknown>;
+  if (!hasOnlyAllowedKeys(m, ENTITY_METADATA_ALLOWED_KEYS)) return false;
   return isIsoDateTime(m.createdAt) && isIsoDateTime(m.updatedAt) && isValidVersion(m.version);
 }
 
-/** Entidade que pertence a uma organização. */
+// ---- Escopos ---------------------------------------------------------------
+
 export type OrganizationScoped = {
   organizationId: OrganizationId;
 };
 
-/** Entidade que pertence a um caso (e portanto a uma organização). */
 export type CaseScoped = OrganizationScoped & {
   caseId: CaseId;
 };
 
-/** Chaves que jamais podem aparecer em qualquer contrato do domínio. */
+// ---- Segurança estrutural --------------------------------------------------
+
 export const FORBIDDEN_KEYS: ReadonlySet<string> = new Set([
   "password",
   "senha",
@@ -71,21 +76,28 @@ export const FORBIDDEN_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Verifica se um objeto contém alguma chave proibida (senha, token, segredo…).
- * Verificação rasa — a fundação não aceita esses campos em NENHUM nível raiz.
+ * Percorre recursivamente objetos e arrays procurando por chaves proibidas
+ * (senha, token, segredo…). Protegido contra referências circulares por
+ * `WeakSet` de nós já visitados.
  */
-export function containsForbiddenKey(v: unknown): boolean {
-  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
-  for (const key of Object.keys(v as Record<string, unknown>)) {
+export function containsForbiddenKey(v: unknown, seen: WeakSet<object> = new WeakSet()): boolean {
+  if (!v || typeof v !== "object") return false;
+  if (seen.has(v as object)) return false;
+  seen.add(v as object);
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      if (containsForbiddenKey(item, seen)) return true;
+    }
+    return false;
+  }
+  const obj = v as Record<string, unknown>;
+  for (const key of Object.keys(obj)) {
     if (FORBIDDEN_KEYS.has(key)) return true;
+    if (containsForbiddenKey(obj[key], seen)) return true;
   }
   return false;
 }
 
-/**
- * Verifica se um objeto contém apenas chaves permitidas. Usado para
- * validação estrita — rejeita propriedades desconhecidas.
- */
 export function hasOnlyAllowedKeys(v: unknown, allowed: ReadonlySet<string>): boolean {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   for (const key of Object.keys(v as Record<string, unknown>)) {

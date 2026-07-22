@@ -1,30 +1,86 @@
 /**
  * Validadores relacionais e estruturais — funções puras.
- *
- * Recebem coleções por parâmetro (nunca acessam storage) e devolvem
- * `true`/`false` ou uma lista de problemas encontrados.
+ * Recebem coleções por parâmetro; nada acessa storage ou rede.
  */
 
 import { containsForbiddenKey } from "./common";
 import type { Case } from "./case";
-import type { Person } from "./person";
-import type { Assignment, CasePerson, Relationship } from "./assignment";
-import { isMinor } from "./person";
 import { isCase } from "./case";
-import { isPerson } from "./person";
-import {
-  isAssignment,
-  isCasePerson,
-  isRelationship,
-} from "./assignment";
-import type { ProfessionalProfile } from "./professional";
+import type { Person } from "./person";
+import { isMinor, isPerson } from "./person";
+import type { Assignment, CasePerson, Relationship } from "./assignment";
+import { isAssignment, isCasePerson, isRelationship } from "./assignment";
+import type { Credential, ProfessionalProfile } from "./professional";
+import { isCredential, isProfessionalProfile } from "./professional";
+import type { Organization } from "./organization";
+import { isOrganization } from "./organization";
+import type { Membership, User } from "./access";
+import { isMembership, isUser } from "./access";
+
+type Ok<T> = { ok: true; value: T };
+type Err = { ok: false; reason: string };
+type Result<T> = Ok<T> | Err;
+
+// ---- Organization ----------------------------------------------------------
+
+export function validateOrganization(v: unknown): Result<Organization> {
+  if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
+  if (!isOrganization(v)) return { ok: false, reason: "shape_invalid" };
+  return { ok: true, value: v };
+}
+
+// ---- User ------------------------------------------------------------------
+
+export function validateUser(v: unknown): Result<User> {
+  if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
+  if (!isUser(v)) return { ok: false, reason: "shape_invalid" };
+  return { ok: true, value: v };
+}
+
+// ---- Membership ------------------------------------------------------------
+
+export function validateMembership(
+  v: unknown,
+  ctx: { users: readonly User[]; organizations: readonly Organization[] },
+): Result<Membership> {
+  if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
+  if (!isMembership(v)) return { ok: false, reason: "shape_invalid" };
+  const org = ctx.organizations.find((o) => o.id === v.organizationId);
+  if (!org) return { ok: false, reason: "organization_not_found" };
+  const user = ctx.users.find((u) => u.id === v.userId);
+  if (!user) return { ok: false, reason: "user_not_found" };
+  return { ok: true, value: v };
+}
+
+// ---- ProfessionalProfile ---------------------------------------------------
+
+export function validateProfessionalProfile(v: unknown): Result<ProfessionalProfile> {
+  if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
+  if (!isProfessionalProfile(v)) return { ok: false, reason: "shape_invalid" };
+  return { ok: true, value: v };
+}
+
+// ---- Credential ------------------------------------------------------------
+
+export function validateCredential(
+  v: unknown,
+  ctx: { professionalProfiles: readonly ProfessionalProfile[] },
+): Result<Credential> {
+  if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
+  if (!isCredential(v)) return { ok: false, reason: "shape_invalid" };
+  const prof = ctx.professionalProfiles.find((p) => p.id === v.professionalProfileId);
+  if (!prof) return { ok: false, reason: "professional_not_found" };
+  if (prof.organizationId !== v.organizationId)
+    return { ok: false, reason: "organization_mismatch" };
+  return { ok: true, value: v };
+}
 
 // ---- CasePerson ------------------------------------------------------------
 
 export function validateCasePerson(
   cp: unknown,
   ctx: { cases: readonly Case[]; persons: readonly Person[] },
-): { ok: true; value: CasePerson } | { ok: false; reason: string } {
+): Result<CasePerson> {
   if (containsForbiddenKey(cp)) return { ok: false, reason: "forbidden_key" };
   if (!isCasePerson(cp)) return { ok: false, reason: "shape_invalid" };
   const c = ctx.cases.find((x) => x.id === cp.caseId);
@@ -35,7 +91,6 @@ export function validateCasePerson(
     return { ok: false, reason: "organization_mismatch" };
   if (p.organizationId !== cp.organizationId)
     return { ok: false, reason: "person_organization_mismatch" };
-  // Criança/adolescente exige `restrictedByDefault: true`.
   if (isMinor(p) && !cp.restrictedByDefault)
     return { ok: false, reason: "minor_must_be_restricted" };
   return { ok: true, value: cp };
@@ -46,7 +101,7 @@ export function validateCasePerson(
 export function validateRelationship(
   r: unknown,
   ctx: { cases: readonly Case[]; persons: readonly Person[] },
-): { ok: true; value: Relationship } | { ok: false; reason: string } {
+): Result<Relationship> {
   if (containsForbiddenKey(r)) return { ok: false, reason: "forbidden_key" };
   if (!isRelationship(r)) return { ok: false, reason: "shape_invalid" };
   if (r.fromPersonId === r.toPersonId) return { ok: false, reason: "self_relationship" };
@@ -70,7 +125,7 @@ export function validateAssignment(
     cases: readonly Case[];
     professionalProfiles: readonly ProfessionalProfile[];
   },
-): { ok: true; value: Assignment } | { ok: false; reason: string } {
+): Result<Assignment> {
   if (containsForbiddenKey(a)) return { ok: false, reason: "forbidden_key" };
   if (!isAssignment(a)) return { ok: false, reason: "shape_invalid" };
   const c = ctx.cases.find((x) => x.id === a.caseId);
@@ -86,7 +141,7 @@ export function validateAssignment(
 
 // ---- Case ------------------------------------------------------------------
 
-export function validateCase(v: unknown): { ok: true; value: Case } | { ok: false; reason: string } {
+export function validateCase(v: unknown): Result<Case> {
   if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
   if (!isCase(v)) return { ok: false, reason: "shape_invalid" };
   return { ok: true, value: v };
@@ -94,7 +149,7 @@ export function validateCase(v: unknown): { ok: true; value: Case } | { ok: fals
 
 // ---- Person ----------------------------------------------------------------
 
-export function validatePerson(v: unknown): { ok: true; value: Person } | { ok: false; reason: string } {
+export function validatePerson(v: unknown): Result<Person> {
   if (containsForbiddenKey(v)) return { ok: false, reason: "forbidden_key" };
   if (!isPerson(v)) return { ok: false, reason: "shape_invalid" };
   return { ok: true, value: v };

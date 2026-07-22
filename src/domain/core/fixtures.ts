@@ -1,46 +1,26 @@
 /**
- * Fixtures mínimas — servem SOMENTE para testes de contrato do domínio.
- *
- * NÃO usam CPF/CNPJ/telefone/e-mail/nome real. Nenhum dado real de menores.
- * Nenhum ID aleatório: todos determinísticos.
- *
- * Estes fixtures NÃO alimentam as telas — as telas continuam usando
- * `src/lib/mock/data.ts` até LV-07.3/LV-08.
+ * Fixtures mínimas para testes de contrato. Sem PII. IDs determinísticos.
+ * Timestamps fixos. Não alimentam telas.
  */
 
 import { buildDomainId } from "./ids";
-import type {
-  AssignmentId,
-  CaseId,
-  CasePersonId,
-  MembershipId,
-  OrganizationId,
-  PersonId,
-  ProfessionalProfileId,
-  RelationshipId,
-  UserId,
-} from "./ids";
 import type { EntityMetadata, IsoDate, IsoDateTime } from "./common";
 import type { Organization } from "./organization";
-import type { ProfessionalProfile } from "./professional";
+import type { ProfessionalProfile, Credential } from "./professional";
 import type { Case } from "./case";
 import type { Person } from "./person";
 import type { Assignment, CasePerson, Relationship } from "./assignment";
+import type { User, Membership } from "./access";
 
-// Timestamps fixos — nunca gerados em runtime.
 const T0 = "2026-01-01T00:00:00.000Z" as IsoDateTime;
 const D0 = "2026-01-01" as IsoDate;
 
-const meta = (): EntityMetadata => ({
-  createdAt: T0,
-  updatedAt: T0,
-  version: 1,
-});
+const meta = (): EntityMetadata => ({ createdAt: T0, updatedAt: T0, version: 1 });
 
 // ---- Organizações ----------------------------------------------------------
 
-export const ORG_INDIVIDUAL_ID = buildDomainId("organization", "demo_individual") as OrganizationId;
-export const ORG_TEAM_ID = buildDomainId("organization", "demo_team") as OrganizationId;
+export const ORG_INDIVIDUAL_ID = buildDomainId("organization", "demo_individual");
+export const ORG_TEAM_ID = buildDomainId("organization", "demo_team");
 
 export const orgIndividualFixture: Organization = {
   id: ORG_INDIVIDUAL_ID,
@@ -52,34 +32,62 @@ export const orgIndividualFixture: Organization = {
 
 export const orgTeamFixture: Organization = {
   id: ORG_TEAM_ID,
-  kind: "team",
+  kind: "equipe",
   displayName: "Organização de demonstração — equipe",
   status: "active",
   metadata: meta(),
 };
 
-// ---- Usuário e membership --------------------------------------------------
+// ---- User e Membership -----------------------------------------------------
 
-export const USER_ID = buildDomainId("user", "demo_neutral") as UserId;
-export const MEMBERSHIP_ID = buildDomainId("membership", "demo_001") as MembershipId;
+export const USER_ID = buildDomainId("user", "demo_neutral");
+export const MEMBERSHIP_ID = buildDomainId("membership", "demo_001");
+
+export const userFixture: User = {
+  id: USER_ID,
+  status: "active",
+  displayLabel: "Usuário neutro de demonstração",
+  metadata: meta(),
+};
+
+export const membershipFixture: Membership = {
+  id: MEMBERSHIP_ID,
+  organizationId: ORG_INDIVIDUAL_ID,
+  userId: USER_ID,
+  role: "proprietario",
+  status: "active",
+  metadata: meta(),
+};
 
 // ---- Perfil profissional ---------------------------------------------------
 
-export const PROF_ID = buildDomainId("professionalProfile", "demo_001") as ProfessionalProfileId;
+export const PROF_ID = buildDomainId("professionalProfile", "demo_001");
 
 export const professionalProfileFixture: ProfessionalProfile = {
   id: PROF_ID,
   organizationId: ORG_INDIVIDUAL_ID,
   userId: USER_ID,
-  area: "psychology",
+  area: "psicologia",
   status: "active",
+  metadata: meta(),
+};
+
+// ---- Credential ------------------------------------------------------------
+
+export const CREDENTIAL_ID = buildDomainId("credential", "demo_001");
+
+export const credentialFixture: Credential = {
+  id: CREDENTIAL_ID,
+  organizationId: ORG_INDIVIDUAL_ID,
+  professionalProfileId: PROF_ID,
+  status: "not_informed",
   metadata: meta(),
 };
 
 // ---- Casos -----------------------------------------------------------------
 
-export const CASE_001_ID = buildDomainId("case", "demo_001") as CaseId;
-export const CASE_002_ID = buildDomainId("case", "demo_002") as CaseId;
+export const CASE_001_ID = buildDomainId("case", "demo_001");
+export const CASE_002_ID = buildDomainId("case", "demo_002");
 
 export const case001Fixture: Case = {
   id: CASE_001_ID,
@@ -109,9 +117,9 @@ export const case002Fixture: Case = {
 
 // ---- Pessoas ---------------------------------------------------------------
 
-export const PERSON_A_ID = buildDomainId("person", "demo_A") as PersonId;
-export const PERSON_B_ID = buildDomainId("person", "demo_B") as PersonId;
-export const PERSON_C_ID = buildDomainId("person", "demo_C") as PersonId;
+export const PERSON_A_ID = buildDomainId("person", "demo_A");
+export const PERSON_B_ID = buildDomainId("person", "demo_B");
+export const PERSON_C_ID = buildDomainId("person", "demo_C");
 
 export const personAFixture: Person = {
   id: PERSON_A_ID,
@@ -139,9 +147,9 @@ export const personCFixture: Person = {
 
 // ---- Vínculos --------------------------------------------------------------
 
-export const CASE_PERSON_A_ID = buildDomainId("casePerson", "demo_A") as CasePersonId;
-export const CASE_PERSON_B_ID = buildDomainId("casePerson", "demo_B") as CasePersonId;
-export const CASE_PERSON_C_ID = buildDomainId("casePerson", "demo_C") as CasePersonId;
+export const CASE_PERSON_A_ID = buildDomainId("casePerson", "demo_A");
+export const CASE_PERSON_B_ID = buildDomainId("casePerson", "demo_B");
+export const CASE_PERSON_C_ID = buildDomainId("casePerson", "demo_C");
 
 export const casePersonAFixture: CasePerson = {
   id: CASE_PERSON_A_ID,
@@ -169,11 +177,11 @@ export const casePersonCFixture: CasePerson = {
   caseId: CASE_002_ID,
   personId: PERSON_C_ID,
   role: "child_or_adolescent",
-  restrictedByDefault: true, // menor → obrigatório
+  restrictedByDefault: true,
   metadata: meta(),
 };
 
-export const RELATIONSHIP_ID = buildDomainId("relationship", "demo_001") as RelationshipId;
+export const RELATIONSHIP_ID = buildDomainId("relationship", "demo_001");
 
 export const relationshipFixture: Relationship = {
   id: RELATIONSHIP_ID,
@@ -185,7 +193,7 @@ export const relationshipFixture: Relationship = {
   metadata: meta(),
 };
 
-export const ASSIGNMENT_ID = buildDomainId("assignment", "demo_001") as AssignmentId;
+export const ASSIGNMENT_ID = buildDomainId("assignment", "demo_001");
 
 export const assignmentFixture: Assignment = {
   id: ASSIGNMENT_ID,
@@ -202,13 +210,13 @@ export const assignmentFixture: Assignment = {
 
 export const DOMAIN_FIXTURES = {
   organizations: [orgIndividualFixture, orgTeamFixture] as const,
+  users: [userFixture] as const,
+  memberships: [membershipFixture] as const,
   professionalProfiles: [professionalProfileFixture] as const,
+  credentials: [credentialFixture] as const,
   cases: [case001Fixture, case002Fixture] as const,
   persons: [personAFixture, personBFixture, personCFixture] as const,
   casePersons: [casePersonAFixture, casePersonBFixture, casePersonCFixture] as const,
   relationships: [relationshipFixture] as const,
   assignments: [assignmentFixture] as const,
 } as const;
-
-// Placeholder para chaves que os testes vão procurar — devem ser undefined.
-export const FIXTURES_PII_PROBE: Record<string, undefined> = {};

@@ -1,8 +1,8 @@
 /**
  * Catálogo central de identificadores do domínio — Nexo Pericial 360.
  *
- * IDs são strings *branded* para impedir que um `CaseId` seja usado onde
- * se espera um `PersonId`, mesmo que ambos sejam strings em tempo de execução.
+ * IDs são strings *branded* para impedir troca entre `CaseId` e `PersonId`
+ * em tempo de compilação. Em runtime a distinção é feita pelo prefixo.
  *
  * Nada aqui acessa localStorage, sessionStorage, window, document ou rede.
  */
@@ -13,10 +13,6 @@ type Brand<T, TBrand extends string> = T & { readonly __brand: TBrand };
 
 // ---- Prefixos oficiais -----------------------------------------------------
 
-/**
- * Prefixos estáveis por tipo de entidade. Alterá-los é uma quebra de
- * contrato: o mesmo mock precisa manter o mesmo ID entre renderizações.
- */
 export const ID_PREFIX = {
   organization: "org_",
   user: "usr_",
@@ -29,9 +25,7 @@ export const ID_PREFIX = {
   relationship: "rel_",
   assignment: "assign_",
 
-  // Entidades reservadas — apenas catalogadas nesta microetapa. Nenhum
-  // contrato completo foi implementado, mas o prefixo já está fixo para
-  // evitar colisões futuras.
+  // Entidades reservadas — apenas catalogadas nesta microetapa.
   deadline: "deadline_",
   appointment: "appt_",
   communication: "comm_",
@@ -69,7 +63,6 @@ export const ID_PREFIX = {
 
 export type IdKind = keyof typeof ID_PREFIX;
 
-/** Prefixos vs kind — leitura reversa. */
 const PREFIX_TO_KIND: ReadonlyMap<string, IdKind> = new Map(
   (Object.entries(ID_PREFIX) as [IdKind, string][]).map(([kind, prefix]) => [prefix, kind]),
 );
@@ -87,21 +80,31 @@ export type CasePersonId = Brand<string, "CasePersonId">;
 export type RelationshipId = Brand<string, "RelationshipId">;
 export type AssignmentId = Brand<string, "AssignmentId">;
 
+/**
+ * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
+ * para devolver o branded type correspondente sem `as`.
+ */
+export type ImplementedIdMap = {
+  organization: OrganizationId;
+  user: UserId;
+  membership: MembershipId;
+  professionalProfile: ProfessionalProfileId;
+  credential: CredentialId;
+  case: CaseId;
+  person: PersonId;
+  casePerson: CasePersonId;
+  relationship: RelationshipId;
+  assignment: AssignmentId;
+};
+
 // ---- Validação de forma ----------------------------------------------------
 
-/**
- * Um sufixo válido: caracteres alfanuméricos, `_` e `-`. Não é UUID
- * porque os mocks precisam ser legíveis e determinísticos.
- */
 const SUFFIX_RE = /^[a-zA-Z0-9_-]+$/;
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.length > 0;
 }
 
-/**
- * Verifica se `value` tem o prefixo esperado para `kind` e um sufixo válido.
- */
 export function hasExpectedPrefix(value: unknown, kind: IdKind): boolean {
   if (!isNonEmptyString(value)) return false;
   const prefix = ID_PREFIX[kind];
@@ -110,10 +113,6 @@ export function hasExpectedPrefix(value: unknown, kind: IdKind): boolean {
   return suffix.length > 0 && SUFFIX_RE.test(suffix);
 }
 
-/**
- * Descobre a que tipo pertence um ID a partir do prefixo. Retorna
- * `null` para strings vazias, prefixos desconhecidos ou sufixo inválido.
- */
 export function parseDomainId(value: unknown): { kind: IdKind; value: string } | null {
   if (!isNonEmptyString(value)) return null;
   for (const [prefix, kind] of PREFIX_TO_KIND) {
@@ -146,14 +145,19 @@ export const isRelationshipId = (v: unknown): v is RelationshipId =>
 export const isAssignmentId = (v: unknown): v is AssignmentId =>
   hasExpectedPrefix(v, "assignment");
 
-// ---- Builders determinísticos (uso interno / fixtures) --------------------
+// ---- Builders determinísticos ---------------------------------------------
 
 /**
- * Constrói um ID determinístico a partir de um sufixo textual. Usado
- * pelos fixtures — NÃO deve ser usado para gerar IDs a cada renderização,
- * porque não é aleatório e não garante unicidade em runtime.
+ * Overloads:
+ * - Tipos implementados retornam o branded type correspondente.
+ * - Tipos reservados retornam `string` (contrato ainda não implementado).
  */
-export function buildDomainId<K extends IdKind>(kind: K, suffix: string): string {
+export function buildDomainId<K extends keyof ImplementedIdMap>(
+  kind: K,
+  suffix: string,
+): ImplementedIdMap[K];
+export function buildDomainId(kind: IdKind, suffix: string): string;
+export function buildDomainId(kind: IdKind, suffix: string): string {
   if (!isNonEmptyString(suffix) || !SUFFIX_RE.test(suffix)) {
     throw new Error(`Sufixo inválido para ID (${kind}): ${String(suffix)}`);
   }
