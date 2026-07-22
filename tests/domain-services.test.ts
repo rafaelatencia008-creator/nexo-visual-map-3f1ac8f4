@@ -264,12 +264,23 @@ describe("Permissões", () => {
     expect(isPermissionAction("case.explode")).toBe(false);
     expect(isPermissionAction("")).toBe(false);
   });
-  it("S24) PermissionRequest é estrito no tipo", () => {
-    const req = { action: "case.read" as const, caseId: F.CASE_001_ID } as const;
-    expect(req.action).toBe("case.read");
-    // @ts-expect-error — ação inválida rejeitada no tipo
-    const _bad = { action: "invalid.action" } satisfies { action: string };
-    void _bad;
+  it("S24) isPermissionRequest valida em runtime", () => {
+    // Verificações de tipo estão em tests/domain-services.types.ts. Aqui
+    // validamos o guard em runtime.
+    expect(isPermissionRequest({ action: "case.read", caseId: F.CASE_001_ID })).toBe(true);
+    expect(isPermissionRequest({ action: "invalid.action" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", caseId: "not_branded" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", extraField: "x" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", resourceId: "" })).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", resourceId: "res_1" })).toBe(true);
+    expect(isPermissionRequest(null)).toBe(false);
+    expect(isPermissionRequest([])).toBe(false);
+    expect(isPermissionRequest({ action: "case.read", nested: { token: "x" } })).toBe(false);
+    // allow-list exposta
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("action")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("caseId")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.has("resourceId")).toBe(true);
+    expect(PERMISSION_REQUEST_ALLOWED_KEYS.size).toBe(3);
   });
   it("S25) fake local de PermissionPolicy retorna decisão", async () => {
     const policy: PermissionPolicy = {
