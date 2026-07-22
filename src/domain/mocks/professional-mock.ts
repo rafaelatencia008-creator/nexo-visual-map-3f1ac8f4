@@ -88,7 +88,8 @@ export function createProfessionalProfileServiceMock(
             ? (p: ProfessionalProfile) => p.status
             : (p: ProfessionalProfile) => p.metadata.createdAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `professional-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateProfessionalProfileInput) {
       const v = requireContext(store, context);
