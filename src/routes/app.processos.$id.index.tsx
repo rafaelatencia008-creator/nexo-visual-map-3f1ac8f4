@@ -7,6 +7,7 @@ import {
   ProcessDetailNotFound,
 } from "@/features/processos/ProcessDetailState";
 import { ProcessDetailSummary } from "@/features/processos/ProcessDetailSummary";
+import { ProcessPeopleRelations } from "@/features/processos/ProcessPeopleRelations";
 import {
   ProcessReadinessChecklist,
   type ChecklistSaveResult,
@@ -230,6 +231,7 @@ function ProcessoDetalhePage() {
         onReloadReadiness={reloadReadiness}
         onReloadAll={retryLoad}
       />
+      <ProcessPeopleRelations case={state.case} />
     </div>
   );
 }
