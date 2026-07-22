@@ -9,7 +9,7 @@
  *  - detecta nova versão via `onNeedRefresh`;
  *  - NÃO recarrega automaticamente — a atualização só acontece por ação
  *    explícita do usuário (evita perda de formulário em edição);
- *  - não usa `window.location.reload()`, timers ou polling manual;
+ *  - não força reload manual, nem via timers ou polling;
  *  - reutiliza apenas os componentes visuais já existentes.
  */
 
@@ -44,7 +44,6 @@ export function PwaUpdatePrompt() {
 
   const applyUpdate = React.useCallback(() => {
     // O próprio hook coordena o skipWaiting + reload controlado.
-    // NÃO chamamos window.location.reload() aqui.
     void updateServiceWorker(true);
   }, [updateServiceWorker]);
 
