@@ -107,7 +107,8 @@ export function createPersonServiceMock(
             ? (p: Person) => p.metadata.createdAt
             : (p: Person) => p.displayLabel;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `person-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreatePersonInput) {
       const v = requireContext(store, context);
