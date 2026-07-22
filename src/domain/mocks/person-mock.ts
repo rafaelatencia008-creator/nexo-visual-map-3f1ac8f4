@@ -497,26 +497,28 @@ export function createRelationshipServiceMock(
           };
         }
       }
-      const id = ids.next("relationship");
-      const now = clock.next();
-      const next: Relationship = {
-        id,
+      const previewId = ids.previewNext("relationship");
+      const previewTime = clock.previewNext();
+      const preview: Relationship = {
+        id: previewId,
         organizationId: orgId,
         caseId: input.caseId,
         fromPersonId: input.fromPersonId,
         toPersonId: input.toPersonId,
         type: input.type,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateRelationship(next, {
+      const check = validateRelationship(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.relationships.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("relationship");
+      clock.next();
+      store.relationships.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,
