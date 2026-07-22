@@ -49,7 +49,7 @@ import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
-import { paginateItems } from "./pagination-mock";
+import { paginateItems, stableStringify } from "./pagination-mock";
 import { sortStable } from "./sort";
 import { validateSort } from "./sort-validation";
 
@@ -107,7 +107,8 @@ export function createPersonServiceMock(
             ? (p: Person) => p.metadata.createdAt
             : (p: Person) => p.displayLabel;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `person-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreatePersonInput) {
       const v = requireContext(store, context);
@@ -118,21 +119,23 @@ export function createPersonServiceMock(
           error: { code: "validation_error", message: "invalid_person_input" },
         };
       }
-      const id = ids.next("person");
-      const now = clock.next();
-      const next: Person = {
-        id,
+      const previewId = ids.previewNext("person");
+      const previewTime = clock.previewNext();
+      const preview: Person = {
+        id: previewId,
         organizationId: v.data.context.organizationId,
         displayLabel: input.displayLabel,
         ageClassification: input.ageClassification,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validatePerson(next);
+      const check = validatePerson(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.persons.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("person");
+      clock.next();
+      store.persons.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,
@@ -248,7 +251,8 @@ export function createCasePersonServiceMock(
         (cp) => cp.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `casePerson-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateCasePersonInput) {
       const v = requireContext(store, context);
@@ -267,26 +271,28 @@ export function createCasePersonServiceMock(
         }
       }
       const restricted = isMinor(p) ? true : input.restrictedByDefault;
-      const id = ids.next("casePerson");
-      const now = clock.next();
-      const next: CasePerson = {
-        id,
+      const previewId = ids.previewNext("casePerson");
+      const previewTime = clock.previewNext();
+      const preview: CasePerson = {
+        id: previewId,
         organizationId: orgId,
         caseId: input.caseId,
         personId: input.personId,
         role: input.role,
         restrictedByDefault: restricted,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateCasePerson(next, {
+      const check = validateCasePerson(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.casePersons.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("casePerson");
+      clock.next();
+      store.casePersons.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(context, caseId: CaseId, input: UpdateCasePersonInput) {
       const v = requireContext(store, context);
@@ -449,7 +455,8 @@ export function createRelationshipServiceMock(
         (r) => r.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `relationship-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateRelationshipInput) {
       const v = requireContext(store, context);
@@ -490,26 +497,28 @@ export function createRelationshipServiceMock(
           };
         }
       }
-      const id = ids.next("relationship");
-      const now = clock.next();
-      const next: Relationship = {
-        id,
+      const previewId = ids.previewNext("relationship");
+      const previewTime = clock.previewNext();
+      const preview: Relationship = {
+        id: previewId,
         organizationId: orgId,
         caseId: input.caseId,
         fromPersonId: input.fromPersonId,
         toPersonId: input.toPersonId,
         type: input.type,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateRelationship(next, {
+      const check = validateRelationship(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.relationships.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("relationship");
+      clock.next();
+      store.relationships.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,

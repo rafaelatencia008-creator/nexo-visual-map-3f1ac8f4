@@ -86,7 +86,8 @@ export function createAssignmentServiceMock(
         (a) => a.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `assignment-listByCase|org=${orgId}|case=${caseId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateAssignmentInput) {
       const v = requireContext(store, context);
@@ -115,10 +116,10 @@ export function createAssignmentServiceMock(
           };
         }
       }
-      const id = ids.next("assignment");
-      const now = clock.next();
-      const next: Assignment = {
-        id,
+      const previewId = ids.previewNext("assignment");
+      const previewTime = clock.previewNext();
+      const preview: Assignment = {
+        id: previewId,
         organizationId: orgId,
         caseId: input.caseId,
         professionalProfileId: input.professionalProfileId,
@@ -126,17 +127,19 @@ export function createAssignmentServiceMock(
         status: "active",
         ...(input.section !== undefined ? { section: input.section } : {}),
         startedOn: input.startedOn,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateAssignment(next, {
+      const check = validateAssignment(preview, {
         cases: Array.from(store.cases.values()),
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.assignments.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("assignment");
+      clock.next();
+      store.assignments.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,

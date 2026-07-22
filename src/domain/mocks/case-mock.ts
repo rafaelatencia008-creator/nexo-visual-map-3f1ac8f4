@@ -33,7 +33,7 @@ import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
-import { paginateItems } from "./pagination-mock";
+import { paginateItems, stableStringify } from "./pagination-mock";
 import { sortStable } from "./sort";
 import { validateSort } from "./sort-validation";
 
@@ -98,7 +98,8 @@ export function createCaseServiceMock(
                 ? (c: Case) => c.metadata.createdAt
                 : (c: Case) => c.metadata.updatedAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `case-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateCaseInput) {
       const v = requireContext(store, context);
@@ -127,10 +128,10 @@ export function createCaseServiceMock(
           };
         }
       }
-      const id = ids.next("case");
-      const now = clock.next();
-      const next: Case = {
-        id,
+      const previewId = ids.previewNext("case");
+      const previewTime = clock.previewNext();
+      const preview: Case = {
+        id: previewId,
         organizationId: orgId,
         reference,
         title,
@@ -139,14 +140,16 @@ export function createCaseServiceMock(
         conflictCheck: "not_reviewed",
         objectDefined: false,
         deadlineStatus: "not_reviewed",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateCase(next);
+      const check = validateCase(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.cases.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("case");
+      clock.next();
+      store.cases.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(context, caseId: CaseId, input: UpdateCaseInput) {
       return applyCaseMutation(store, clock, context, caseId, input.expectedVersion, (c) => ({

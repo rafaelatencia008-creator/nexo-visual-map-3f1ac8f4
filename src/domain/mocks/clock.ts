@@ -10,6 +10,8 @@ export const MOCK_TICK_MS = 1000;
 export interface MockClock {
   /** Timestamp do tick atual (não avança). */
   now(): IsoDateTime;
+  /** Prevê o próximo timestamp sem avançar. */
+  previewNext(): IsoDateTime;
   /** Avança um tick e devolve o novo timestamp. */
   next(): IsoDateTime;
   /** Tick atual (uso interno de testes). */
@@ -25,6 +27,7 @@ export function createMockClock(
     new Date(baseEpochMs + n * tickMs).toISOString() as IsoDateTime;
   return {
     now: () => format(t),
+    previewNext: () => format(t + 1),
     next: () => {
       t += 1;
       return format(t);

@@ -24,7 +24,7 @@ import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
-import { paginateItems } from "./pagination-mock";
+import { paginateItems, stableStringify } from "./pagination-mock";
 import { sortStable } from "./sort";
 import { validateSort } from "./sort-validation";
 
@@ -75,7 +75,8 @@ export function createMembershipServiceMock(
             ? (m: Membership) => m.status
             : (m: Membership) => m.metadata.createdAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `membership-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateMembershipInput) {
       const v = requireContext(store, context);
@@ -92,25 +93,27 @@ export function createMembershipServiceMock(
           };
         }
       }
-      const id = ids.next("membership");
-      const now = clock.next();
-      const next: Membership = {
-        id,
+      const previewId = ids.previewNext("membership");
+      const previewTime = clock.previewNext();
+      const preview: Membership = {
+        id: previewId,
         organizationId: orgId,
         userId: input.userId,
         role: input.role,
         status: "active",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateMembership(next, {
+      const check = validateMembership(preview, {
         users: Array.from(store.users.values()),
         organizations: Array.from(store.organizations.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.memberships.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("membership");
+      clock.next();
+      store.memberships.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async changeRole(context, input: ChangeMembershipRoleInput) {
       return applyMembershipMutation(store, clock, context, input.membershipId, input.expectedVersion, (m) => ({

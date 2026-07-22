@@ -55,10 +55,16 @@ const _asn = services.assignments satisfies AssignmentService;
 void _org; void _cur; void _mem; void _pro; void _cre;
 void _cas; void _per; void _cp; void _rel; void _asn;
 
-// TT12 — snapshot expõe arrays readonly (não Array/Map)
-type CasesArrOk = MockDomainSnapshot["cases"] extends readonly Case[] ? true : false;
-const tt12: CasesArrOk = true;
+// TT12 — snapshot expõe arrays readonly reais (não Array mutável).
+// Prova real: `push` não existe em `readonly T[]`.
+type HasPush<T> = T extends { push: (...args: never[]) => number } ? true : false;
+type CasesHasPush = HasPush<MockDomainSnapshot["cases"]>;
+const tt12: CasesHasPush = false;
 void tt12;
+// @ts-expect-error — readonly arrays não têm .push
+snap.cases.push({} as Case);
+// @ts-expect-error — readonly arrays rejeitam atribuição indexada
+snap.cases[0] = {} as Case;
 
 // TT13 — snapshot NUNCA expõe Map
 type CasesIsMap = MockDomainSnapshot["cases"] extends Map<unknown, unknown> ? true : false;
@@ -136,17 +142,18 @@ type CaseIsPromise = CaseReturn extends Promise<ServiceResult<Case>> ? true : fa
 const tt19: CaseIsPromise = true;
 void tt19;
 
-// TT20 — Snapshot é Readonly (assign a snapshot.cases falha)
-const _readonlyProbe: TT20 = null as never;
-type TT20 =
-  Readonly<{ cases: readonly Case[] }> extends Pick<MockDomainSnapshot, "cases">
-    ? true
-    : false;
-void _readonlyProbe;
+// TT20 — Snapshot é Readonly a nível de propriedade (não permite reassign).
+// @ts-expect-error — snapshot.cases não é atribuível
+snap.cases = [] as unknown as MockDomainSnapshot["cases"];
 
-// TT21 — MockDomainSnapshot mantém readonly em todos os arrays
+// TT21 — MockDomainSnapshot mantém readonly em todos os arrays: aceitar
+// somente `readonly` na coluna esquerda prova que o snapshot não expõe
+// Array mutável.
 const snapArr: readonly Case[] = snap.cases;
 void snapArr;
+// @ts-expect-error — não é atribuível a Array mutável
+const _mutableProbe: Case[] = snap.cases;
+void _mutableProbe;
 
 // TT22 — createMockDomainEnvironment aceita zero argumentos e retorna
 // exatamente MockDomainEnvironment (não uma união mais ampla)

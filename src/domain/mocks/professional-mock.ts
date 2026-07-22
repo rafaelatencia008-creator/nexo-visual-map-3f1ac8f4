@@ -33,7 +33,7 @@ import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
-import { paginateItems } from "./pagination-mock";
+import { paginateItems, stableStringify } from "./pagination-mock";
 import { sortStable } from "./sort";
 import { validateSort } from "./sort-validation";
 
@@ -88,7 +88,8 @@ export function createProfessionalProfileServiceMock(
             ? (p: ProfessionalProfile) => p.status
             : (p: ProfessionalProfile) => p.metadata.createdAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `professional-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateProfessionalProfileInput) {
       const v = requireContext(store, context);
@@ -109,22 +110,24 @@ export function createProfessionalProfileServiceMock(
           };
         }
       }
-      const id = ids.next("professionalProfile");
-      const now = clock.next();
-      const next: ProfessionalProfile = {
-        id,
+      const previewId = ids.previewNext("professionalProfile");
+      const previewTime = clock.previewNext();
+      const preview: ProfessionalProfile = {
+        id: previewId,
         organizationId: orgId,
         userId: input.userId,
         area: input.area,
         status: "active",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateProfessionalProfile(next);
+      const check = validateProfessionalProfile(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.professionalProfiles.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("professionalProfile");
+      clock.next();
+      store.professionalProfiles.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(
       context: ServiceContext,
@@ -250,7 +253,8 @@ export function createCredentialServiceMock(
         (c) => c.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `credential-listByProf|org=${orgId}|prof=${professionalProfileId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateCredentialInput) {
       const v = requireContext(store, context);
@@ -260,23 +264,25 @@ export function createCredentialServiceMock(
       if (!prof || prof.organizationId !== orgId) {
         return notFound<Credential>();
       }
-      const id = ids.next("credential");
-      const now = clock.next();
-      const next: Credential = {
-        id,
+      const previewId = ids.previewNext("credential");
+      const previewTime = clock.previewNext();
+      const preview: Credential = {
+        id: previewId,
         organizationId: orgId,
         professionalProfileId: input.professionalProfileId,
         status: "not_informed",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateCredential(next, {
+      const check = validateCredential(preview, {
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.credentials.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("credential");
+      clock.next();
+      store.credentials.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async updateStatus(context, input: UpdateCredentialStatusInput) {
       const v = requireContext(store, context);
