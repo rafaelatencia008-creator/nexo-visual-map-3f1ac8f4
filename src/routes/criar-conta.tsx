@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+
 export const Route = createFileRoute("/criar-conta")({
   head: () => ({
     meta: [

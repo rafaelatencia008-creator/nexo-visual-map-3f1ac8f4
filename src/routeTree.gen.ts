@@ -11,7 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as SegurancaRouteImport } from './routes/seguranca'
+import { Route as RecursosRouteImport } from './routes/recursos'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as ProfissoesRouteImport } from './routes/profissoes'
+import { Route as ProdutoRouteImport } from './routes/produto'
+import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as CriarContaRouteImport } from './routes/criar-conta'
 import { Route as ContatoRouteImport } from './routes/contato'
@@ -46,9 +51,34 @@ const ServicosRoute = ServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SegurancaRoute = SegurancaRouteImport.update({
+  id: '/seguranca',
+  path: '/seguranca',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecursosRoute = RecursosRouteImport.update({
+  id: '/recursos',
+  path: '/recursos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
   id: '/recuperar-senha',
   path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfissoesRoute = ProfissoesRouteImport.update({
+  id: '/profissoes',
+  path: '/profissoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutoRoute = ProdutoRouteImport.update({
+  id: '/produto',
+  path: '/produto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanosRoute = PlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntrarRoute = EntrarRouteImport.update({
@@ -173,7 +203,12 @@ export interface FileRoutesByFullPath {
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/planos': typeof PlanosRoute
+  '/produto': typeof ProdutoRoute
+  '/profissoes': typeof ProfissoesRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/recursos': typeof RecursosRoute
+  '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
@@ -200,7 +235,12 @@ export interface FileRoutesByTo {
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/planos': typeof PlanosRoute
+  '/produto': typeof ProdutoRoute
+  '/profissoes': typeof ProfissoesRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/recursos': typeof RecursosRoute
+  '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
@@ -229,7 +269,12 @@ export interface FileRoutesById {
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/planos': typeof PlanosRoute
+  '/produto': typeof ProdutoRoute
+  '/profissoes': typeof ProfissoesRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/recursos': typeof RecursosRoute
+  '/seguranca': typeof SegurancaRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
@@ -259,7 +304,12 @@ export interface FileRouteTypes {
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/planos'
+    | '/produto'
+    | '/profissoes'
     | '/recuperar-senha'
+    | '/recursos'
+    | '/seguranca'
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
@@ -286,7 +336,12 @@ export interface FileRouteTypes {
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/planos'
+    | '/produto'
+    | '/profissoes'
     | '/recuperar-senha'
+    | '/recursos'
+    | '/seguranca'
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
@@ -314,7 +369,12 @@ export interface FileRouteTypes {
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/planos'
+    | '/produto'
+    | '/profissoes'
     | '/recuperar-senha'
+    | '/recursos'
+    | '/seguranca'
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
@@ -343,7 +403,12 @@ export interface RootRouteChildren {
   ContatoRoute: typeof ContatoRoute
   CriarContaRoute: typeof CriarContaRoute
   EntrarRoute: typeof EntrarRoute
+  PlanosRoute: typeof PlanosRoute
+  ProdutoRoute: typeof ProdutoRoute
+  ProfissoesRoute: typeof ProfissoesRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
+  RecursosRoute: typeof RecursosRoute
+  SegurancaRoute: typeof SegurancaRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
 }
@@ -364,11 +429,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServicosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/seguranca': {
+      id: '/seguranca'
+      path: '/seguranca'
+      fullPath: '/seguranca'
+      preLoaderRoute: typeof SegurancaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recursos': {
+      id: '/recursos'
+      path: '/recursos'
+      fullPath: '/recursos'
+      preLoaderRoute: typeof RecursosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recuperar-senha': {
       id: '/recuperar-senha'
       path: '/recuperar-senha'
       fullPath: '/recuperar-senha'
       preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profissoes': {
+      id: '/profissoes'
+      path: '/profissoes'
+      fullPath: '/profissoes'
+      preLoaderRoute: typeof ProfissoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produto': {
+      id: '/produto'
+      path: '/produto'
+      fullPath: '/produto'
+      preLoaderRoute: typeof ProdutoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planos': {
+      id: '/planos'
+      path: '/planos'
+      fullPath: '/planos'
+      preLoaderRoute: typeof PlanosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entrar': {
@@ -585,7 +685,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContatoRoute: ContatoRoute,
   CriarContaRoute: CriarContaRoute,
   EntrarRoute: EntrarRoute,
+  PlanosRoute: PlanosRoute,
+  ProdutoRoute: ProdutoRoute,
+  ProfissoesRoute: ProfissoesRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
+  RecursosRoute: RecursosRoute,
+  SegurancaRoute: SegurancaRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,
 }
