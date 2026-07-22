@@ -33,6 +33,7 @@ import { CONFIDENTIALITY_LABELS_PT } from "@/features/processos/process-list-mod
 import {
   PROCESS_CREATE_INITIAL_VALUES,
   buildCreateCaseInput,
+  decideProcessCreateExit,
   processCreateSchema,
   type ProcessCreateFieldName,
   type ProcessCreateFormValues,
