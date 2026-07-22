@@ -207,7 +207,17 @@ describe("LV-07.3.3 — cursor vinculado à consulta", () => {
 
   it("[8] rejeita cursor emitido para outro caso (relacionamentos)", async () => {
     const env = createMockDomainEnvironment();
-    // criar vínculos e relacionamentos em CASE_ALFA_2 (já povoado no seed)
+    // Fixture determinística: garantir ≥ 2 relacionamentos em CASE_ALFA_2.
+    // O seed já traz um relationship (sibling) entre PERSON_ALFA_1 e ALFA_2.
+    // Criamos um segundo, não-duplicado, com tipo diferente.
+    unwrapOk(
+      await env.services.relationships.create(ctxAlfa, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        fromPersonId: SEED_PERSON_ALFA_1_ID,
+        toPersonId: SEED_PERSON_ALFA_2_ID,
+        type: "guardian",
+      }),
+    );
     const page = unwrapOk(
       await env.services.relationships.listByCase(
         ctxAlfa,
@@ -215,36 +225,19 @@ describe("LV-07.3.3 — cursor vinculado à consulta", () => {
         { limit: 1 },
       ),
     );
-    // cursor válido em CASE_ALFA_2 — se houver >1, gera cursor; caso não,
-    // pulamos comparação por consulta diferente com um cursor forjado a partir
-    // da assinatura correta é impraticável, então usamos filtro diferente:
-    // aqui, tentamos usar em outro caso (SEED_CASE_ALFA_1_ID).
-    if (page.nextCursor) {
-      const err = unwrapErr(
-        await env.services.relationships.listByCase(
-          ctxAlfa,
-          SEED_CASE_ALFA_1_ID,
-          { limit: 1, cursor: page.nextCursor },
-        ),
-      );
-      expect(err.code).toBe("validation_error");
-      expect(err.message).toBe("invalid_cursor");
-    } else {
-      // Sem cursor emitido: ainda assim provamos com um cursor forjado
-      // reutilizando assinatura de outra consulta.
-      await popCasos(env, 3, 8500);
-      const casesPage = unwrapOk(
-        await env.services.cases.list(ctxAlfa, { page: { limit: 2 } }),
-      );
-      const err = unwrapErr(
-        await env.services.relationships.listByCase(
-          ctxAlfa,
-          SEED_CASE_ALFA_1_ID,
-          { limit: 2, cursor: casesPage.nextCursor! },
-        ),
-      );
-      expect(err.code).toBe("validation_error");
+    expect(page.nextCursor).toBeDefined();
+    if (!page.nextCursor) {
+      throw new Error("Fixture não produziu cursor");
     }
+    const err = unwrapErr(
+      await env.services.relationships.listByCase(
+        ctxAlfa,
+        SEED_CASE_ALFA_1_ID,
+        { limit: 1, cursor: page.nextCursor },
+      ),
+    );
+    expect(err.code).toBe("validation_error");
+    expect(err.message).toBe("invalid_cursor");
   });
 
   it("[9] rejeita cursor emitido para outro perfil profissional (credenciais)", async () => {
