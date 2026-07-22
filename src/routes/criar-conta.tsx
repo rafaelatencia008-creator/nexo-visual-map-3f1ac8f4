@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+
 export const Route = createFileRoute("/criar-conta")({
   head: () => ({
     meta: [
@@ -154,10 +155,9 @@ function CriarContaPage() {
                   <SelectValue placeholder="Selecione seu perfil" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="perito-judicial">Perito Judicial</SelectItem>
-                  <SelectItem value="perito-assistente">Perito Assistente</SelectItem>
-                  <SelectItem value="escritorio">Escritório de Advocacia</SelectItem>
-                  <SelectItem value="cliente">Cliente / Parte</SelectItem>
+                  <SelectItem value="psicologia">Psicologia</SelectItem>
+                  <SelectItem value="servico-social">Serviço Social</SelectItem>
+                  <SelectItem value="multi">Equipe multiprofissional</SelectItem>
                   <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
@@ -218,13 +218,21 @@ function CriarContaPage() {
               />
               <Label htmlFor="aceite" className="text-sm font-normal leading-relaxed text-muted-foreground">
                 Li e aceito os{" "}
-                <a href="#" className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/seguranca"
+                  hash="termos"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   Termos de Uso
-                </a>{" "}
+                </Link>{" "}
                 e a{" "}
-                <a href="#" className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/seguranca"
+                  hash="privacidade"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   Política de Privacidade
-                </a>
+                </Link>
                 .
               </Label>
             </div>

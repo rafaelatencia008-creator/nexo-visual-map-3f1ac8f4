@@ -1,21 +1,43 @@
+import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/Logo";
 
-const COLUMNS = [
+type FooterLink =
+  | { label: string; to: "/produto" | "/recursos" | "/profissoes" | "/planos" | "/seguranca" | "/sobre" | "/contato" | "/entrar" | "/criar-conta" | "/app" }
+  | { label: string; to: "/seguranca"; hash: string };
+
+const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
-    title: "Institucional",
-    links: ["Sobre nós", "Nossa metodologia", "Equipe técnica", "Trabalhe conosco"],
+    title: "Plataforma",
+    links: [
+      { label: "Produto", to: "/produto" },
+      { label: "Recursos", to: "/recursos" },
+      { label: "Profissões", to: "/profissoes" },
+      { label: "Planos", to: "/planos" },
+      { label: "Sobre", to: "/sobre" },
+    ],
   },
   {
-    title: "Serviços",
-    links: ["Perícia Judicial", "Perícia Extrajudicial", "Assistência Técnica", "Pareceres"],
+    title: "Confiança",
+    links: [
+      { label: "Segurança", to: "/seguranca" },
+      { label: "Privacidade", to: "/seguranca", hash: "privacidade" },
+      { label: "Termos de Uso", to: "/seguranca", hash: "termos" },
+      { label: "Revisão humana", to: "/seguranca", hash: "revisao" },
+    ],
   },
   {
-    title: "Contato",
-    links: ["Fale conosco", "Solicitar orçamento", "Suporte ao cliente", "Ouvidoria"],
+    title: "Acesso",
+    links: [
+      { label: "Entrar", to: "/entrar" },
+      { label: "Criar conta", to: "/criar-conta" },
+      { label: "Painel de demonstração", to: "/app" },
+      { label: "Contato", to: "/contato" },
+    ],
   },
 ];
 
 export function SiteFooter() {
+  const year = new Date().getFullYear();
   return (
     <footer className="border-t border-border/60 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -23,8 +45,12 @@ export function SiteFooter() {
           <div className="space-y-4">
             <Logo variant="full" className="h-9 w-auto" />
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Excelência técnica em perícias judiciais e extrajudiciais,
-              com rigor documental e compromisso institucional.
+              Plataforma de apoio ao trabalho pericial. Ajuda profissionais a
+              organizar processos, pessoas, documentos, prazos e entregas —
+              com revisão humana em cada etapa.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Demonstração visual. Nenhum dado real é processado.
             </p>
           </div>
 
@@ -35,13 +61,14 @@ export function SiteFooter() {
               </h3>
               <ul className="space-y-2.5">
                 {column.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                  <li key={link.label}>
+                    <Link
+                      to={link.to}
+                      hash={"hash" in link ? link.hash : undefined}
                       className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      {link}
-                    </a>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -50,8 +77,8 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
-          <p>© 2026 Nexo Pericial 360. Todos os direitos reservados.</p>
-          <p>Rigor. Método. Autoridade documental.</p>
+          <p>© {year} Nexo Pericial 360. Plataforma em construção.</p>
+          <p>Método. Rastreabilidade. Revisão humana.</p>
         </div>
       </div>
     </footer>
