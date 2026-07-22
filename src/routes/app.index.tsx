@@ -229,7 +229,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {ATALHOS.map((acao) => {
-              const Icon = acao.icone;
+              const Icon = acao.icon;
               return (
                 <Button
                   key={acao.to}
