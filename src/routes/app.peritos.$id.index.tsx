@@ -32,7 +32,7 @@ const STATUS_VARIANT: Record<StatusPericia, "default" | "secondary" | "outline" 
   cancelada: "destructive",
 };
 
-export const Route = createFileRoute("/app/peritos/$id")({
+export const Route = createFileRoute("/app/peritos/$id/")({
   loader: ({ params }): {
     perito: Perito;
     periciasDoPerito: Pericia[];

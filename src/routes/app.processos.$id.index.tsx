@@ -62,7 +62,7 @@ const STATUS_PERICIA_LABEL: Record<StatusPericia, string> = {
   cancelada: "Cancelada",
 };
 
-export const Route = createFileRoute("/app/processos/$id")({
+export const Route = createFileRoute("/app/processos/$id/")({
   loader: ({ params }) => {
     const processo = processos.find((p) => p.id === params.id);
     if (!processo) throw notFound();
