@@ -16,21 +16,18 @@ export const GuestDemoButton = React.forwardRef<HTMLButtonElement, Props>(
     const navigate = useNavigate();
     const { signInAsGuest } = useSession();
 
+    const handle = (e: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(e);
+      if (e.defaultPrevented) return;
+      signInAsGuest();
+      toast.info("Modo convidado ativo", {
+        description: "Todos os dados exibidos são fictícios.",
+      });
+      navigate({ to: redirectTo });
+    };
+
     return (
-      <button
-        ref={ref}
-        type="button"
-        onClick={(e) => {
-          onClick?.(e);
-          if (e.defaultPrevented) return;
-          signInAsGuest();
-          toast.info("Modo convidado ativo", {
-            description: "Todos os dados exibidos são fictícios.",
-          });
-          navigate({ to: redirectTo });
-        }}
-        {...rest}
-      >
+      <button ref={ref} type="button" {...rest} onClick={handle}>
         {children}
       </button>
     );
