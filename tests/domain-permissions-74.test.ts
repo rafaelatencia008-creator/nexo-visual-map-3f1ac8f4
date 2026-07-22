@@ -345,12 +345,14 @@ async function assertNoSideEffect(
   attemptDenied: () => Promise<void>,
   runOwnerA: (env: MockDomainEnvironment) => Promise<unknown>,
   runOwnerB: (env: MockDomainEnvironment) => Promise<unknown>,
-  envA: MockDomainEnvironment,
+  leituraEnv: MockDomainEnvironment,
 ): Promise<void> {
-  const snapBefore = envA.snapshot();
+  const snapBefore = leituraEnv.snapshot();
   await attemptDenied();
-  const snapAfter = envA.snapshot();
+  const snapAfter = leituraEnv.snapshot();
   expect(snapshotEqual(snapBefore, snapAfter)).toBe(true);
+  // Provas em dois ambientes limpos e independentes: mesmo input → mesma saída.
+  const envA = createMockDomainEnvironment();
   const envB = createMockDomainEnvironment();
   const a = await runOwnerA(envA);
   const b = await runOwnerB(envB);
