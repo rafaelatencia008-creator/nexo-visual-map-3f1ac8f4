@@ -226,7 +226,7 @@ function ProdutoPage() {
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link to="/app">Ver painel de demonstração</Link>
+                  <GuestDemoButton>Ver painel de demonstração</GuestDemoButton>
                 </Button>
               </div>
             </div>
