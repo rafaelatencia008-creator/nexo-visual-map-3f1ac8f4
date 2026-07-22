@@ -131,6 +131,33 @@ function DashboardPage() {
   const atrasadas = ALL_PEND.filter((p) => p.status === "atrasada").length;
 
   return (
+    <DashboardBody
+      dataFormatada={dataFormatada}
+      kpis={kpis}
+      proximosPrazos={proximosPrazos}
+      atividades={atividades}
+      pendenciasAtivas={pendenciasAtivas}
+      totalPendencias={totalPendencias}
+      atrasadas={atrasadas}
+    />
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DashboardBody(props: any) {
+  const {
+    dataFormatada,
+    kpis,
+    proximosPrazos,
+    atividades,
+    pendenciasAtivas,
+    totalPendencias,
+    atrasadas,
+  } = props;
+  const { session } = useSession();
+  const currentContext = getContextById(session?.currentContextId);
+
+  return (
     <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -149,6 +176,37 @@ function DashboardPage() {
           Demonstração visual
         </Badge>
       </header>
+
+      {/* Resumo da sessão / contexto */}
+      {currentContext && (
+        <Card className="border-border/70">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                  Contexto atual
+                </p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {currentContext.nome}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {WORK_MODE_LABEL[currentContext.tipo]}
+                  {session?.perfil ? ` · ${PERFIL_LABEL[session.perfil]}` : ""}
+                  {session?.role ? ` · ${ROLE_LABEL[session.role]}` : ""}
+                  {session?.mode === "guest" ? " · Modo convidado" : " · Sessão simulada"}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild className="w-fit">
+              <Link to="/selecionar-contexto">Trocar contexto</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* KPIs */}
       <section aria-label="Indicadores">
