@@ -97,40 +97,47 @@ function PeritosPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map((perito) => (
-            <Card key={perito.id} className="h-full transition-shadow hover:shadow-md">
-              <CardContent className="space-y-4 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <UserCog className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-semibold text-foreground">
-                      {perito.nome}
-                    </h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="text-[10px]">
-                        {ESPECIALIDADE_LABEL[perito.especialidade]}
-                      </Badge>
+            <Link
+              key={perito.id}
+              to="/app/peritos/$id"
+              params={{ id: perito.id }}
+              className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="h-full transition-shadow hover:shadow-md">
+                <CardContent className="space-y-4 p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <UserCog className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-semibold text-foreground">
+                        {perito.nome}
+                      </h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {ESPECIALIDADE_LABEL[perito.especialidade]}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-1.5 border-t border-border/60 pt-3 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{perito.registroProfissional}</span>
+                  <div className="space-y-1.5 border-t border-border/60 pt-3 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{perito.registroProfissional}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{perito.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formatPhone(perito.telefone)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{perito.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <span>{formatPhone(perito.telefone)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
