@@ -9,6 +9,8 @@ import type { ServiceResult } from "../src/domain/services/result";
 import type { CaseService } from "../src/domain/services/case-service";
 import {
   buildCreateCaseInput,
+  decideProcessCreateExit,
+  type ProcessCreateExitDecision,
   type ProcessCreateFormValues,
 } from "../src/features/processos/process-create-model";
 
