@@ -38,10 +38,10 @@ void _badStatus;
 // 3) Confidencialidade só aceita ConfidentialityLevel (ou "all").
 const _okConf: ConfidentialityLevel = "standard";
 void _okConf;
-// @ts-expect-error nível desconhecido
 const _badConf: ProcessListFilterInput = {
   search: "",
   status: "all",
+  // @ts-expect-error nível desconhecido
   confidentiality: "sigiloso",
   sortId: "x",
 };
