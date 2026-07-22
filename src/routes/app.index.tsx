@@ -234,7 +234,8 @@ function DashboardPage() {
                   return (
                     <li key={p.id}>
                       <Link
-                        to={`/app/pericias/${p.id}`}
+                        to="/app/pericias/$id"
+                        params={{ id: p.id }}
                         className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
                       >
                         <div className="min-w-0 flex-1">
