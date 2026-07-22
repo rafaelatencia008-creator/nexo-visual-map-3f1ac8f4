@@ -46,6 +46,26 @@ function computeSignature(queryKey: string, limit: number): string {
   return hashSignature(`${queryKey}|limit=${limit}`);
 }
 
+/**
+ * Serialização estável (chaves ordenadas) para compor a assinatura da
+ * consulta a partir de filtros, ordenação e escopo.
+ */
+export function stableStringify(v: unknown): string {
+  if (v === null || v === undefined) return JSON.stringify(v ?? null);
+  if (typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
+  const obj = v as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return (
+    "{" +
+    keys
+      .filter((k) => obj[k] !== undefined)
+      .map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k]))
+      .join(",") +
+    "}"
+  );
+}
+
 export function paginateItems<T>(
   items: readonly T[],
   page: unknown,
