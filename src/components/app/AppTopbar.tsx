@@ -15,6 +15,7 @@ import { QuickActionsMenu } from "@/components/app/QuickActions";
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
   const { session } = useSession();
+  const { toggleSidebar } = useSidebar();
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   const currentContext = getContextById(session?.currentContextId);
