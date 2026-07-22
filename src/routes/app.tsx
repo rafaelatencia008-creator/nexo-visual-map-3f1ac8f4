@@ -19,17 +19,19 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   return (
     <AuthGate>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="min-h-screen bg-muted/20">
-          <AppTopbar />
-          {/* pb-24 sm:pb-8 evita que a barra inferior cubra conteúdo no celular */}
-          <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-8 lg:p-8 lg:pb-10">
-            <Outlet />
-          </main>
-          <BottomNav />
-        </SidebarInset>
-      </SidebarProvider>
+      <MockDomainProvider>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset className="min-h-screen bg-muted/20">
+            <AppTopbar />
+            {/* pb-24 sm:pb-8 evita que a barra inferior cubra conteúdo no celular */}
+            <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-8 lg:p-8 lg:pb-10">
+              <Outlet />
+            </main>
+            <BottomNav />
+          </SidebarInset>
+        </SidebarProvider>
+      </MockDomainProvider>
     </AuthGate>
   );
 }
