@@ -1,25 +1,32 @@
 /**
  * LV-08.3 — testes do resumo e checklist de prontidão de Processo.
+ * LV-08.3.1 — testes adicionais de auditoria da rota, isCaseId,
+ * carregamento paralelo e permissão real de papel `leitura`.
  *
  * Somente funções puras e superfície pública dos serviços do domínio.
  * Não renderiza React, não usa storage.
  */
 
 import { describe, it, expect } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createMockDomainEnvironment } from "../src/domain/mocks";
 import {
+  SEED_ASSIGN_ALFA_1_ID,
   SEED_CASE_ALFA_1_ID,
   SEED_CASE_ALFA_2_ID,
   SEED_CASE_BETA_1_ID,
   SEED_MEM_ALFA_OWNER_ID,
   SEED_ORG_ALFA_ID,
   SEED_USER_1_ID,
+  SEED_USER_3_ID,
 } from "../src/domain/mocks/seed";
 import { isActionAllowedForRole } from "../src/domain/mocks/permission-mock";
 import type { ServiceContext } from "../src/domain/services/context";
 import type { ServiceError } from "../src/domain/services/result";
 import { CASE_READINESS_ISSUES } from "../src/domain/services/case-service";
 import type { Case } from "../src/domain/core/case";
+import { isCaseId } from "../src/domain/core/ids";
 import {
   CASE_READINESS_DESCRIPTIONS_PT,
   CASE_READINESS_LABELS_PT,
