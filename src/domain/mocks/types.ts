@@ -26,6 +26,7 @@ import type {
   RelationshipService,
 } from "../services/person-service";
 import type { AssignmentService } from "../services/assignment-service";
+import type { PermissionPolicy } from "../services/permissions";
 
 export type MockDomainServices = Readonly<{
   organization: OrganizationService;
@@ -38,6 +39,7 @@ export type MockDomainServices = Readonly<{
   casePersons: CasePersonService;
   relationships: RelationshipService;
   assignments: AssignmentService;
+  permissions: PermissionPolicy;
 }>;
 
 export type MockDomainSnapshot = Readonly<{

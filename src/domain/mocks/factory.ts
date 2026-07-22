@@ -28,6 +28,18 @@ import {
   createRelationshipServiceMock,
 } from "./person-mock";
 import { createAssignmentServiceMock } from "./assignment-mock";
+import { createPermissionPolicyMock } from "./permission-mock";
+import {
+  guardOrganizationService,
+  guardMembershipService,
+  guardProfessionalProfileService,
+  guardCredentialService,
+  guardCaseService,
+  guardPersonService,
+  guardCasePersonService,
+  guardRelationshipService,
+  guardAssignmentService,
+} from "./permission-guards";
 import {
   MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS,
   type MockDomainEnvironment,
@@ -114,16 +126,41 @@ export function createMockDomainEnvironment(
   loadSeed(store);
 
   const services: MockDomainServices = Object.freeze({
-    organization: createOrganizationServiceMock(store, clock),
+    organization: guardOrganizationService(
+      store,
+      createOrganizationServiceMock(store, clock),
+    ),
     currentUser: createCurrentUserServiceMock(store),
-    memberships: createMembershipServiceMock(store, clock, ids),
-    professionalProfiles: createProfessionalProfileServiceMock(store, clock, ids),
-    credentials: createCredentialServiceMock(store, clock, ids),
-    cases: createCaseServiceMock(store, clock, ids),
-    persons: createPersonServiceMock(store, clock, ids),
-    casePersons: createCasePersonServiceMock(store, clock, ids),
-    relationships: createRelationshipServiceMock(store, clock, ids),
-    assignments: createAssignmentServiceMock(store, clock, ids),
+    memberships: guardMembershipService(
+      store,
+      createMembershipServiceMock(store, clock, ids),
+    ),
+    professionalProfiles: guardProfessionalProfileService(
+      store,
+      createProfessionalProfileServiceMock(store, clock, ids),
+    ),
+    credentials: guardCredentialService(
+      store,
+      createCredentialServiceMock(store, clock, ids),
+    ),
+    cases: guardCaseService(store, createCaseServiceMock(store, clock, ids)),
+    persons: guardPersonService(
+      store,
+      createPersonServiceMock(store, clock, ids),
+    ),
+    casePersons: guardCasePersonService(
+      store,
+      createCasePersonServiceMock(store, clock, ids),
+    ),
+    relationships: guardRelationshipService(
+      store,
+      createRelationshipServiceMock(store, clock, ids),
+    ),
+    assignments: guardAssignmentService(
+      store,
+      createAssignmentServiceMock(store, clock, ids),
+    ),
+    permissions: createPermissionPolicyMock(store),
   });
 
   return Object.freeze({
