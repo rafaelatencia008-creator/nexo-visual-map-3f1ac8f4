@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Gavel, Calendar, Plus, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { APP_NAV } from "@/lib/app-nav";
+import { Logo } from "@/components/brand/Logo";
 import { QUICK_ACTIONS } from "@/components/app/QuickActions";
 
 type Item = {
