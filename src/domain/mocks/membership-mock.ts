@@ -75,7 +75,8 @@ export function createMembershipServiceMock(
             ? (m: Membership) => m.status
             : (m: Membership) => m.metadata.createdAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `membership-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateMembershipInput) {
       const v = requireContext(store, context);
