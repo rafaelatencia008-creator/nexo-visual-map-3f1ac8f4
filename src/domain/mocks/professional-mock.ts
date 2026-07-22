@@ -251,7 +251,8 @@ export function createCredentialServiceMock(
         (c) => c.metadata.createdAt,
         "asc",
       );
-      return paginateItems(items, page);
+      const queryKey = `credential-listByProf|org=${orgId}|prof=${professionalProfileId}`;
+      return paginateItems(items, page, queryKey);
     },
     async create(context, input: CreateCredentialInput) {
       const v = requireContext(store, context);
