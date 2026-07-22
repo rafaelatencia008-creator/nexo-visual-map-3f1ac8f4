@@ -864,7 +864,7 @@ describe("LV-07.3.1 — MembershipService", () => {
     const next = unwrapOk(
       await env.services.memberships.changeRole(ctxAlfaOwner, {
         membershipId: SEED_MEM_ALFA_SUSPENDED_ID,
-        role: "convidado",
+        role: "leitura",
         expectedVersion: cur.metadata.version,
       }),
     );
