@@ -49,7 +49,7 @@ import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
-import { paginateItems } from "./pagination-mock";
+import { paginateItems, stableStringify } from "./pagination-mock";
 import { sortStable } from "./sort";
 import { validateSort } from "./sort-validation";
 
