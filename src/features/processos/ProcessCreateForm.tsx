@@ -307,7 +307,7 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
             <Button
               type="button"
               variant="outline"
-              onClick={requestCancel}
+              onClick={requestExit}
               disabled={disabled}
               className="w-full sm:w-auto"
             >
