@@ -73,7 +73,7 @@ export const NEXO_PWA_MANIFEST = {
 export const NEXO_PWA_WORKBOX = {
   cleanupOutdatedCaches: true,
   navigateFallback: null,
-  globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2}"],
+  globPatterns: ["**/*.{js,css,svg,png,ico,woff,woff2}"],
   // Nunca cachear payloads dinâmicos — nem via runtime, nem via injeção.
   runtimeCaching: [],
 } as const satisfies Partial<GenerateSWOptions>;
