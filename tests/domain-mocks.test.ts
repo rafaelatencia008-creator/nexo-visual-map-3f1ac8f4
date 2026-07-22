@@ -868,7 +868,7 @@ describe("LV-07.3.1 — MembershipService", () => {
         expectedVersion: cur.metadata.version,
       }),
     );
-    expect(next.role).toBe("convidado");
+    expect(next.role).toBe("leitura");
     expect(next.metadata.version).toBe(cur.metadata.version + 1);
   });
   it("MB04 filtro por papel", async () => {
