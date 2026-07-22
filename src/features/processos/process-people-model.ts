@@ -34,6 +34,7 @@ import type {
   UpdateRelationshipInput,
 } from "@/domain/services/inputs";
 import type { ServiceError } from "@/domain/services/result";
+import type { PermissionAction } from "@/domain/services/permissions";
 
 // ---- Rótulos oficiais ------------------------------------------------------
 
