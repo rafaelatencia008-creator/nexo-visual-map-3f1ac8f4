@@ -17,7 +17,8 @@ import {
   type CaseDetailPublicError,
 } from "@/features/processos/process-detail-model";
 import { isCaseId } from "@/domain/core/ids";
-import type { Case, CaseId } from "@/domain/core/case";
+import type { Case } from "@/domain/core/case";
+import type { CaseId } from "@/domain/core/ids";
 import type { ServiceError } from "@/domain/services/result";
 import type { CaseReadinessView } from "@/domain/services/case-service";
 
