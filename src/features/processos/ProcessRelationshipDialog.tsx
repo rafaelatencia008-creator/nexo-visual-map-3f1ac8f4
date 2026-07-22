@@ -47,6 +47,7 @@ export type ProcessRelationshipDialogProps = Readonly<{
     toPersonId: PersonId;
     type: RelationshipType;
   }) => void;
+  onReloadFromConflict: () => void;
   onCancel: () => void;
 }>;
 
