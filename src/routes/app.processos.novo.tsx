@@ -1,7 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { useMockDomain } from "@/components/app/MockDomainProvider";
 import { ProcessCreateForm } from "@/features/processos/ProcessCreateForm";
 import {
@@ -48,28 +46,8 @@ function NovoProcessoPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" className="gap-2" asChild>
-          <Link to="/app/processos">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Voltar para processos
-          </Link>
-        </Button>
-      </div>
-
-      <header>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-          Novo processo
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cadastre as informações iniciais para começar a organizar o trabalho pericial.
-        </p>
-      </header>
-
-      <div className="max-w-3xl">
-        <ProcessCreateForm onSubmit={handleSubmit} onCancel={goToList} />
-      </div>
+    <div className="max-w-3xl">
+      <ProcessCreateForm onSubmit={handleSubmit} onCancel={goToList} />
     </div>
   );
 }

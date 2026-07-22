@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ import { CONFIDENTIALITY_LABELS_PT } from "@/features/processos/process-list-mod
 import {
   PROCESS_CREATE_INITIAL_VALUES,
   buildCreateCaseInput,
+  decideProcessCreateExit,
   processCreateSchema,
   type ProcessCreateFieldName,
   type ProcessCreateFormValues,
@@ -105,9 +106,13 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
     }
   });
 
-  const requestCancel = () => {
-    if (submitting) return;
-    if (form.formState.isDirty) {
+  const requestExit = () => {
+    const decision = decideProcessCreateExit({
+      isDirty: form.formState.isDirty,
+      isSubmitting: submitting,
+    });
+    if (decision === "blocked") return;
+    if (decision === "confirm") {
       setConfirmOpen(true);
       return;
     }
@@ -122,7 +127,29 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
   const disabled = submitting;
 
   return (
-    <>
+    <div className="space-y-6">
+      <div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={requestExit}
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Voltar para processos
+        </Button>
+      </div>
+
+      <header>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+          Novo processo
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Cadastre as informações iniciais para começar a organizar o trabalho pericial.
+        </p>
+      </header>
+
       <Form {...form}>
         <form
           onSubmit={handleFormSubmit}
@@ -280,7 +307,7 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
             <Button
               type="button"
               variant="outline"
-              onClick={requestCancel}
+              onClick={requestExit}
               disabled={disabled}
               className="w-full sm:w-auto"
             >
@@ -324,6 +351,6 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

@@ -130,3 +130,15 @@ export function mapCreateCaseError(error: ServiceError): ProcessCreatePublicErro
       return { message: GENERIC_MESSAGE };
   }
 }
+
+// ---- Decisão pura de saída do formulário ----------------------------------
+
+export type ProcessCreateExitDecision = "leave" | "confirm" | "blocked";
+
+export function decideProcessCreateExit(
+  input: Readonly<{ isDirty: boolean; isSubmitting: boolean }>,
+): ProcessCreateExitDecision {
+  if (input.isSubmitting) return "blocked";
+  if (input.isDirty) return "confirm";
+  return "leave";
+}
