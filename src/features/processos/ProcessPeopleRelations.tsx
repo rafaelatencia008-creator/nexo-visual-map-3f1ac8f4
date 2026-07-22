@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useMockDomain } from "@/components/app/MockDomainProvider";
 import type { Case } from "@/domain/core/case";
 import type { Person } from "@/domain/core/person";
@@ -118,9 +118,9 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
         }),
       );
       const [casePeopleRes, relsRes, personsRes, ...permResults] = await Promise.all([
-        environment.services.casePersons.listByCase(context, caseId, { first: 200 }),
-        environment.services.relationships.listByCase(context, caseId, { first: 200 }),
-        environment.services.persons.list(context, { page: { first: 500 } }),
+        environment.services.casePersons.listByCase(context, caseId, { limit: 100 }),
+        environment.services.relationships.listByCase(context, caseId, { limit: 100 }),
+        environment.services.persons.list(context, { page: { limit: 100 } }),
         ...permissionPromises,
       ]);
 
@@ -248,7 +248,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
             return;
           }
         }
-        toast({ title: "Vínculo atualizado." });
+        toast.success("Vínculo atualizado.");
       } else if (mode.kind === "link-existing") {
         if (!values.personId) return;
         const r = await environment.services.casePersons.create(
@@ -270,7 +270,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
           });
           return;
         }
-        toast({ title: "Pessoa vinculada ao processo." });
+        toast.success("Pessoa vinculada ao processo.");
       } else {
         // create-and-link
         const created = await environment.services.persons.create(
@@ -310,7 +310,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
           });
           return;
         }
-        toast({ title: "Pessoa cadastrada e vinculada." });
+        toast.success("Pessoa cadastrada e vinculada.");
       }
       setPersonDialog({ kind: "closed" });
       void loadAll("refresh");
@@ -352,7 +352,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
         });
         return;
       }
-      toast({ title: "Relação atualizada." });
+      toast.success("Relação atualizada.");
     } else {
       const r = await environment.services.relationships.create(
         context,
@@ -367,7 +367,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
         });
         return;
       }
-      toast({ title: "Relação registrada." });
+      toast.success("Relação registrada.");
     }
     setRelDialog({ kind: "closed" });
     void loadAll("refresh");
@@ -404,7 +404,7 @@ export function ProcessPeopleRelations({ case: c }: ProcessPeopleRelationsProps)
       setConfirm({ kind: "closed" });
       return;
     }
-    toast({ title: "Removido com sucesso." });
+    toast.success("Removido com sucesso.");
     setConfirm({ kind: "closed" });
     void loadAll("refresh");
   };

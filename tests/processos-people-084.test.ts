@@ -150,11 +150,11 @@ describe("LV-08.4 · buildLinkedCasePeopleView", () => {
     const env = createMockDomainEnvironment();
     const cps = unwrap(
       await env.services.casePersons.listByCase(ALFA_CTX, SEED_CASE_ALFA_2_ID, {
-        first: 100,
+        limit: 100,
       }),
     ).items;
     const persons = unwrap(
-      await env.services.persons.list(ALFA_CTX, { page: { first: 100 } }),
+      await env.services.persons.list(ALFA_CTX, { page: { limit: 100 } }),
     ).items;
     const { views, unresolved } = buildLinkedCasePeopleView(cps, persons);
     expect(unresolved.length).toBe(0);
@@ -192,15 +192,15 @@ describe("LV-08.4 · buildRelationshipViews", () => {
     const env = createMockDomainEnvironment();
     const cps = unwrap(
       await env.services.casePersons.listByCase(ALFA_CTX, SEED_CASE_ALFA_2_ID, {
-        first: 100,
+        limit: 100,
       }),
     ).items;
     const persons = unwrap(
-      await env.services.persons.list(ALFA_CTX, { page: { first: 100 } }),
+      await env.services.persons.list(ALFA_CTX, { page: { limit: 100 } }),
     ).items;
     const rels = unwrap(
       await env.services.relationships.listByCase(ALFA_CTX, SEED_CASE_ALFA_2_ID, {
-        first: 100,
+        limit: 100,
       }),
     ).items;
     const linked = buildLinkedCasePeopleView(cps, persons).views;
@@ -643,7 +643,7 @@ describe("LV-08.4 · integração cases/persons/relationships", () => {
       await env.services.casePersons.listByCase(
         ALFA_READ_CTX,
         SEED_CASE_ALFA_2_ID,
-        { first: 100 },
+        { limit: 100 },
       ),
     );
     expect(list.items.length).toBe(2);
