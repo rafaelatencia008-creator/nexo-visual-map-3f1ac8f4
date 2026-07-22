@@ -34,6 +34,7 @@ import type {
   UpdateRelationshipInput,
 } from "@/domain/services/inputs";
 import type { ServiceError } from "@/domain/services/result";
+import type { PermissionAction } from "@/domain/services/permissions";
 
 // ---- Rótulos oficiais ------------------------------------------------------
 
@@ -449,9 +450,31 @@ export const PEOPLE_WRITE_ACTIONS = [
   "relationship.create",
   "relationship.update",
   "relationship.remove",
-] as const;
+] as const satisfies readonly PermissionAction[];
 
 export type PeopleWriteAction = (typeof PEOPLE_WRITE_ACTIONS)[number];
+
+/**
+ * Ações de escrita que se referem a `Person` (organizacional) — nunca recebem
+ * `caseId` na avaliação de permissão.
+ */
+export const PEOPLE_PERSON_ACTIONS = [
+  "person.create",
+  "person.update",
+] as const satisfies readonly PeopleWriteAction[];
+
+/**
+ * Ações de escrita que se referem a um processo específico — sempre recebem
+ * `caseId` na avaliação de permissão.
+ */
+export const PEOPLE_CASE_ACTIONS = [
+  "casePerson.create",
+  "casePerson.update",
+  "casePerson.remove",
+  "relationship.create",
+  "relationship.update",
+  "relationship.remove",
+] as const satisfies readonly PeopleWriteAction[];
 
 export type PeoplePermissions = Readonly<Record<PeopleWriteAction, boolean>>;
 
@@ -466,4 +489,43 @@ export function emptyPeoplePermissions(): PeoplePermissions {
     "relationship.update": false,
     "relationship.remove": false,
   };
+}
+
+/**
+ * Cria um `PeoplePermissions` a partir de pares `[ação, permitido]` sem cast.
+ */
+export function buildPeoplePermissions(
+  entries: Iterable<readonly [PeopleWriteAction, boolean]>,
+): PeoplePermissions {
+  const out: Record<PeopleWriteAction, boolean> = {
+    "person.create": false,
+    "person.update": false,
+    "casePerson.create": false,
+    "casePerson.update": false,
+    "casePerson.remove": false,
+    "relationship.create": false,
+    "relationship.update": false,
+    "relationship.remove": false,
+  };
+  for (const [k, v] of entries) out[k] = v;
+  return out;
+}
+
+// ---- Coleta de IDs distintos ---------------------------------------------
+
+/**
+ * Retorna os `personId` presentes nos vínculos, sem duplicatas, preservando
+ * a ordem da primeira ocorrência.
+ */
+export function collectDistinctLinkedPersonIds(
+  casePeople: readonly CasePerson[],
+): readonly PersonId[] {
+  const seen = new Set<PersonId>();
+  const out: PersonId[] = [];
+  for (const cp of casePeople) {
+    if (seen.has(cp.personId)) continue;
+    seen.add(cp.personId);
+    out.push(cp.personId);
+  }
+  return out;
 }

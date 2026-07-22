@@ -47,6 +47,7 @@ export type ProcessRelationshipDialogProps = Readonly<{
     toPersonId: PersonId;
     type: RelationshipType;
   }) => void;
+  onReloadFromConflict: () => void;
   onCancel: () => void;
 }>;
 
@@ -57,6 +58,7 @@ export function ProcessRelationshipDialog({
   submitting,
   error,
   onSubmit,
+  onReloadFromConflict,
   onCancel,
 }: ProcessRelationshipDialogProps) {
   const initialFrom: PersonId | "" =
@@ -186,10 +188,21 @@ export function ProcessRelationshipDialog({
           <Button variant="ghost" onClick={onCancel} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={!canSubmit}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar
-          </Button>
+          {error?.kind === "conflict" ? (
+            <Button onClick={onReloadFromConflict}>
+              Recarregar pessoas e relações
+            </Button>
+          ) : (
+            <Button onClick={submit} disabled={!canSubmit}>
+              {submitting && (
+                <Loader2
+                  className="mr-2 h-4 w-4 animate-spin"
+                  aria-hidden="true"
+                />
+              )}
+              Salvar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
