@@ -98,7 +98,8 @@ export function createCaseServiceMock(
                 ? (c: Case) => c.metadata.createdAt
                 : (c: Case) => c.metadata.updatedAt;
       items = sortStable(items, pick, dir);
-      return paginateItems(items, request.page);
+      const queryKey = `case-list|org=${orgId}|f=${stableStringify(request.filter)}|sortBy=${field}|sortDir=${dir}`;
+      return paginateItems(items, request.page, queryKey);
     },
     async create(context, input: CreateCaseInput) {
       const v = requireContext(store, context);
