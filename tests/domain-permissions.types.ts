@@ -1,6 +1,7 @@
 /**
- * LV-07.4 — provas de tipo. Não roda testes; apenas força o compilador
- * a verificar contratos. Nenhum `any`, nenhum cast tautológico.
+ * LV-07.4 (+ LV-07.4.1) — provas de tipo.
+ * Não roda testes; apenas força o compilador a verificar contratos.
+ * Nenhum `any`, nenhum cast tautológico.
  */
 
 import type {
@@ -15,6 +16,7 @@ import type {
   MockDomainEnvironment,
   MockDomainServices,
 } from "../src/domain/mocks";
+import type { PermissionMatrix } from "../src/domain/mocks/permission-mock";
 
 // 1) `services.permissions` satisfaz `PermissionPolicy`.
 declare const env: MockDomainEnvironment;
@@ -44,13 +46,19 @@ declare const cid: CaseId;
 const _okReq: PermissionRequest = { action: "case.read", caseId: cid };
 void _okReq;
 
-// 5) O ambiente não expõe store, clock ou gerador de IDs.
+// 5) O ambiente não expõe store, clock, gerador de IDs, nem a matriz.
 // @ts-expect-error store não é público
 env.store;
 // @ts-expect-error clock não é público
 env.clock;
 // @ts-expect-error ids não é público
 env.ids;
+// @ts-expect-error o ambiente não expõe a matriz
+env.permissionMatrix;
+// @ts-expect-error services não expõe a matriz
+env.services.permissionMatrix;
+// @ts-expect-error services não expõe o objeto interno da matriz
+env.services.permissions.matrix;
 
 // 6) `MockDomainServices.permissions` é declarado como PermissionPolicy.
 type _AssertHasPermissions = MockDomainServices["permissions"] extends PermissionPolicy
@@ -66,8 +74,7 @@ void _r;
 const _badRole: Role = "hacker";
 void _badRole;
 
-// 8) A propriedade `permissions` no `services` é acessível apenas por leitura
-//    (o objeto todo é `Readonly`).
+// 8) A propriedade `permissions` no `services` é readonly.
 // @ts-expect-error services é Readonly — não permite substituição de propriedade
 env.services.permissions = env.services.permissions;
 
@@ -75,5 +82,33 @@ env.services.permissions = env.services.permissions;
 import { PERMISSION_ACTIONS } from "../src/domain/services/permissions";
 const _actionSample: PermissionAction = PERMISSION_ACTIONS[0]!;
 void _actionSample;
+
+// 10) `PermissionMatrix` — provas de tipo do formato público da matriz.
+declare const matrix: PermissionMatrix;
+
+const _caseReadRoles: readonly Role[] = matrix["case.read"];
+void _caseReadRoles;
+
+// @ts-expect-error ação desconhecida não pertence à matriz
+matrix["unknown.action"];
+
+// @ts-expect-error arrays da matriz são readonly
+matrix["case.read"].push("leitura");
+
+// O valor da matriz continua privado ao módulo — não há export runtime.
+import * as PermissionMockModule from "../src/domain/mocks/permission-mock";
+type _Exports = keyof typeof PermissionMockModule;
+// A união de exports pode conter apenas nomes de funções/tipos permitidos.
+type _Allowed = "isActionAllowedForRole" | "createPermissionPolicyMock";
+// Nenhum export chamado `PERMISSION_MATRIX` pode existir:
+type _NoMatrixExport = Extract<_Exports, "PERMISSION_MATRIX"> extends never
+  ? true
+  : false;
+const _noMatrix: _NoMatrixExport = true;
+void _noMatrix;
+// A união concreta deve estar contida no conjunto permitido:
+type _OnlyAllowed = _Exports extends _Allowed ? true : false;
+const _onlyAllowed: _OnlyAllowed = true;
+void _onlyAllowed;
 
 export {};

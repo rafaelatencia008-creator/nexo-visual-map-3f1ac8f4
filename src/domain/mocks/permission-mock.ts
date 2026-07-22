@@ -1,11 +1,16 @@
 /**
- * Política mock de permissões — LV-07.4.
+ * Política mock de permissões — LV-07.4 (+ LV-07.4.1).
  *
  * Fonte única da matriz provisória. Não representa RLS, autenticação real
  * nem regras finais por profissão; existe apenas para validar fluxos locais
  * e impedir escrita por perfis somente-leitura.
  *
- * A matriz é privada a este módulo; nenhum consumidor pode mutá-la.
+ * A matriz é **privada a este módulo**: nem o valor `PERMISSION_MATRIX`
+ * nem os arrays de papéis (`ALL_ROLES`, `ADMIN_ROLES`, `WRITE_ROLES`) são
+ * exportados. Apenas o **tipo** `PermissionMatrix` é público (para provas
+ * de tipo em testes) e a função `isActionAllowedForRole`, consumida pelos
+ * guards internos. Os arrays estão congelados em runtime (`Object.freeze`)
+ * e o objeto da matriz também.
  */
 
 import {
@@ -22,25 +27,34 @@ import type { ServiceResult } from "../services/result";
 import type { MockStore } from "./store";
 import { requireContext } from "./context-validation";
 
-// ---- Grupos de papéis ------------------------------------------------------
+// ---- Tipo público exclusivamente para provas de tipo ----------------------
 
-const ALL_ROLES: readonly Role[] = ROLES;
-const ADMIN_ROLES: readonly Role[] = ["proprietario", "administrador"];
-const WRITE_ROLES: readonly Role[] = [
+export type PermissionMatrix = Readonly<
+  Record<PermissionAction, readonly Role[]>
+>;
+
+// ---- Grupos de papéis (congelados em runtime) -----------------------------
+
+const ALL_ROLES: readonly Role[] = Object.freeze([...ROLES]);
+const ADMIN_ROLES: readonly Role[] = Object.freeze([
+  "proprietario",
+  "administrador",
+]);
+const WRITE_ROLES: readonly Role[] = Object.freeze([
   "proprietario",
   "administrador",
   "profissional",
   "revisor",
   "colaborador",
-];
+]);
 
-// ---- Matriz --------------------------------------------------------------
+// ---- Matriz privada -------------------------------------------------------
 // `satisfies` garante em compilação:
 //   - todas as ações de PERMISSION_ACTIONS estão presentes;
 //   - nenhuma chave desconhecida;
 //   - arrays de Role[] readonly.
 
-const PERMISSION_MATRIX = {
+const PERMISSION_MATRIX = Object.freeze({
   "organization.read": ALL_ROLES,
   "organization.update": ADMIN_ROLES,
 
@@ -89,17 +103,15 @@ const PERMISSION_MATRIX = {
   "assignment.create": WRITE_ROLES,
   "assignment.update": WRITE_ROLES,
   "assignment.changeStatus": WRITE_ROLES,
-} as const satisfies Readonly<Record<PermissionAction, readonly Role[]>>;
+}) satisfies PermissionMatrix;
 
-// ---- Consulta pura (não expõe a matriz) ------------------------------------
+// ---- Consulta pura (não expõe a matriz) -----------------------------------
 
 export function isActionAllowedForRole(
   action: PermissionAction,
   role: Role,
 ): boolean {
-  const list = (PERMISSION_MATRIX as Readonly<Record<PermissionAction, readonly Role[]>>)[
-    action
-  ];
+  const list = (PERMISSION_MATRIX as PermissionMatrix)[action];
   return list.includes(role);
 }
 
@@ -119,7 +131,7 @@ export function isActionAllowedForRole(
   }
 }
 
-// ---- Fábrica pública -------------------------------------------------------
+// ---- Fábrica pública ------------------------------------------------------
 
 export function createPermissionPolicyMock(store: MockStore): PermissionPolicy {
   return {

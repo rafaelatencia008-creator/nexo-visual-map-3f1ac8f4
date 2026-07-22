@@ -638,35 +638,42 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
 
 // ============================================================================
 // 3) Registro literal do TanStack React Start (somente leitura)
+//    Verificação apontada exclusivamente para a fonte estável
+//    src/tanstack-start-register.d.ts. Não abre, lê ou depende de
+//    src/routeTree.gen.ts.
 // ============================================================================
 
 function countOccurrences(source: string, value: string): number {
   return source.split(value).length - 1;
 }
 
-describe("LV-07.3.3 — registro do TanStack React Start", () => {
-  it("routeTree.gen.ts contém o registro completo do React Start", async () => {
+describe("LV-07.4.1 — registro estável do TanStack React Start", () => {
+  it("src/tanstack-start-register.d.ts contém o registro completo — uma única vez cada elemento", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const filePath = path.resolve(process.cwd(), "src/routeTree.gen.ts");
-    const src = fs.readFileSync(filePath, "utf8");
-    expect(src).toContain("declare module '@tanstack/react-start'");
-    expect(src).toContain("interface Register");
-    expect(src).toContain("ssr: true");
-    expect(src).toContain("router: Awaited<ReturnType<typeof getRouter>>");
-    expect(src).toContain(
-      "config: Awaited<ReturnType<typeof startInstance.getOptions>>",
+    const filePath = path.resolve(
+      process.cwd(),
+      "src/tanstack-start-register.d.ts",
     );
-    expect(
-      countOccurrences(src, "import type { getRouter } from './router.tsx'"),
-    ).toBe(1);
-    expect(
-      countOccurrences(src, "import type { startInstance } from './start.ts'"),
-    ).toBe(1);
-    expect(
-      countOccurrences(src, "declare module '@tanstack/react-start'"),
-    ).toBe(1);
+    const src = fs.readFileSync(filePath, "utf8");
+
+    expect(countOccurrences(src, "import type { getRouter }")).toBe(1);
+    expect(countOccurrences(src, "import type { startInstance }")).toBe(1);
+    expect(countOccurrences(src, 'declare module "@tanstack/react-start"')).toBe(
+      1,
+    );
     expect(countOccurrences(src, "interface Register")).toBe(1);
+    expect(countOccurrences(src, "ssr: true")).toBe(1);
+    expect(
+      countOccurrences(src, "router: Awaited<ReturnType<typeof getRouter>>"),
+    ).toBe(1);
+    expect(
+      countOccurrences(
+        src,
+        "config: Awaited<ReturnType<typeof startInstance.getOptions>>",
+      ),
+    ).toBe(1);
   });
 });
+
 
