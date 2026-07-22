@@ -277,3 +277,92 @@ describe("PWA-01 · áreas seguras", () => {
     expect(src).toContain("pt-[env(safe-area-inset-top)]");
   });
 });
+
+// ------------------------------------------------------------------
+// PWA-01.1 — precache seguro (sem HTML)
+// ------------------------------------------------------------------
+
+/** Extrai o conjunto de extensões declaradas em padrões `**\/*.{a,b,c}`. */
+function extractGlobExtensions(patterns: readonly string[]): Set<string> {
+  const exts = new Set<string>();
+  for (const raw of patterns) {
+    const pattern = raw.toLowerCase();
+    const braceMatch = pattern.match(/\{([^}]+)\}/);
+    if (braceMatch) {
+      for (const ext of braceMatch[1].split(",")) {
+        exts.add(ext.trim());
+      }
+      continue;
+    }
+    const tail = pattern.match(/\.([a-z0-9]+)$/);
+    if (tail) exts.add(tail[1]);
+  }
+  return exts;
+}
+
+describe("PWA-01.1 · precache sem HTML", () => {
+  const patterns = NEXO_PWA_WORKBOX.globPatterns as readonly string[];
+  const extensions = extractGlobExtensions(patterns);
+
+  it("(31) nenhum padrão de precache contém a extensão html", () => {
+    for (const pattern of patterns) {
+      expect(pattern.toLowerCase()).not.toMatch(/\bhtml\b/);
+    }
+    expect(extensions.has("html")).toBe(false);
+  });
+
+  it("(32) nenhum padrão de precache contém a extensão htm", () => {
+    for (const pattern of patterns) {
+      expect(pattern.toLowerCase()).not.toMatch(/\bhtm\b/);
+    }
+    expect(extensions.has("htm")).toBe(false);
+  });
+
+  it("(33) catálogo permitido é exatamente {js,css,svg,png,ico,woff,woff2}", () => {
+    const allowed = new Set(["js", "css", "svg", "png", "ico", "woff", "woff2"]);
+    expect(extensions.size).toBe(allowed.size);
+    for (const ext of allowed) {
+      expect(extensions.has(ext)).toBe(true);
+    }
+    for (const ext of extensions) {
+      expect(allowed.has(ext)).toBe(true);
+    }
+  });
+
+  it("(34) padrões não incluem documentos, dados ou artefatos dinâmicos", () => {
+    const forbidden = [
+      "html",
+      "htm",
+      "json",
+      "xml",
+      "txt",
+      "pdf",
+      "doc",
+      "docx",
+      "map",
+      "webmanifest",
+      "wasm",
+    ];
+    for (const ext of forbidden) {
+      expect(extensions.has(ext)).toBe(false);
+    }
+  });
+
+  it("(35) estratégia SSR-segura preservada (fallback nulo, sem runtime cache)", () => {
+    expect(NEXO_PWA_WORKBOX.navigateFallback).toBeNull();
+    expect(NEXO_PWA_WORKBOX.runtimeCaching.length).toBe(0);
+    expect(NEXO_PWA_WORKBOX.cleanupOutdatedCaches).toBe(true);
+  });
+
+  it("(36) fonte de pwa-config.ts não reintroduz HTML por caminhos alternativos", () => {
+    const raw = readText("src/pwa/pwa-config.ts");
+    // Remove comentários de bloco e de linha antes da auditoria.
+    const stripped = raw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    expect(stripped).not.toMatch(/\.html\b/);
+    expect(stripped).not.toContain("index.html");
+    expect(stripped).not.toMatch(/navigateFallback\s*:\s*["']\/["']/);
+    expect(stripped).not.toMatch(/navigateFallback\s*:\s*["']\/index\.html["']/);
+  });
+});
