@@ -640,6 +640,10 @@ describe("LV-07.3.3 — preview-then-commit em todas as oito criações", () => 
 // 3) Registro literal do TanStack React Start (somente leitura)
 // ============================================================================
 
+function countOccurrences(source: string, value: string): number {
+  return source.split(value).length - 1;
+}
+
 describe("LV-07.3.3 — registro do TanStack React Start", () => {
   it("routeTree.gen.ts contém o registro completo do React Start", async () => {
     const fs = await import("node:fs");
@@ -653,6 +657,16 @@ describe("LV-07.3.3 — registro do TanStack React Start", () => {
     expect(src).toContain(
       "config: Awaited<ReturnType<typeof startInstance.getOptions>>",
     );
+    expect(
+      countOccurrences(src, "import type { getRouter } from './router.tsx'"),
+    ).toBe(1);
+    expect(
+      countOccurrences(src, "import type { startInstance } from './start.ts'"),
+    ).toBe(1);
+    expect(
+      countOccurrences(src, "declare module '@tanstack/react-start'"),
+    ).toBe(1);
+    expect(countOccurrences(src, "interface Register")).toBe(1);
   });
 });
 
