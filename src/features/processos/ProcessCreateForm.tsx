@@ -351,6 +351,6 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
