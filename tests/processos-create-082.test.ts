@@ -21,6 +21,7 @@ import {
 } from "../src/domain/mocks/seed";
 import {
   buildCreateCaseInput,
+  decideProcessCreateExit,
   mapCreateCaseError,
   type ProcessCreateFormValues,
 } from "../src/features/processos/process-create-model";
