@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Gavel, Calendar, Plus, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { APP_NAV } from "@/lib/app-nav";
+import { Logo } from "@/components/brand/Logo";
 import { QUICK_ACTIONS } from "@/components/app/QuickActions";
 
 type Item = {
@@ -125,6 +126,7 @@ export function BottomNav() {
       <Sheet open={maisOpen} onOpenChange={setMaisOpen}>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <SheetHeader className="text-left">
+            <Logo variant="full" className="mb-2 h-10 w-auto max-w-[200px]" />
             <SheetTitle>Todos os módulos</SheetTitle>
             <SheetDescription>Navegue por todas as áreas do sistema.</SheetDescription>
           </SheetHeader>

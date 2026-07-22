@@ -2,7 +2,8 @@ import * as React from "react";
 import { Link } from "@tanstack/react-router";
 import { Search, Sun, Moon, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Logo } from "@/components/brand/Logo";
 import { useTheme } from "@/hooks/use-theme";
 import { useSession } from "@/hooks/use-session";
 import { getContextById } from "@/services/context-service";
@@ -14,6 +15,7 @@ import { QuickActionsMenu } from "@/components/app/QuickActions";
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
   const { session } = useSession();
+  const { toggleSidebar } = useSidebar();
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   const currentContext = getContextById(session?.currentContextId);
@@ -33,7 +35,18 @@ export function AppTopbar() {
     <header
       className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:gap-4 sm:px-6"
     >
-      <SidebarTrigger aria-label="Alternar navegação" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={toggleSidebar}
+        className="h-9 w-9 shrink-0 sm:hidden"
+        aria-label="Abrir navegação do Nexo Pericial 360"
+        title="Nexo Pericial 360"
+      >
+        <Logo variant="mark" className="h-7 w-7" aria-hidden="true" />
+      </Button>
+      <SidebarTrigger className="hidden sm:inline-flex" aria-label="Alternar navegação" />
 
       <button
         type="button"

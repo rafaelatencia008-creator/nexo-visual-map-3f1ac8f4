@@ -35,14 +35,13 @@ export function AppSidebar() {
         <Link
           to="/app"
           onClick={handleClick}
-          className="flex items-center gap-2"
+          className="flex min-w-0 items-center"
           aria-label="Nexo Pericial 360 — Painel"
         >
-          <Logo variant="mark" className="h-8 w-8 shrink-0" />
-          {!collapsed && (
-            <span className="font-display text-lg font-semibold tracking-tight">
-              Nexo 360
-            </span>
+          {collapsed ? (
+            <Logo variant="mark" className="h-8 w-8 shrink-0" />
+          ) : (
+            <Logo variant="full" className="h-9 w-auto max-w-full" />
           )}
         </Link>
       </SidebarHeader>
