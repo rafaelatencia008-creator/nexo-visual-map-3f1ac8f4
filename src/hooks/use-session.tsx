@@ -1,42 +1,52 @@
 import * as React from "react";
+import {
+  PERFIS,
+  WORK_MODES,
+  PRIMARY_USES,
+  START_PAGES,
+  ROLES,
+  isPerfil,
+  isWorkMode,
+  isPrimaryUse,
+  isStartPage,
+  isRole,
+  type Perfil,
+  type WorkMode,
+  type PrimaryUse,
+  type StartPage,
+  type Role,
+  type OnboardingResult,
+} from "@/domain/onboarding";
+import { isValidContextId } from "@/services/context-service";
 
 /**
  * Sessão simulada — SEM backend, SEM autenticação real.
- *
- * Regra de privacidade (Etapa 4.1):
- *  - NÃO persiste e-mail digitado.
- *  - NÃO persiste senha, confirmação, código, aceites ou nome completo digitado.
- *  - Guarda apenas metadados neutros suficientes para a demonstração.
- *
- * remember=false  → sessionStorage (some ao fechar a aba)
- * remember=true   → localStorage   (persistente até "Sair")
- * modo convidado  → sempre sessionStorage
+ * Etapa 5: acrescenta enums de onboarding e ID de contexto fictício.
+ * Todos os campos adicionais são opcionais e enumerados (nada de texto livre).
  */
 
 export type SessionMode = "guest" | "authenticated";
 
-/** Estrutura persistida — versionada para permitir purga de modelos antigos. */
 export type SimulatedSession = {
   version: 1;
   mode: SessionMode;
-  /** Nome neutro de exibição (nunca o nome completo digitado). */
   name: string;
-  /** Perfil profissional (rótulo curto). */
-  perfil?: string;
-  /** Preferência "Manter conectado". */
+  perfil?: Perfil;
   remember: boolean;
-  /** Marca visual: a sessão é simulada. */
   simulated: true;
-  /** Reservado para uso futuro (onboarding). NÃO implementado nesta etapa. */
   onboardingDone?: boolean;
+  workMode?: WorkMode;
+  primaryUse?: PrimaryUse;
+  currentContextId?: string;
+  startPage?: StartPage;
+  role?: Role;
 };
 
 export type SessionStatus = "restoring" | "signed_in" | "signed_out";
 
 type SignInPayload = {
-  /** Rótulo neutro. Se ausente, usa "Usuário de demonstração". */
   name?: string;
-  perfil?: string;
+  perfil?: Perfil | string;
   remember: boolean;
 };
 
@@ -46,13 +56,20 @@ type SessionCtx = {
   signInAsUser: (data: SignInPayload) => void;
   signInAsGuest: () => void;
   signOut: () => void;
+  completeOnboarding: (result: OnboardingResult) => void;
+  setCurrentContext: (contextId: string) => void;
 };
 
 const SessionContext = React.createContext<SessionCtx | null>(null);
 
 const STORAGE_KEY = "nexo:session";
 const NEUTRAL_NAME = "Usuário de demonstração";
-const PERFIS_VALIDOS = new Set(["psicologia", "servico-social", "multi", "outro"]);
+
+const PERFIS_SET = new Set<string>(PERFIS);
+const WORK_MODES_SET = new Set<string>(WORK_MODES);
+const PRIMARY_USES_SET = new Set<string>(PRIMARY_USES);
+const START_PAGES_SET = new Set<string>(START_PAGES);
+const ROLES_SET = new Set<string>(ROLES);
 
 /** Credenciais de demonstração (apenas visuais). */
 export const DEMO_CREDENTIALS = {
@@ -60,12 +77,10 @@ export const DEMO_CREDENTIALS = {
   password: "Nexo123!",
 } as const;
 
-/** Código de verificação simulado. */
 export const DEMO_VERIFICATION_CODE = "123456";
 
 /**
- * Valida estritamente uma sessão restaurada.
- * Rejeita qualquer estrutura antiga que contenha e-mail ou campos não previstos.
+ * Valida uma sessão restaurada. Rejeita PII residual e valores fora dos enums.
  */
 function isValidSession(value: unknown): value is SimulatedSession {
   if (!value || typeof value !== "object") return false;
@@ -75,10 +90,16 @@ function isValidSession(value: unknown): value is SimulatedSession {
   if (typeof v.name !== "string" || !v.name.trim()) return false;
   if (typeof v.remember !== "boolean") return false;
   if (v.simulated !== true) return false;
-  if (v.perfil !== undefined && typeof v.perfil !== "string") return false;
-  if (v.perfil !== undefined && !PERFIS_VALIDOS.has(v.perfil as string)) return false;
+
+  if (v.perfil !== undefined && !(typeof v.perfil === "string" && PERFIS_SET.has(v.perfil))) return false;
   if (v.onboardingDone !== undefined && typeof v.onboardingDone !== "boolean") return false;
-  // Rejeita explicitamente estruturas antigas que carregam dados sensíveis.
+  if (v.workMode !== undefined && !(typeof v.workMode === "string" && WORK_MODES_SET.has(v.workMode))) return false;
+  if (v.primaryUse !== undefined && !(typeof v.primaryUse === "string" && PRIMARY_USES_SET.has(v.primaryUse))) return false;
+  if (v.startPage !== undefined && !(typeof v.startPage === "string" && START_PAGES_SET.has(v.startPage))) return false;
+  if (v.role !== undefined && !(typeof v.role === "string" && ROLES_SET.has(v.role))) return false;
+  if (v.currentContextId !== undefined && !isValidContextId(v.currentContextId)) return false;
+
+  // Rejeita explicitamente estruturas antigas com dados sensíveis.
   if ("email" in v) return false;
   if ("password" in v || "senha" in v) return false;
   if ("code" in v || "codigo" in v) return false;
@@ -110,7 +131,6 @@ function readStored(): SimulatedSession | null {
       return null;
     }
     if (!isValidSession(parsed)) {
-      // Sessão antiga (ex.: contém email) ou JSON inválido — purga.
       clearStored();
       return null;
     }
@@ -133,9 +153,56 @@ function writeStored(sess: SimulatedSession) {
       window.localStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    // ignora se storage indisponível
+    // ignora
   }
 }
+
+// ---- Rascunho do onboarding (chave separada, sessionStorage) ----------------
+
+const DRAFT_KEY = "nexo:onboarding-draft";
+
+export function clearOnboardingDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(DRAFT_KEY);
+    window.localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // ignora
+  }
+}
+
+// ---- Return path (para onde ir após o onboarding) --------------------------
+
+const RETURN_KEY = "nexo:onboarding-return";
+
+export function setOnboardingReturn(path: string | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    if (path && path.startsWith("/app") && !path.startsWith("//") && !path.includes(":") && !path.includes("\\")) {
+      window.sessionStorage.setItem(RETURN_KEY, path);
+    } else {
+      window.sessionStorage.removeItem(RETURN_KEY);
+    }
+  } catch {
+    // ignora
+  }
+}
+
+export function takeOnboardingReturn(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const v = window.sessionStorage.getItem(RETURN_KEY);
+    window.sessionStorage.removeItem(RETURN_KEY);
+    if (v && v.startsWith("/app") && !v.startsWith("//") && !v.includes(":") && !v.includes("\\")) {
+      return v;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// ---- Provider --------------------------------------------------------------
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<SessionStatus>("restoring");
@@ -152,8 +219,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInAsUser = React.useCallback<SessionCtx["signInAsUser"]>((data) => {
-    const perfil =
-      data.perfil && PERFIS_VALIDOS.has(data.perfil) ? data.perfil : undefined;
+    const perfil = isPerfil(data.perfil) ? data.perfil : undefined;
     const sess: SimulatedSession = {
       version: 1,
       mode: "authenticated",
@@ -161,6 +227,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       perfil,
       remember: !!data.remember,
       simulated: true,
+      // onboardingDone deliberadamente ausente → interpretado como false.
     };
     writeStored(sess);
     setSession(sess);
@@ -168,12 +235,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInAsGuest = React.useCallback(() => {
+    // Convidado já entra com contexto fictício e onboarding "concluído".
     const sess: SimulatedSession = {
       version: 1,
       mode: "guest",
       name: NEUTRAL_NAME,
       remember: false,
       simulated: true,
+      onboardingDone: true,
+      workMode: "individual",
+      currentContextId: "demo-individual",
+      role: "profissional",
+      primaryUse: "fluxo-completo",
+      startPage: "dashboard",
+      perfil: "multi",
     };
     writeStored(sess);
     setSession(sess);
@@ -182,13 +257,68 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(() => {
     clearStored();
+    clearOnboardingDraft();
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.removeItem(RETURN_KEY);
+      } catch {
+        // ignora
+      }
+    }
     setSession(null);
     setStatus("signed_out");
   }, []);
 
+  const completeOnboarding = React.useCallback<SessionCtx["completeOnboarding"]>(
+    (result) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        const perfil = isPerfil(result.perfil) ? result.perfil : prev.perfil;
+        const workMode = isWorkMode(result.workMode) ? result.workMode : undefined;
+        const primaryUse = isPrimaryUse(result.primaryUse) ? result.primaryUse : undefined;
+        const startPage = isStartPage(result.startPage) ? result.startPage : "dashboard";
+        const role = isRole(result.role) ? result.role : "profissional";
+        const currentContextId = isValidContextId(result.contextId) ? result.contextId : undefined;
+        if (!workMode || !primaryUse || !currentContextId) return prev;
+        const next: SimulatedSession = {
+          ...prev,
+          perfil,
+          onboardingDone: true,
+          workMode,
+          primaryUse,
+          startPage,
+          role,
+          currentContextId,
+        };
+        writeStored(next);
+        return next;
+      });
+      clearOnboardingDraft();
+    },
+    [],
+  );
+
+  const setCurrentContext = React.useCallback<SessionCtx["setCurrentContext"]>((contextId) => {
+    if (!isValidContextId(contextId)) return;
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next: SimulatedSession = { ...prev, currentContextId: contextId };
+      writeStored(next);
+      return next;
+    });
+  }, []);
+
   const value = React.useMemo<SessionCtx>(
-    () => ({ status, session, signInAsUser, signInAsGuest, signOut }),
-    [status, session, signInAsUser, signInAsGuest, signOut],
+    () => ({
+      status,
+      session,
+      signInAsUser,
+      signInAsGuest,
+      signOut,
+      completeOnboarding,
+      setCurrentContext,
+    }),
+    [status, session, signInAsUser, signInAsGuest, signOut, completeOnboarding, setCurrentContext],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
@@ -203,12 +333,14 @@ export function useSession() {
       signInAsUser: () => {},
       signInAsGuest: () => {},
       signOut: () => {},
+      completeOnboarding: () => {},
+      setCurrentContext: () => {},
     };
   }
   return ctx;
 }
 
-/** Mapeia código do perfil para rótulo humano. */
+/** Mapeia código do perfil para rótulo humano (compat com Etapas 1-4). */
 export const PERFIL_LABEL: Record<string, string> = {
   psicologia: "Psicologia",
   "servico-social": "Serviço Social",
@@ -216,21 +348,20 @@ export const PERFIL_LABEL: Record<string, string> = {
   outro: "Outro perfil",
 };
 
-/**
- * Valida um alvo de redirecionamento recebido por query string.
- * Aceita SOMENTE caminhos internos que comecem com "/app".
- * Rejeita: URL absoluta, protocolo, "//host", "javascript:", etc.
- */
+export function needsOnboarding(session: SimulatedSession | null): boolean {
+  if (!session) return false;
+  if (session.mode === "guest") return false;
+  return !session.onboardingDone;
+}
+
 export function safeRedirectTarget(from: unknown): string {
   if (typeof from !== "string") return "/app";
   const value = from.trim();
   if (!value) return "/app";
-  // path-only e começa com /app (mas não //app)
   if (!value.startsWith("/app")) return "/app";
   if (value.startsWith("//")) return "/app";
-  if (value.includes(":")) return "/app"; // bloqueia javascript:, data:, http:, etc.
+  if (value.includes(":")) return "/app";
   if (value.includes("\\")) return "/app";
-  // Aceita "/app", "/app/...", "/app?..." e "/app#..."
   const nextChar = value.charAt(4);
   if (nextChar !== "" && nextChar !== "/" && nextChar !== "?" && nextChar !== "#") {
     return "/app";

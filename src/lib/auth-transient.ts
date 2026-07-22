@@ -1,35 +1,27 @@
 /**
- * Estado transitório em memória para o fluxo de acesso simulado.
- *
- * Regras:
- * - Vive apenas em memória (variável de módulo).
- * - NUNCA persiste em localStorage/sessionStorage.
- * - NUNCA transita por URL/hash.
- * - Some ao recarregar a página — nesse caso a verificação continua
- *   funcionando com um perfil neutro.
- *
- * Só carrega dados NÃO sensíveis (perfil profissional). Nome, e-mail,
- * senha, código e aceites jamais passam por aqui.
+ * Estado transitório em memória para os fluxos de acesso e onboarding.
+ * NUNCA persiste. NUNCA vai à URL. Some ao recarregar a página.
  */
 
-let pendingPerfil: string | undefined;
+import { isPerfil, type Perfil } from "@/domain/onboarding";
 
-const PERFIS_VALIDOS = new Set(["psicologia", "servico-social", "multi", "outro"]);
+let pendingPerfil: Perfil | undefined;
 
 export function setPendingPerfil(perfil?: string) {
-  if (perfil && PERFIS_VALIDOS.has(perfil)) {
+  if (perfil && isPerfil(perfil)) {
     pendingPerfil = perfil;
   } else {
     pendingPerfil = undefined;
   }
 }
 
-export function takePendingPerfil(): string | undefined {
+export function takePendingPerfil(): Perfil | undefined {
   const p = pendingPerfil;
   pendingPerfil = undefined;
   return p;
 }
 
+/** Limpa todo estado transitório de acesso. Chamar em signOut, login normal, Google e guest. */
 export function clearAuthTransient() {
   pendingPerfil = undefined;
 }
