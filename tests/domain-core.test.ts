@@ -477,3 +477,97 @@ type _UserIdOk = UserId extends string ? true : false;
 type _MembershipIdOk = MembershipId extends string ? true : false;
 const _typeChecks: [_UserIdOk, _MembershipIdOk] = [true, true];
 void _typeChecks;
+
+// ---- LV-07.1.2: validação semântica rigorosa de datas/horários -----------
+
+import { isLeapYear, daysInMonth } from "@/domain/core";
+
+describe("LV-07.1.2 — Ano bissexto", () => {
+  it("L1) aceita 2024-02-29", () => expect(isIsoDate("2024-02-29")).toBe(true));
+  it("L2) rejeita 2026-02-29", () => expect(isIsoDate("2026-02-29")).toBe(false));
+  it("L3) rejeita 1900-02-29", () => expect(isIsoDate("1900-02-29")).toBe(false));
+  it("L4) aceita 2000-02-29", () => expect(isIsoDate("2000-02-29")).toBe(true));
+  it("isLeapYear puro", () => {
+    expect(isLeapYear(2024)).toBe(true);
+    expect(isLeapYear(2026)).toBe(false);
+    expect(isLeapYear(1900)).toBe(false);
+    expect(isLeapYear(2000)).toBe(true);
+  });
+  it("daysInMonth puro", () => {
+    expect(daysInMonth(2024, 2)).toBe(29);
+    expect(daysInMonth(2026, 2)).toBe(28);
+    expect(daysInMonth(2026, 4)).toBe(30);
+    expect(daysInMonth(2026, 12)).toBe(31);
+    expect(daysInMonth(2026, 13)).toBe(0);
+    expect(daysInMonth(2026, 0)).toBe(0);
+  });
+});
+
+describe("LV-07.1.2 — Dias inexistentes", () => {
+  it("L5) rejeita 2026-02-30", () => expect(isIsoDate("2026-02-30")).toBe(false));
+  it("L6) rejeita 2026-04-31", () => expect(isIsoDate("2026-04-31")).toBe(false));
+  it("L7) rejeita 2026-06-31", () => expect(isIsoDate("2026-06-31")).toBe(false));
+  it("L8) aceita 2026-04-30", () => expect(isIsoDate("2026-04-30")).toBe(true));
+  it("L9) aceita 2026-12-31", () => expect(isIsoDate("2026-12-31")).toBe(true));
+  it("rejeita mês/dia zero e mês 13", () => {
+    expect(isIsoDate("2026-13-01")).toBe(false);
+    expect(isIsoDate("2026-00-01")).toBe(false);
+    expect(isIsoDate("2026-01-00")).toBe(false);
+  });
+});
+
+describe("LV-07.1.2 — Horários", () => {
+  it("L10) rejeita hora 24", () =>
+    expect(isIsoDateTime("2026-01-01T24:00:00Z")).toBe(false));
+  it("L11) rejeita minuto 60", () =>
+    expect(isIsoDateTime("2026-01-01T23:60:00Z")).toBe(false));
+  it("L12) rejeita segundo 60", () =>
+    expect(isIsoDateTime("2026-01-01T23:59:60Z")).toBe(false));
+  it("L13) aceita 23:59:59", () =>
+    expect(isIsoDateTime("2026-01-01T23:59:59Z")).toBe(true));
+  it("L14) aceita 00:00:00", () =>
+    expect(isIsoDateTime("2026-01-01T00:00:00Z")).toBe(true));
+});
+
+describe("LV-07.1.2 — Fuso", () => {
+  it("L15) aceita Z", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00Z")).toBe(true));
+  it("L16) aceita -03:00", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00-03:00")).toBe(true));
+  it("L17) aceita +00:00", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00+00:00")).toBe(true));
+  it("L18) rejeita +24:00", () =>
+    expect(isIsoDateTime("2026-01-01T10:00:00+24:00")).toBe(false));
+  it("L19) rejeita +03:60", () =>
+    expect(isIsoDateTime("2026-01-01T10:00:00+03:60")).toBe(false));
+  it("L20) rejeita datetime sem fuso", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00")).toBe(false));
+  it("rejeita espaço no lugar de T", () =>
+    expect(isIsoDateTime("2026-08-05 14:00:00Z")).toBe(false));
+  it("rejeita só data em isIsoDateTime", () =>
+    expect(isIsoDateTime("2026-08-05")).toBe(false));
+});
+
+describe("LV-07.1.2 — Frações", () => {
+  it("L21) aceita 1 casa", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00.1Z")).toBe(true));
+  it("L22) aceita 2 casas", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00.12Z")).toBe(true));
+  it("L23) aceita 3 casas", () =>
+    expect(isIsoDateTime("2026-08-05T14:00:00.123Z")).toBe(true));
+  it("L24) rejeita 4+ casas", () => {
+    expect(isIsoDateTime("2026-08-05T14:00:00.1234Z")).toBe(false);
+    expect(isIsoDateTime("2026-08-05T14:00:00.123456Z")).toBe(false);
+  });
+});
+
+describe("LV-07.1.2 — Regressão de normalização silenciosa", () => {
+  it("L25) 2026-02-30T10:00:00Z", () =>
+    expect(isIsoDateTime("2026-02-30T10:00:00Z")).toBe(false));
+  it("L26) 2026-04-31T10:00:00Z", () =>
+    expect(isIsoDateTime("2026-04-31T10:00:00Z")).toBe(false));
+  it("L27) 2026-01-01T24:00:00Z", () =>
+    expect(isIsoDateTime("2026-01-01T24:00:00Z")).toBe(false));
+  it("bissexto no datetime — aceita 2024-02-29T23:59:59.999Z", () =>
+    expect(isIsoDateTime("2024-02-29T23:59:59.999Z")).toBe(true));
+});
