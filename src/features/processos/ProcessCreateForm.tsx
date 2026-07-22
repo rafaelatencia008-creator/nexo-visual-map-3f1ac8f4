@@ -106,9 +106,13 @@ export function ProcessCreateForm({ onSubmit, onCancel }: ProcessCreateFormProps
     }
   });
 
-  const requestCancel = () => {
-    if (submitting) return;
-    if (form.formState.isDirty) {
+  const requestExit = () => {
+    const decision = decideProcessCreateExit({
+      isDirty: form.formState.isDirty,
+      isSubmitting: submitting,
+    });
+    if (decision === "blocked") return;
+    if (decision === "confirm") {
       setConfirmOpen(true);
       return;
     }
