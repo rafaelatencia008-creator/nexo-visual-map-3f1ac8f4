@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type FormEvent } from "react";
 import { z } from "zod";
-import { Loader2, ShieldCheck, Info, Check, X, ArrowLeft } from "lucide-react";
+import { Loader2, ShieldCheck, Info, Check, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,13 @@ function VerificarEmailPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendCount, setResendCount] = useState(0);
 
-  const inputs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  const r0 = useRef<HTMLInputElement>(null);
+  const r1 = useRef<HTMLInputElement>(null);
+  const r2 = useRef<HTMLInputElement>(null);
+  const r3 = useRef<HTMLInputElement>(null);
+  const r4 = useRef<HTMLInputElement>(null);
+  const r5 = useRef<HTMLInputElement>(null);
+  const inputs = [r0, r1, r2, r3, r4, r5];
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
