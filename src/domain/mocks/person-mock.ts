@@ -271,26 +271,28 @@ export function createCasePersonServiceMock(
         }
       }
       const restricted = isMinor(p) ? true : input.restrictedByDefault;
-      const id = ids.next("casePerson");
-      const now = clock.next();
-      const next: CasePerson = {
-        id,
+      const previewId = ids.previewNext("casePerson");
+      const previewTime = clock.previewNext();
+      const preview: CasePerson = {
+        id: previewId,
         organizationId: orgId,
         caseId: input.caseId,
         personId: input.personId,
         role: input.role,
         restrictedByDefault: restricted,
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateCasePerson(next, {
+      const check = validateCasePerson(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.casePersons.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("casePerson");
+      clock.next();
+      store.casePersons.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async update(context, caseId: CaseId, input: UpdateCasePersonInput) {
       const v = requireContext(store, context);
