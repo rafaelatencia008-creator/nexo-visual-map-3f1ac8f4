@@ -1,7 +1,5 @@
 /**
- * Testes de contrato do domínio oficial — LV-07.1.
- *
- * Puro TypeScript. Sem navegador, sem Vite, sem HMR, sem storage.
+ * Testes de contrato do domínio oficial — LV-07.1 + correção LV-07.1.1.
  */
 
 import { describe, it, expect } from "bun:test";
@@ -15,6 +13,7 @@ import {
   isIsoDate,
   isIsoDateTime,
   isValidVersion,
+  isEntityMetadata,
   containsForbiddenKey,
   isOrganization,
   isCase,
@@ -23,17 +22,35 @@ import {
   isRelationship,
   isAssignment,
   isProfessionalProfile,
+  isUser,
+  isMembership,
+  isCredential,
   canLeaveDraft,
   getCaseReadinessIssues,
   validateCase,
+  validatePerson,
+  validateOrganization,
+  validateUser,
+  validateMembership,
+  validateCredential,
   validateCasePerson,
   validateRelationship,
   validateAssignment,
   fixtures,
+  WORK_MODES,
+  PERFIS,
+  ORGANIZATION_KINDS,
+  PROFESSIONAL_AREAS,
   type CaseReadiness,
   type PersonId,
   type OrganizationId,
+  type CaseId,
+  type UserId,
+  type MembershipId,
+  type OrganizationKind,
+  type ProfessionalArea,
 } from "@/domain/core";
+import type { Perfil, WorkMode } from "@/domain/shared/work-context";
 
 const F = fixtures;
 
@@ -66,8 +83,8 @@ describe("IDs", () => {
   });
   it("6) rejeita tipo desconhecido", () => {
     expect(parseDomainId("foo_abc")).toBeNull();
-    expect(parseDomainId("case_")).toBeNull(); // sufixo vazio
-    expect(parseDomainId("case_ab$cd")).toBeNull(); // sufixo inválido
+    expect(parseDomainId("case_")).toBeNull();
+    expect(parseDomainId("case_ab$cd")).toBeNull();
   });
   it("prefixos são estáveis", () => {
     expect(ID_PREFIX.case).toBe("case_");
@@ -158,6 +175,7 @@ describe("Organization e ProfessionalProfile", () => {
     expect(isOrganization(F.orgTeamFixture)).toBe(true);
   });
   it("Organization com kind inválido é rejeitada", () => {
+    expect(isOrganization({ ...F.orgIndividualFixture, kind: "team" })).toBe(false);
     expect(isOrganization({ ...F.orgIndividualFixture, kind: "bogus" })).toBe(false);
   });
   it("23) aceita perfil profissional válido", () => {
@@ -205,7 +223,7 @@ describe("Pessoas e vínculos", () => {
   });
 });
 
-// ---- Profissional e atribuição --------------------------------------------
+// ---- Assignment ------------------------------------------------------------
 
 describe("Assignment", () => {
   const ctx = {
@@ -217,51 +235,245 @@ describe("Assignment", () => {
     expect(validateAssignment(F.assignmentFixture, ctx).ok).toBe(true);
   });
   it("25) rejeita assignment para caso inexistente", () => {
-    const bad = { ...F.assignmentFixture, caseId: "case_ghost" as unknown as typeof F.assignmentFixture.caseId };
+    const bad = { ...F.assignmentFixture, caseId: "case_ghost" as CaseId };
     expect(validateAssignment(bad, ctx).ok).toBe(false);
   });
   it("26) rejeita organização divergente", () => {
-    const bad = { ...F.assignmentFixture, organizationId: F.ORG_TEAM_ID as OrganizationId };
+    const bad = { ...F.assignmentFixture, organizationId: F.ORG_TEAM_ID };
     expect(validateAssignment(bad, ctx).ok).toBe(false);
   });
 });
 
-// ---- Segurança estrutural --------------------------------------------------
+// ---- Segurança estrutural (teste 27 substituído + adicionais) --------------
 
-describe("Segurança estrutural", () => {
-  it("27) validadores estritos rejeitam campo desconhecido de shape", () => {
-    // `isCase` NÃO usa allow-list, mas os validadores de entrada rejeitam
-    // pelo menos chaves proibidas. Campo desconhecido aqui é rejeitado pela
-    // ausência das chaves obrigatórias (shape_invalid) — cobrimos ambos.
-    const missing = { extraField: "x" } as unknown;
-    expect(validateCase(missing).ok).toBe(false);
+describe("Segurança estrutural — allow-list e chaves proibidas", () => {
+  it("27a) rejeita caso válido + extraField", () => {
+    const bad = { ...F.case001Fixture, extraField: "não permitido" };
+    expect(validateCase(bad).ok).toBe(false);
+    expect(isCase(bad)).toBe(false);
   });
+  it("27b) rejeita pessoa válida + extraField", () => {
+    const bad = { ...F.personAFixture, extraField: "x" };
+    expect(validatePerson(bad).ok).toBe(false);
+  });
+  it("27c) rejeita organization válida + extraField", () => {
+    const bad = { ...F.orgIndividualFixture, extraField: "x" };
+    expect(validateOrganization(bad).ok).toBe(false);
+  });
+  it("27d) rejeita membership válido + extraField", () => {
+    const bad = { ...F.membershipFixture, extraField: "x" };
+    const r = validateMembership(bad, {
+      users: F.DOMAIN_FIXTURES.users,
+      organizations: F.DOMAIN_FIXTURES.organizations,
+    });
+    expect(r.ok).toBe(false);
+  });
+  it("27e) rejeita assignment válido + extraField", () => {
+    const bad = { ...F.assignmentFixture, extraField: "x" };
+    const r = validateAssignment(bad, {
+      cases: F.DOMAIN_FIXTURES.cases,
+      professionalProfiles: F.DOMAIN_FIXTURES.professionalProfiles,
+    });
+    expect(r.ok).toBe(false);
+  });
+  it("27f) rejeita metadata válido + extraField", () => {
+    const bad = {
+      ...F.case001Fixture,
+      metadata: { ...F.case001Fixture.metadata, extraField: "x" },
+    };
+    expect(validateCase(bad).ok).toBe(false);
+    expect(isEntityMetadata({ ...F.case001Fixture.metadata, extraField: "x" })).toBe(false);
+  });
+
   it("28) rejeita campo password", () => {
     expect(containsForbiddenKey({ password: "x" })).toBe(true);
     const bad = { ...F.case001Fixture, password: "x" };
     expect(validateCase(bad).ok).toBe(false);
   });
-  it("29) rejeita campo token", () => {
+  it("29) rejeita campo token e derivados", () => {
     expect(containsForbiddenKey({ token: "x" })).toBe(true);
     expect(containsForbiddenKey({ accessToken: "x" })).toBe(true);
+    expect(containsForbiddenKey({ refreshToken: "x" })).toBe(true);
     expect(containsForbiddenKey({ apiKey: "x" })).toBe(true);
+    expect(containsForbiddenKey({ senha: "x" })).toBe(true);
+    expect(containsForbiddenKey({ secret: "x" })).toBe(true);
   });
-  it("30) confirma ausência de dados pessoais nos fixtures", () => {
+  it("30) fixtures não contêm dados pessoais nem chaves proibidas", () => {
     const json = JSON.stringify(F.DOMAIN_FIXTURES);
-    // Nenhuma PII textual conhecida.
     for (const banned of [
-      /\d{3}\.\d{3}\.\d{3}-\d{2}/, // CPF
-      /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/, // CNPJ
-      /@[a-z0-9.-]+\.[a-z]{2,}/i, // e-mail
-      /\(\d{2}\)\s?\d{4,5}-\d{4}/, // telefone
+      /\d{3}\.\d{3}\.\d{3}-\d{2}/,
+      /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/,
+      /@[a-z0-9.-]+\.[a-z]{2,}/i,
+      /\(\d{2}\)\s?\d{4,5}-\d{4}/,
     ]) {
       expect(banned.test(json)).toBe(false);
     }
-    // Nenhuma chave proibida em nenhuma coleção de fixture.
     for (const coll of Object.values(F.DOMAIN_FIXTURES)) {
       for (const item of coll) {
         expect(containsForbiddenKey(item)).toBe(false);
       }
     }
   });
+
+  // -- Novos testes obrigatórios --
+
+  it("17-novo) token aninhado em metadata é detectado", () => {
+    expect(containsForbiddenKey({ metadata: { token: "x" } })).toBe(true);
+    const bad = {
+      ...F.case001Fixture,
+      metadata: { ...F.case001Fixture.metadata, token: "x" } as unknown,
+    };
+    expect(validateCase(bad).ok).toBe(false);
+  });
+  it("18-novo) senha dentro de array é detectada", () => {
+    expect(containsForbiddenKey({ items: [{ password: "x" }] })).toBe(true);
+    expect(containsForbiddenKey([{ password: "x" }])).toBe(true);
+  });
+  it("19-novo) objeto circular não causa loop infinito", () => {
+    const a: Record<string, unknown> = { name: "root" };
+    a.self = a;
+    expect(containsForbiddenKey(a)).toBe(false);
+    // com chave proibida em ramo que retorna à raiz
+    const b: Record<string, unknown> = { token: "x" };
+    b.self = b;
+    expect(containsForbiddenKey(b)).toBe(true);
+  });
 });
+
+// ---- User e Membership -----------------------------------------------------
+
+describe("User", () => {
+  it("N1) User válido", () => {
+    expect(isUser(F.userFixture)).toBe(true);
+    expect(validateUser(F.userFixture).ok).toBe(true);
+  });
+  it("N2) User com campo desconhecido é rejeitado", () => {
+    expect(isUser({ ...F.userFixture, email: "x@x" })).toBe(false);
+    expect(validateUser({ ...F.userFixture, extraField: "x" }).ok).toBe(false);
+  });
+  it("N3) User com chave proibida é rejeitado", () => {
+    expect(validateUser({ ...F.userFixture, password: "x" } as unknown).ok).toBe(false);
+    expect(validateUser({ ...F.userFixture, token: "x" } as unknown).ok).toBe(false);
+  });
+});
+
+describe("Membership", () => {
+  const ctx = {
+    users: F.DOMAIN_FIXTURES.users,
+    organizations: F.DOMAIN_FIXTURES.organizations,
+  };
+  it("N4) Membership válido", () => {
+    expect(isMembership(F.membershipFixture)).toBe(true);
+    expect(validateMembership(F.membershipFixture, ctx).ok).toBe(true);
+  });
+  it("N5) usuário inexistente", () => {
+    const bad = { ...F.membershipFixture, userId: "usr_ghost" as UserId };
+    const r = validateMembership(bad, ctx);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("user_not_found");
+  });
+  it("N6) organização inexistente", () => {
+    const bad = { ...F.membershipFixture, organizationId: "org_ghost" as OrganizationId };
+    const r = validateMembership(bad, ctx);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("organization_not_found");
+  });
+  it("N7) papel inválido", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bad = { ...F.membershipFixture, role: "chefe" as any };
+    expect(isMembership(bad)).toBe(false);
+    expect(validateMembership(bad, ctx).ok).toBe(false);
+  });
+  it("N8) Membership com campo desconhecido", () => {
+    const bad = { ...F.membershipFixture, extraField: "x" };
+    expect(validateMembership(bad, ctx).ok).toBe(false);
+  });
+});
+
+// ---- Enums compartilhados --------------------------------------------------
+
+describe("Enums compartilhados (sem duplicação)", () => {
+  it("N9) Organization.kind usa WorkMode", () => {
+    expect(F.orgIndividualFixture.kind).toBe("individual");
+    expect(F.orgTeamFixture.kind).toBe("equipe");
+    // Tipo compile-time: WorkMode aceita esses valores.
+    const kinds: WorkMode[] = ["individual", "equipe", "institucional"];
+    expect(kinds.every((k) => WORK_MODES.includes(k))).toBe(true);
+  });
+  it("N10) ProfessionalProfile.area usa Perfil", () => {
+    expect(F.professionalProfileFixture.area).toBe("psicologia");
+    const areas: Perfil[] = ["psicologia", "servico-social", "multi", "outro"];
+    expect(areas.every((a) => PERFIS.includes(a))).toBe(true);
+  });
+  it("N11) não há arrays duplicados de enum — aliases apontam para os mesmos", () => {
+    expect(ORGANIZATION_KINDS).toBe(WORK_MODES);
+    expect(PROFESSIONAL_AREAS).toBe(PERFIS);
+    // Também: tipos alias satisfazem os originais.
+    const k: OrganizationKind = "individual";
+    const w: WorkMode = k;
+    expect(w).toBe("individual");
+    const a: ProfessionalArea = "psicologia";
+    const p: Perfil = a;
+    expect(p).toBe("psicologia");
+  });
+});
+
+// ---- Credential ------------------------------------------------------------
+
+describe("Credential", () => {
+  const ctx = { professionalProfiles: F.DOMAIN_FIXTURES.professionalProfiles };
+  it("N12) Credential válida", () => {
+    expect(isCredential(F.credentialFixture)).toBe(true);
+    expect(validateCredential(F.credentialFixture, ctx).ok).toBe(true);
+  });
+  it("N13) credential com organização divergente é rejeitada", () => {
+    const bad = { ...F.credentialFixture, organizationId: F.ORG_TEAM_ID };
+    const r = validateCredential(bad, ctx);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("organization_mismatch");
+  });
+  it("credential com perfil inexistente é rejeitada", () => {
+    const bad = {
+      ...F.credentialFixture,
+      professionalProfileId: buildDomainId("professionalProfile", "ghost"),
+    };
+    const r = validateCredential(bad, ctx);
+    expect(r.ok).toBe(false);
+  });
+});
+
+// ---- Builder tipado --------------------------------------------------------
+
+describe("buildDomainId tipado", () => {
+  it("N20) retorna branded types para tipos implementados", () => {
+    const orgId = buildDomainId("organization", "x");
+    const caseId = buildDomainId("case", "x");
+    const personId = buildDomainId("person", "x");
+    // Verificações de runtime — o tipo é verificado em compile-time.
+    expect(orgId).toBe("org_x");
+    expect(caseId).toBe("case_x");
+    expect(personId).toBe("person_x");
+    // Usa os retornos onde os branded types são esperados:
+    const acceptsOrg = (_id: OrganizationId) => _id;
+    const acceptsCase = (_id: CaseId) => _id;
+    const acceptsPerson = (_id: PersonId) => _id;
+    expect(acceptsOrg(orgId)).toBeDefined();
+    expect(acceptsCase(caseId)).toBeDefined();
+    expect(acceptsPerson(personId)).toBeDefined();
+  });
+});
+
+// ---- Não uso de tipos como `never` ----------------------------------------
+
+describe("IDs de tipos reservados", () => {
+  it("reservados retornam string neutra sem branded type específico", () => {
+    const dl = buildDomainId("deadline", "x");
+    expect(dl).toBe("deadline_x");
+  });
+});
+
+// Compile-time helpers — usados apenas para provar tipagem via `satisfies`.
+type _UserIdOk = UserId extends string ? true : false;
+type _MembershipIdOk = MembershipId extends string ? true : false;
+const _typeChecks: [_UserIdOk, _MembershipIdOk] = [true, true];
+void _typeChecks;

@@ -1,24 +1,16 @@
 /**
- * Pessoa natural — jamais organização ou empresa. Não armazena PII real
- * nesta fundação. Campos sensíveis futuros ficarão opcionais e marcados
- * conceitualmente.
+ * Pessoa natural.
  */
 
 import { isPersonId, isOrganizationId, type PersonId, type OrganizationId } from "./ids";
-import { isEntityMetadata, type EntityMetadata } from "./common";
+import { isEntityMetadata, hasOnlyAllowedKeys, type EntityMetadata } from "./common";
 
-export const AGE_CLASSIFICATIONS = [
-  "adult",
-  "child",
-  "adolescent",
-  "unknown",
-] as const;
+export const AGE_CLASSIFICATIONS = ["adult", "child", "adolescent", "unknown"] as const;
 export type AgeClassification = (typeof AGE_CLASSIFICATIONS)[number];
 
 export type Person = {
   id: PersonId;
   organizationId: OrganizationId;
-  /** Rótulo neutro, ex.: "Pessoa A". Nunca nome real. */
   displayLabel: string;
   ageClassification: AgeClassification;
   metadata: EntityMetadata;
@@ -26,8 +18,17 @@ export type Person = {
 
 const AGE_SET = new Set<string>(AGE_CLASSIFICATIONS);
 
+export const PERSON_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "organizationId",
+  "displayLabel",
+  "ageClassification",
+  "metadata",
+]);
+
 export function isPerson(v: unknown): v is Person {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (!hasOnlyAllowedKeys(v, PERSON_ALLOWED_KEYS)) return false;
   const p = v as Record<string, unknown>;
   return (
     isPersonId(p.id) &&

@@ -1,13 +1,26 @@
 /**
- * Rótulos em pt-BR para os enums do domínio oficial. Centralizados
- * para evitar strings soltas nas telas futuras.
+ * Rótulos em pt-BR para os enums do domínio oficial.
+ * Enums compartilhados (`Perfil`, `WorkMode`, `Role`) reutilizam
+ * `PERFIL_LABEL`, `WORK_MODE_LABEL` e `ROLE_LABEL` do onboarding.
  */
 
 import type { CaseStatus, ConfidentialityLevel, ConflictCheckStatus, DeadlineStatus } from "./case";
 import type { CasePersonRole, RelationshipType, AssignmentRole, AssignmentStatus } from "./assignment";
-import type { OrganizationKind, OrganizationStatus } from "./organization";
-import type { ProfessionalArea, ProfessionalStatus, CredentialStatus } from "./professional";
+import type { OrganizationStatus } from "./organization";
+import type { ProfessionalStatus, CredentialStatus } from "./professional";
 import type { AgeClassification } from "./person";
+import type { UserStatus, MembershipStatus } from "./access";
+import { WORK_MODE_LABEL, PERFIL_LABEL, ROLE_LABEL } from "../onboarding";
+import type { WorkMode, Perfil, Role } from "../shared/work-context";
+
+/** `Organization.kind` usa `WorkMode` — mesmos rótulos do onboarding. */
+export const ORGANIZATION_KIND_LABEL: Record<WorkMode, string> = WORK_MODE_LABEL;
+
+/** `ProfessionalProfile.area` usa `Perfil` — mesmos rótulos do onboarding. */
+export const PROFESSIONAL_AREA_LABEL: Record<Perfil, string> = PERFIL_LABEL;
+
+/** `Membership.role` usa `Role` — mesmos rótulos do onboarding. */
+export const MEMBERSHIP_ROLE_LABEL: Record<Role, string> = ROLE_LABEL;
 
 export const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
   draft: "Rascunho",
@@ -82,23 +95,10 @@ export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
   cancelled: "Cancelado",
 };
 
-export const ORGANIZATION_KIND_LABEL: Record<OrganizationKind, string> = {
-  individual: "Individual",
-  team: "Equipe",
-  institutional: "Institucional",
-};
-
 export const ORGANIZATION_STATUS_LABEL: Record<OrganizationStatus, string> = {
   active: "Ativa",
   suspended: "Suspensa",
   archived: "Arquivada",
-};
-
-export const PROFESSIONAL_AREA_LABEL: Record<ProfessionalArea, string> = {
-  psychology: "Psicologia",
-  social_work: "Serviço Social",
-  multi: "Equipe multiprofissional",
-  other: "Outra área",
 };
 
 export const PROFESSIONAL_STATUS_LABEL: Record<ProfessionalStatus, string> = {
@@ -120,4 +120,16 @@ export const AGE_CLASSIFICATION_LABEL: Record<AgeClassification, string> = {
   child: "Criança",
   adolescent: "Adolescente",
   unknown: "Não informado",
+};
+
+export const USER_STATUS_LABEL: Record<UserStatus, string> = {
+  active: "Ativo",
+  suspended: "Suspenso",
+  archived: "Arquivado",
+};
+
+export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
+  active: "Ativo",
+  suspended: "Suspenso",
+  revoked: "Revogado",
 };

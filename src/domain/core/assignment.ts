@@ -1,6 +1,5 @@
 /**
- * Vínculos: CasePerson (pessoa no caso), Relationship (pessoa↔pessoa
- * no caso) e Assignment (profissional no caso).
+ * Vínculos: CasePerson, Relationship, Assignment.
  */
 
 import {
@@ -19,8 +18,13 @@ import {
   type ProfessionalProfileId,
   type RelationshipId,
 } from "./ids";
-import { isEntityMetadata, type EntityMetadata } from "./common";
-import { isIsoDate, type IsoDate } from "./common";
+import {
+  isEntityMetadata,
+  hasOnlyAllowedKeys,
+  isIsoDate,
+  type EntityMetadata,
+  type IsoDate,
+} from "./common";
 
 // ---- CasePerson ------------------------------------------------------------
 
@@ -50,8 +54,19 @@ export type CasePerson = {
 
 const ROLE_SET = new Set<string>(CASE_PERSON_ROLES);
 
+export const CASE_PERSON_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "organizationId",
+  "caseId",
+  "personId",
+  "role",
+  "restrictedByDefault",
+  "metadata",
+]);
+
 export function isCasePerson(v: unknown): v is CasePerson {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (!hasOnlyAllowedKeys(v, CASE_PERSON_ALLOWED_KEYS)) return false;
   const cp = v as Record<string, unknown>;
   return (
     isCasePersonId(cp.id) &&
@@ -84,9 +99,7 @@ export type Relationship = {
   id: RelationshipId;
   organizationId: OrganizationId;
   caseId: CaseId;
-  /** Origem — ex.: no `parent_child`, o "parent". */
   fromPersonId: PersonId;
-  /** Destino — ex.: no `parent_child`, o "child". */
   toPersonId: PersonId;
   type: RelationshipType;
   metadata: EntityMetadata;
@@ -94,8 +107,19 @@ export type Relationship = {
 
 const REL_SET = new Set<string>(RELATIONSHIP_TYPES);
 
+export const RELATIONSHIP_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "organizationId",
+  "caseId",
+  "fromPersonId",
+  "toPersonId",
+  "type",
+  "metadata",
+]);
+
 export function isRelationship(v: unknown): v is Relationship {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (!hasOnlyAllowedKeys(v, RELATIONSHIP_ALLOWED_KEYS)) return false;
   const r = v as Record<string, unknown>;
   return (
     isRelationshipId(r.id) &&
@@ -121,12 +145,7 @@ export const ASSIGNMENT_ROLES = [
 ] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
 
-export const ASSIGNMENT_STATUSES = [
-  "active",
-  "suspended",
-  "concluded",
-  "cancelled",
-] as const;
+export const ASSIGNMENT_STATUSES = ["active", "suspended", "concluded", "cancelled"] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 
 export type Assignment = {
@@ -136,7 +155,6 @@ export type Assignment = {
   professionalProfileId: ProfessionalProfileId;
   role: AssignmentRole;
   status: AssignmentStatus;
-  /** Área/seção de responsabilidade dentro do caso — rótulo neutro. */
   section?: string;
   startedOn: IsoDate;
   endedOn?: IsoDate;
@@ -146,8 +164,22 @@ export type Assignment = {
 const ASSIGN_ROLE_SET = new Set<string>(ASSIGNMENT_ROLES);
 const ASSIGN_STATUS_SET = new Set<string>(ASSIGNMENT_STATUSES);
 
+export const ASSIGNMENT_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "organizationId",
+  "caseId",
+  "professionalProfileId",
+  "role",
+  "status",
+  "section",
+  "startedOn",
+  "endedOn",
+  "metadata",
+]);
+
 export function isAssignment(v: unknown): v is Assignment {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (!hasOnlyAllowedKeys(v, ASSIGNMENT_ALLOWED_KEYS)) return false;
   const a = v as Record<string, unknown>;
   if (!isAssignmentId(a.id)) return false;
   if (!isOrganizationId(a.organizationId)) return false;
