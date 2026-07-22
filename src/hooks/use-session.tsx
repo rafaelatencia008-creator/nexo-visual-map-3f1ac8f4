@@ -305,37 +305,117 @@ export function resolveCompletion(
   };
 }
 
+// ---- Núcleo imperativo (testável sem React) --------------------------------
+
+/**
+ * Dependências injetadas — permitem testar o comportamento síncrono
+ * sem servidor Vite, sem navegador e sem React.
+ */
+export type SessionCore = {
+  getCurrentSession: () => SimulatedSession | null;
+  commitSession: (next: SimulatedSession) => boolean;
+  clearDraft: () => void;
+};
+
+/**
+ * Conclui o onboarding de forma síncrona. Retorna `true` somente após
+ * a sessão nova ter sido efetivamente confirmada; falha (retornando `false`)
+ * NÃO limpa o rascunho e NÃO altera armazenamento nem estado.
+ */
+export function completeOnboardingCore(
+  core: SessionCore,
+  result: OnboardingResult,
+): boolean {
+  const previous = core.getCurrentSession();
+  if (!previous) return false;
+  const next = resolveCompletion(previous, result);
+  if (!next) return false;
+  if (!core.commitSession(next)) return false;
+  core.clearDraft();
+  return true;
+}
+
+/**
+ * Troca o contexto atual de forma síncrona. Retorna `true` somente após
+ * a nova sessão ter sido confirmada.
+ */
+export function setCurrentContextCore(
+  core: SessionCore,
+  contextId: unknown,
+): boolean {
+  const previous = core.getCurrentSession();
+  if (!previous) return false;
+  const next = resolveContextUpdate(previous, contextId);
+  if (!next) return false;
+  return core.commitSession(next);
+}
+
 // ---- Provider --------------------------------------------------------------
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<SessionStatus>("restoring");
   const [session, setSession] = React.useState<SimulatedSession | null>(null);
+  const sessionRef = React.useRef<SimulatedSession | null>(null);
+
+  /**
+   * Confirma uma nova sessão: valida, grava, sincroniza a referência
+   * e finalmente atualiza o estado React. Retorna `false` quando a
+   * própria sessão produzida internamente for inválida — nesse caso
+   * nada é alterado.
+   */
+  const commitSession = React.useCallback((next: SimulatedSession): boolean => {
+    const validated = validateSession(next);
+    if (!validated) return false;
+    writeStored(validated);
+    sessionRef.current = validated;
+    setSession(validated);
+    setStatus("signed_in");
+    return true;
+  }, []);
+
+  const clearSession = React.useCallback(() => {
+    clearStored();
+    clearOnboardingDraft();
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.removeItem(RETURN_KEY);
+      } catch {
+        // ignora
+      }
+    }
+    clearAuthTransient();
+    sessionRef.current = null;
+    setSession(null);
+    setStatus("signed_out");
+  }, []);
 
   React.useEffect(() => {
     const restored = readStored();
     if (restored) {
+      sessionRef.current = restored;
       setSession(restored);
       setStatus("signed_in");
     } else {
+      sessionRef.current = null;
       setStatus("signed_out");
     }
   }, []);
 
-  const signInAsUser = React.useCallback<SessionCtx["signInAsUser"]>((data) => {
-    // Nome persistido é SEMPRE o rótulo neutro. `data.name` é ignorado por design.
-    const perfil = isPerfil(data.perfil) ? data.perfil : undefined;
-    const sess: SimulatedSession = {
-      version: 1,
-      mode: "authenticated",
-      name: NEUTRAL_NAME,
-      perfil,
-      remember: !!data.remember,
-      simulated: true,
-    };
-    writeStored(sess);
-    setSession(sess);
-    setStatus("signed_in");
-  }, []);
+  const signInAsUser = React.useCallback<SessionCtx["signInAsUser"]>(
+    (data) => {
+      const perfil = isPerfil(data.perfil) ? data.perfil : undefined;
+      const sess: SimulatedSession = {
+        version: 1,
+        mode: "authenticated",
+        name: NEUTRAL_NAME,
+        perfil,
+        remember: !!data.remember,
+        simulated: true,
+      };
+      commitSession(sess);
+    },
+    [commitSession],
+  );
 
   const signInAsGuest = React.useCallback(() => {
     const sess: SimulatedSession = {
@@ -352,59 +432,37 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       startPage: "dashboard",
       perfil: "multi",
     };
-    writeStored(sess);
-    setSession(sess);
-    setStatus("signed_in");
-  }, []);
+    commitSession(sess);
+  }, [commitSession]);
 
   const signOut = React.useCallback(() => {
-    clearStored();
-    clearOnboardingDraft();
-    if (typeof window !== "undefined") {
-      try {
-        window.sessionStorage.removeItem(RETURN_KEY);
-      } catch {
-        // ignora
-      }
-    }
-    clearAuthTransient();
-    setSession(null);
-    setStatus("signed_out");
-  }, []);
+    clearSession();
+  }, [clearSession]);
 
   const completeOnboarding = React.useCallback<SessionCtx["completeOnboarding"]>(
-    (result) => {
-      let ok = false;
-      setSession((prev) => {
-        if (!prev) return prev;
-        const next = resolveCompletion(prev, result);
-        if (!next) return prev;
-        writeStored(next);
-        ok = true;
-        return next;
-      });
-      if (ok) {
-        clearOnboardingDraft();
-      }
-      return ok;
-    },
-    [],
+    (result) =>
+      completeOnboardingCore(
+        {
+          getCurrentSession: () => sessionRef.current,
+          commitSession,
+          clearDraft: clearOnboardingDraft,
+        },
+        result,
+      ),
+    [commitSession],
   );
 
   const setCurrentContext = React.useCallback<SessionCtx["setCurrentContext"]>(
-    (contextId) => {
-      let ok = false;
-      setSession((prev) => {
-        if (!prev) return prev;
-        const next = resolveContextUpdate(prev, contextId);
-        if (!next) return prev;
-        writeStored(next);
-        ok = true;
-        return next;
-      });
-      return ok;
-    },
-    [],
+    (contextId) =>
+      setCurrentContextCore(
+        {
+          getCurrentSession: () => sessionRef.current,
+          commitSession,
+          clearDraft: clearOnboardingDraft,
+        },
+        contextId,
+      ),
+    [commitSession],
   );
 
   const value = React.useMemo<SessionCtx>(
