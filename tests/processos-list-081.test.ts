@@ -406,3 +406,98 @@ describe("LV-08.1 — paginação por cursor opaco", () => {
     expect(second.items[0]!.reference).not.toBe(first.items[0]!.reference);
   });
 });
+
+describe("LV-08.1.1 — classifyProcessListEmpty (função pura)", () => {
+  it("A) sem filtros e total filtrado zero → overall", () => {
+    expect(
+      classifyProcessListEmpty({ hasFilters: false, filteredTotal: 0 }),
+    ).toBe("overall");
+  });
+
+  it("B) com filtros, filtrado zero e geral > 0 → filtered", () => {
+    expect(
+      classifyProcessListEmpty({
+        hasFilters: true,
+        filteredTotal: 0,
+        overallTotal: 5,
+      }),
+    ).toBe("filtered");
+  });
+
+  it("C) com filtros e ambos totais zero → overall", () => {
+    expect(
+      classifyProcessListEmpty({
+        hasFilters: true,
+        filteredTotal: 0,
+        overallTotal: 0,
+      }),
+    ).toBe("overall");
+  });
+
+  it("D) com filtros e overallTotal indefinido → undefined", () => {
+    expect(
+      classifyProcessListEmpty({ hasFilters: true, filteredTotal: 0 }),
+    ).toBeUndefined();
+  });
+
+  it("E) filteredTotal > 0 → undefined (não está vazio)", () => {
+    expect(
+      classifyProcessListEmpty({ hasFilters: false, filteredTotal: 3 }),
+    ).toBeUndefined();
+    expect(
+      classifyProcessListEmpty({
+        hasFilters: true,
+        filteredTotal: 2,
+        overallTotal: 10,
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("LV-08.1.1 — buildOverallCaseCountRequest (função pura)", () => {
+  it("F) request auxiliar não possui filter", () => {
+    const req = buildOverallCaseCountRequest();
+    expect(req.filter).toBeUndefined();
+  });
+
+  it("G) request auxiliar não possui cursor", () => {
+    const req = buildOverallCaseCountRequest();
+    expect(req.page.cursor).toBeUndefined();
+  });
+
+  it("H) request auxiliar usa limite 1", () => {
+    const req = buildOverallCaseCountRequest();
+    expect(req.page.limit).toBe(1);
+  });
+});
+
+describe("LV-08.1.1 — integração vazio filtrado com Alfa", () => {
+  it("I) consulta filtrada inexistente + auxiliar sem filtros → classificação filtered", async () => {
+    const env = createMockDomainEnvironment();
+    const filtered = unwrap(
+      await env.services.cases.list(
+        ALFA_CTX,
+        buildCaseListRequest({
+          ...baseFilter(),
+          search: "REF-INEXISTENTE-XYZ",
+          limit: PROCESS_SORT_OPTIONS.length,
+        }),
+      ),
+    );
+    expect(filtered.items.length).toBe(0);
+    expect(filtered.total).toBe(0);
+
+    const overall = unwrap(
+      await env.services.cases.list(ALFA_CTX, buildOverallCaseCountRequest()),
+    );
+    const overallTotal = overall.total ?? overall.items.length;
+    expect(overallTotal).toBeGreaterThan(0);
+
+    const kind = classifyProcessListEmpty({
+      hasFilters: true,
+      filteredTotal: filtered.total ?? 0,
+      overallTotal,
+    });
+    expect(kind).toBe("filtered");
+  });
+});
