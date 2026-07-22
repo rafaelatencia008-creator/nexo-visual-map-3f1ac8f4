@@ -107,6 +107,17 @@ void progress;
 const labels: Readonly<Record<CaseReadinessIssue, string>> = CASE_READINESS_LABELS_PT;
 void labels;
 
+// LV-08.3.2 — prova oficial: getCaseReadinessProgress(CaseReadinessView) => CaseReadinessProgress.
+declare const _officialReadinessView: CaseReadinessView;
+const _officialProgress: CaseReadinessProgress =
+  getCaseReadinessProgress(_officialReadinessView);
+void _officialProgress;
+
+// LV-08.3.2 — prova oficial: catálogo cobre todo CaseReadinessIssue.
+const _officialLabels: Readonly<Record<CaseReadinessIssue, string>> =
+  CASE_READINESS_LABELS_PT;
+void _officialLabels;
+
 // CaseReadinessView.issues é readonly.
 type _IssuesReadonly = Expect<
   Equal<CaseReadinessView["issues"], Readonly<CaseReadinessView["issues"]>>
