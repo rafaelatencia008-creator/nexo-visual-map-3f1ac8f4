@@ -12,21 +12,65 @@ import type { OrganizationId, CaseId } from "./ids";
 export type IsoDate = string & { readonly __brand: "IsoDate" };
 export type IsoDateTime = string & { readonly __brand: "IsoDateTime" };
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const ISO_DATETIME_RE =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Ano bissexto (regra gregoriana). */
+export function isLeapYear(year: number): boolean {
+  if (!Number.isInteger(year)) return false;
+  if (year % 400 === 0) return true;
+  if (year % 100 === 0) return false;
+  return year % 4 === 0;
+}
+
+/** Dias no mês (1-12). Retorna 0 para mês inválido. */
+export function daysInMonth(year: number, month: number): number {
+  if (!Number.isInteger(year) || !Number.isInteger(month)) return 0;
+  if (month < 1 || month > 12) return 0;
+  if (month === 2) return isLeapYear(year) ? 29 : 28;
+  if (month === 4 || month === 6 || month === 9 || month === 11) return 30;
+  return 31;
+}
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12) return false;
+  const max = daysInMonth(year, month);
+  return day >= 1 && day <= max;
+}
 
 export function isIsoDate(v: unknown): v is IsoDate {
-  if (typeof v !== "string" || !ISO_DATE_RE.test(v)) return false;
-  const d = new Date(`${v}T00:00:00.000Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+  if (typeof v !== "string") return false;
+  const m = ISO_DATE_RE.exec(v);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  return isValidCalendarDate(y, mo, d);
 }
 
 export function isIsoDateTime(v: unknown): v is IsoDateTime {
-  if (typeof v !== "string" || !ISO_DATETIME_RE.test(v)) return false;
-  const d = new Date(v);
-  return !Number.isNaN(d.getTime());
+  if (typeof v !== "string") return false;
+  const m = ISO_DATETIME_RE.exec(v);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!isValidCalendarDate(y, mo, d)) return false;
+  const h = Number(m[4]);
+  const min = Number(m[5]);
+  const s = Number(m[6]);
+  if (h > 23 || min > 59 || s > 59) return false;
+  // m[7] fração (já limitada a 1-3 dígitos pelo regex); nada a validar aqui.
+  const tz = m[8];
+  if (tz !== "Z") {
+    const oh = Number(m[10]);
+    const om = Number(m[11]);
+    if (oh > 23 || om > 59) return false;
+  }
+  return true;
 }
+
 
 export function isValidVersion(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 1;
