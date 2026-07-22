@@ -480,5 +480,121 @@ export function validateMockDomainSeed(
     if (!r.ok) issues.push({ entity: "assignment", id: a.id, reason: r.reason });
   }
 
+  // ---- Regras relacionais adicionais -------------------------------------
+
+  const orgIds = new Set(seed.organizations.map((o) => o.id));
+  const userIds = new Set(seed.users.map((u) => u.id));
+  const profByCase = seed.professionalProfiles;
+  const caseById = new Map(seed.cases.map((c) => [c.id, c]));
+  const personById = new Map(seed.persons.map((p) => [p.id, p]));
+
+  // ProfessionalProfile: referências existentes.
+  for (const p of seed.professionalProfiles) {
+    if (!orgIds.has(p.organizationId))
+      issues.push({ entity: "professionalProfile", id: p.id, reason: "org_not_found" });
+    if (!userIds.has(p.userId))
+      issues.push({ entity: "professionalProfile", id: p.id, reason: "user_not_found" });
+  }
+
+  // Case: organização existente.
+  for (const c of seed.cases) {
+    if (!orgIds.has(c.organizationId))
+      issues.push({ entity: "case", id: c.id, reason: "org_not_found" });
+  }
+
+  // Person: organização existente.
+  for (const p of seed.persons) {
+    if (!orgIds.has(p.organizationId))
+      issues.push({ entity: "person", id: p.id, reason: "org_not_found" });
+  }
+
+  // Membership duplicado (mesmo user na mesma org).
+  {
+    const seen = new Set<string>();
+    for (const m of seed.memberships) {
+      const key = `${m.organizationId}|${m.userId}`;
+      if (seen.has(key))
+        issues.push({ entity: "membership", id: m.id, reason: "duplicate_user_in_org" });
+      seen.add(key);
+    }
+  }
+
+  // ProfessionalProfile duplicado equivalente.
+  {
+    const seen = new Set<string>();
+    for (const p of profByCase) {
+      const key = `${p.organizationId}|${p.userId}|${p.area}`;
+      if (seen.has(key))
+        issues.push({ entity: "professionalProfile", id: p.id, reason: "duplicate_equivalent" });
+      seen.add(key);
+    }
+  }
+
+  // Case: referência duplicada por org.
+  {
+    const seen = new Set<string>();
+    for (const c of seed.cases) {
+      const key = `${c.organizationId}|${c.reference}`;
+      if (seen.has(key))
+        issues.push({ entity: "case", id: c.id, reason: "duplicate_reference_in_org" });
+      seen.add(key);
+    }
+  }
+
+  // CasePerson: coerência org, duplicado por caso+pessoa.
+  {
+    const seen = new Set<string>();
+    for (const cp of seed.casePersons) {
+      const c = caseById.get(cp.caseId);
+      const p = personById.get(cp.personId);
+      if (c && cp.organizationId !== c.organizationId)
+        issues.push({ entity: "casePerson", id: cp.id, reason: "case_org_mismatch" });
+      if (p && cp.organizationId !== p.organizationId)
+        issues.push({ entity: "casePerson", id: cp.id, reason: "person_org_mismatch" });
+      const key = `${cp.caseId}|${cp.personId}`;
+      if (seen.has(key))
+        issues.push({ entity: "casePerson", id: cp.id, reason: "duplicate_case_person" });
+      seen.add(key);
+    }
+  }
+
+  // Relationship: pessoas devem estar vinculadas ao caso via CasePerson;
+  // duplicados equivalentes; coerência org.
+  {
+    const byCase = new Map<string, Set<string>>();
+    for (const cp of seed.casePersons) {
+      const set = byCase.get(cp.caseId) ?? new Set<string>();
+      set.add(cp.personId);
+      byCase.set(cp.caseId, set);
+    }
+    const seen = new Set<string>();
+    for (const r of seed.relationships) {
+      const c = caseById.get(r.caseId);
+      if (c && r.organizationId !== c.organizationId)
+        issues.push({ entity: "relationship", id: r.id, reason: "case_org_mismatch" });
+      const linked = byCase.get(r.caseId) ?? new Set<string>();
+      if (!linked.has(r.fromPersonId))
+        issues.push({ entity: "relationship", id: r.id, reason: "from_person_not_linked" });
+      if (!linked.has(r.toPersonId))
+        issues.push({ entity: "relationship", id: r.id, reason: "to_person_not_linked" });
+      const key = `${r.caseId}|${r.fromPersonId}|${r.toPersonId}|${r.type}`;
+      if (seen.has(key))
+        issues.push({ entity: "relationship", id: r.id, reason: "duplicate_equivalent" });
+      seen.add(key);
+    }
+  }
+
+  // Assignment: duplicado ativo equivalente.
+  {
+    const seen = new Set<string>();
+    for (const a of seed.assignments) {
+      if (a.status !== "active") continue;
+      const key = `${a.caseId}|${a.professionalProfileId}|${a.role}`;
+      if (seen.has(key))
+        issues.push({ entity: "assignment", id: a.id, reason: "duplicate_active" });
+      seen.add(key);
+    }
+  }
+
   return issues;
 }

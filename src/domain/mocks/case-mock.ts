@@ -1,5 +1,11 @@
 /**
  * CaseService — implementação em memória.
+ *
+ * Normalizações:
+ *  - `create` faz trim de `reference` e `title`;
+ *  - `list` valida `sortBy`/`sortDir` contra catálogos oficiais.
+ * Efeitos colaterais: `clock.next()` e `ids.next()` só são consumidos
+ * depois que todas as validações prévias passam.
  */
 
 import type { Case } from "../core/case";
@@ -12,10 +18,11 @@ import type {
   CaseReadinessIssue,
 } from "../services/case-service";
 import { CASE_READINESS_ISSUES } from "../services/case-service";
-import type {
-  ChangeCaseStatusInput,
-  CreateCaseInput,
-  UpdateCaseInput,
+import {
+  CASE_SORT_FIELDS,
+  type ChangeCaseStatusInput,
+  type CreateCaseInput,
+  type UpdateCaseInput,
 } from "../services/inputs";
 import type { ServiceContext } from "../services/context";
 import type { ServiceResult } from "../services/result";
@@ -28,6 +35,7 @@ import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems } from "./pagination-mock";
 import { sortStable } from "./sort";
+import { validateSort } from "./sort-validation";
 
 function notFound<T>(): ServiceResult<T> {
   return { ok: false, error: { code: "not_found", message: "resource_not_found" } };
@@ -54,6 +62,8 @@ export function createCaseServiceMock(
     ): Promise<ServiceResult<PageResult<Case>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const sortCheck = validateSort(request.sortBy, request.sortDir, CASE_SORT_FIELDS);
+      if (!sortCheck.ok) return sortCheck;
       const orgId = v.data.context.organizationId;
       let items = Array.from(store.cases.values()).filter(
         (c) => c.organizationId === orgId,
@@ -94,34 +104,36 @@ export function createCaseServiceMock(
       const v = requireContext(store, context);
       if (!v.ok) return v;
       const orgId = v.data.context.organizationId;
-      const ref = input.reference.trim();
-      if (ref.length === 0 || input.title.trim().length === 0) {
+      const reference = input.reference.trim();
+      const title = input.title.trim();
+      if (reference.length === 0 || title.length === 0) {
         return {
           ok: false,
           error: {
             code: "validation_error",
             message: "invalid_case_input",
             fieldErrors: {
-              ...(ref.length === 0 ? { reference: ["empty"] } : {}),
-              ...(input.title.trim().length === 0 ? { title: ["empty"] } : {}),
+              ...(reference.length === 0 ? { reference: ["empty"] } : {}),
+              ...(title.length === 0 ? { title: ["empty"] } : {}),
             },
           },
         };
       }
       for (const c of store.cases.values()) {
-        if (c.organizationId === orgId && c.reference === input.reference) {
+        if (c.organizationId === orgId && c.reference === reference) {
           return {
             ok: false,
             error: { code: "conflict", message: "duplicate_case_reference" },
           };
         }
       }
+      const id = ids.next("case");
       const now = clock.next();
       const next: Case = {
-        id: ids.next("case"),
+        id,
         organizationId: orgId,
-        reference: input.reference,
-        title: input.title,
+        reference,
+        title,
         status: "draft",
         confidentiality: input.confidentiality,
         conflictCheck: "not_reviewed",
@@ -139,7 +151,7 @@ export function createCaseServiceMock(
     async update(context, caseId: CaseId, input: UpdateCaseInput) {
       return applyCaseMutation(store, clock, context, caseId, input.expectedVersion, (c) => ({
         ...c,
-        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.title !== undefined ? { title: input.title.trim() } : {}),
         ...(input.confidentiality !== undefined
           ? { confidentiality: input.confidentiality }
           : {}),
@@ -214,20 +226,27 @@ function applyCaseMutation(
       },
     };
   }
-  const updatedAt = clock.next();
   const mutated = mutate(current);
-  const next: Case = {
+  const preview: Case = {
     ...mutated,
     metadata: {
       createdAt: current.metadata.createdAt,
-      updatedAt,
+      updatedAt: current.metadata.updatedAt,
       version: current.metadata.version + 1,
     },
   };
-  const check = validateCase(next);
+  const check = validateCase(preview);
   if (!check.ok) {
     return { ok: false, error: { code: "validation_error", message: check.reason } };
   }
+  const next: Case = {
+    ...preview,
+    metadata: {
+      createdAt: current.metadata.createdAt,
+      updatedAt: clock.next(),
+      version: current.metadata.version + 1,
+    },
+  };
   store.cases.set(next.id, next);
   return { ok: true, data: deepClone(next) };
 }

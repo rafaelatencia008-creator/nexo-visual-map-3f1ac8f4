@@ -4,9 +4,10 @@
 
 import type { Membership } from "../core/access";
 import type { MembershipId } from "../core/ids";
-import type {
-  MembershipService,
-  MembershipListRequest,
+import {
+  MEMBERSHIP_SORT_FIELDS,
+  type MembershipService,
+  type MembershipListRequest,
 } from "../services/membership-service";
 import type {
   ChangeMembershipRoleInput,
@@ -25,6 +26,7 @@ import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems } from "./pagination-mock";
 import { sortStable } from "./sort";
+import { validateSort } from "./sort-validation";
 
 function notFound<T>(): ServiceResult<T> {
   return { ok: false, error: { code: "not_found", message: "resource_not_found" } };
@@ -51,6 +53,8 @@ export function createMembershipServiceMock(
     ): Promise<ServiceResult<PageResult<Membership>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const sortCheck = validateSort(request.sortBy, request.sortDir, MEMBERSHIP_SORT_FIELDS);
+      if (!sortCheck.ok) return sortCheck;
       const orgId = v.data.context.organizationId;
       let items = Array.from(store.memberships.values()).filter(
         (m) => m.organizationId === orgId,
@@ -88,9 +92,10 @@ export function createMembershipServiceMock(
           };
         }
       }
+      const id = ids.next("membership");
       const now = clock.next();
       const next: Membership = {
-        id: ids.next("membership"),
+        id,
         organizationId: orgId,
         userId: input.userId,
         role: input.role,
@@ -153,23 +158,30 @@ function applyMembershipMutation(
       },
     };
   }
-  const updatedAt = clock.next();
   const mutated = mutate(current);
-  const next: Membership = {
+  const preview: Membership = {
     ...mutated,
     metadata: {
       createdAt: current.metadata.createdAt,
-      updatedAt,
+      updatedAt: current.metadata.updatedAt,
       version: current.metadata.version + 1,
     },
   };
-  const check = validateMembership(next, {
+  const check = validateMembership(preview, {
     users: Array.from(store.users.values()),
     organizations: Array.from(store.organizations.values()),
   });
   if (!check.ok) {
     return { ok: false, error: { code: "validation_error", message: check.reason } };
   }
+  const next: Membership = {
+    ...preview,
+    metadata: {
+      createdAt: current.metadata.createdAt,
+      updatedAt: clock.next(),
+      version: current.metadata.version + 1,
+    },
+  };
   store.memberships.set(next.id, next);
   return { ok: true, data: deepClone(next) };
 }

@@ -1,5 +1,8 @@
 /**
  * AssignmentService — implementação em memória.
+ *
+ * Invariantes de duplicidade ativa (mesmo caso + perfil + papel + status
+ * "active") são impostas em `create`, `update` e `changeStatus`.
  */
 
 import type { Assignment } from "../core/assignment";
@@ -25,6 +28,25 @@ import { sortStable } from "./sort";
 
 function notFound<T>(): ServiceResult<T> {
   return { ok: false, error: { code: "not_found", message: "resource_not_found" } };
+}
+
+function hasEquivalentActive(
+  store: MockStore,
+  candidate: Assignment,
+): boolean {
+  for (const a of store.assignments.values()) {
+    if (
+      a.id !== candidate.id &&
+      a.status === "active" &&
+      candidate.status === "active" &&
+      a.caseId === candidate.caseId &&
+      a.professionalProfileId === candidate.professionalProfileId &&
+      a.role === candidate.role
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function createAssignmentServiceMock(
@@ -77,10 +99,7 @@ export function createAssignmentServiceMock(
       if (!isIsoDate(input.startedOn)) {
         return {
           ok: false,
-          error: {
-            code: "validation_error",
-            message: "invalid_started_on",
-          },
+          error: { code: "validation_error", message: "invalid_started_on" },
         };
       }
       for (const a of store.assignments.values()) {
@@ -96,9 +115,10 @@ export function createAssignmentServiceMock(
           };
         }
       }
+      const id = ids.next("assignment");
       const now = clock.next();
       const next: Assignment = {
-        id: ids.next("assignment"),
+        id,
         organizationId: orgId,
         caseId: input.caseId,
         professionalProfileId: input.professionalProfileId,
@@ -149,25 +169,41 @@ export function createAssignmentServiceMock(
           error: { code: "validation_error", message: "invalid_ended_on" },
         };
       }
-      const updatedAt = clock.next();
-      const next: Assignment = {
+      const mutated: Assignment = {
         ...current,
         ...(input.role !== undefined ? { role: input.role } : {}),
         ...(input.section !== undefined ? { section: input.section } : {}),
         ...(input.endedOn !== undefined ? { endedOn: input.endedOn } : {}),
+      };
+      if (hasEquivalentActive(store, mutated)) {
+        return {
+          ok: false,
+          error: { code: "conflict", message: "duplicate_active_assignment" },
+        };
+      }
+      const preview: Assignment = {
+        ...mutated,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validateAssignment(next, {
+      const check = validateAssignment(preview, {
         cases: Array.from(store.cases.values()),
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: Assignment = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.assignments.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },
@@ -196,23 +232,36 @@ export function createAssignmentServiceMock(
           },
         };
       }
-      const updatedAt = clock.next();
-      const next: Assignment = {
-        ...current,
-        status: input.status,
+      const mutated: Assignment = { ...current, status: input.status };
+      if (hasEquivalentActive(store, mutated)) {
+        return {
+          ok: false,
+          error: { code: "conflict", message: "duplicate_active_assignment" },
+        };
+      }
+      const preview: Assignment = {
+        ...mutated,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validateAssignment(next, {
+      const check = validateAssignment(preview, {
         cases: Array.from(store.cases.values()),
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: Assignment = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.assignments.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },

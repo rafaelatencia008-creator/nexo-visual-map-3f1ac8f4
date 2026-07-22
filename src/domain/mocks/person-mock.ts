@@ -1,5 +1,15 @@
 /**
  * PersonService + CasePersonService + RelationshipService — implementação em memória.
+ *
+ * Regras:
+ *  - `Person.update` bloqueia mudanças `adult` → `child`/`adolescent` quando
+ *    existem `CasePerson` com `restrictedByDefault=false` — o profissional
+ *    deve atualizar cada vínculo versionadamente antes.
+ *  - `CasePerson.create`/`update` forçam `restrictedByDefault=true` para
+ *    menores.
+ *  - `CasePerson.remove` bloqueia quando a pessoa ainda participa de
+ *    relacionamentos naquele caso.
+ *  - `Relationship.update` bloqueia duplicatas equivalentes.
  */
 
 import type { Person } from "../core/person";
@@ -11,11 +21,12 @@ import type {
   PersonId,
   RelationshipId,
 } from "../core/ids";
-import type {
-  CasePersonService,
-  PersonService,
-  PersonListRequest,
-  RelationshipService,
+import {
+  PERSON_SORT_FIELDS,
+  type CasePersonService,
+  type PersonService,
+  type PersonListRequest,
+  type RelationshipService,
 } from "../services/person-service";
 import type {
   CreateCasePersonInput,
@@ -40,6 +51,7 @@ import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems } from "./pagination-mock";
 import { sortStable } from "./sort";
+import { validateSort } from "./sort-validation";
 
 function notFound<T>(): ServiceResult<T> {
   return { ok: false, error: { code: "not_found", message: "resource_not_found" } };
@@ -68,6 +80,8 @@ export function createPersonServiceMock(
     ): Promise<ServiceResult<PageResult<Person>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const sortCheck = validateSort(request.sortBy, request.sortDir, PERSON_SORT_FIELDS);
+      if (!sortCheck.ok) return sortCheck;
       const orgId = v.data.context.organizationId;
       let items = Array.from(store.persons.values()).filter(
         (p) => p.organizationId === orgId,
@@ -104,9 +118,10 @@ export function createPersonServiceMock(
           error: { code: "validation_error", message: "invalid_person_input" },
         };
       }
+      const id = ids.next("person");
       const now = clock.next();
       const next: Person = {
-        id: ids.next("person"),
+        id,
         organizationId: v.data.context.organizationId,
         displayLabel: input.displayLabel,
         ageClassification: input.ageClassification,
@@ -141,8 +156,7 @@ export function createPersonServiceMock(
           },
         };
       }
-      const updatedAt = clock.next();
-      const next: Person = {
+      const mutated: Person = {
         ...current,
         ...(input.displayLabel !== undefined
           ? { displayLabel: input.displayLabel }
@@ -150,16 +164,45 @@ export function createPersonServiceMock(
         ...(input.ageClassification !== undefined
           ? { ageClassification: input.ageClassification }
           : {}),
+      };
+      // Proteção: se pessoa passa a ser menor, todos os vínculos existentes
+      // precisam estar com restrictedByDefault=true.
+      if (
+        !isMinor(current) &&
+        isMinor(mutated)
+      ) {
+        for (const cp of store.casePersons.values()) {
+          if (cp.personId === current.id && cp.restrictedByDefault === false) {
+            return {
+              ok: false,
+              error: {
+                code: "validation_error",
+                message: "case_person_links_unprotected",
+              },
+            };
+          }
+        }
+      }
+      const preview: Person = {
+        ...mutated,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validatePerson(next);
+      const check = validatePerson(preview);
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: Person = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.persons.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },
@@ -224,9 +267,10 @@ export function createCasePersonServiceMock(
         }
       }
       const restricted = isMinor(p) ? true : input.restrictedByDefault;
+      const id = ids.next("casePerson");
       const now = clock.next();
       const next: CasePerson = {
-        id: ids.next("casePerson"),
+        id,
         organizationId: orgId,
         caseId: input.caseId,
         personId: input.personId,
@@ -272,24 +316,34 @@ export function createCasePersonServiceMock(
           : input.restrictedByDefault !== undefined
             ? input.restrictedByDefault
             : current.restrictedByDefault;
-      const updatedAt = clock.next();
-      const next: CasePerson = {
+      const mutated: CasePerson = {
         ...current,
         ...(input.role !== undefined ? { role: input.role } : {}),
         restrictedByDefault: restricted,
+      };
+      const preview: CasePerson = {
+        ...mutated,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validateCasePerson(next, {
+      const check = validateCasePerson(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: CasePerson = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.casePersons.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },
@@ -319,6 +373,19 @@ export function createCasePersonServiceMock(
           },
         };
       }
+      // Consistência: bloquear se a pessoa ainda participa de relacionamentos
+      // do mesmo caso.
+      for (const r of store.relationships.values()) {
+        if (
+          r.caseId === caseId &&
+          (r.fromPersonId === current.personId || r.toPersonId === current.personId)
+        ) {
+          return {
+            ok: false,
+            error: { code: "conflict", message: "case_person_in_use" },
+          };
+        }
+      }
       store.casePersons.delete(casePersonId);
       return { ok: true, data: deepClone(current) };
     },
@@ -326,6 +393,24 @@ export function createCasePersonServiceMock(
 }
 
 // ---- RelationshipService ---------------------------------------------------
+
+function findDuplicateRelationship(
+  store: MockStore,
+  candidate: Relationship,
+): boolean {
+  for (const r of store.relationships.values()) {
+    if (
+      r.id !== candidate.id &&
+      r.caseId === candidate.caseId &&
+      r.fromPersonId === candidate.fromPersonId &&
+      r.toPersonId === candidate.toPersonId &&
+      r.type === candidate.type
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function createRelationshipServiceMock(
   store: MockStore,
@@ -405,9 +490,10 @@ export function createRelationshipServiceMock(
           };
         }
       }
+      const id = ids.next("relationship");
       const now = clock.next();
       const next: Relationship = {
-        id: ids.next("relationship"),
+        id,
         organizationId: orgId,
         caseId: input.caseId,
         fromPersonId: input.fromPersonId,
@@ -450,23 +536,39 @@ export function createRelationshipServiceMock(
           },
         };
       }
-      const updatedAt = clock.next();
-      const next: Relationship = {
+      const mutated: Relationship = {
         ...current,
         ...(input.type !== undefined ? { type: input.type } : {}),
+      };
+      if (findDuplicateRelationship(store, mutated)) {
+        return {
+          ok: false,
+          error: { code: "conflict", message: "duplicate_relationship" },
+        };
+      }
+      const preview: Relationship = {
+        ...mutated,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validateRelationship(next, {
+      const check = validateRelationship(preview, {
         cases: Array.from(store.cases.values()),
         persons: Array.from(store.persons.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: Relationship = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.relationships.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },
