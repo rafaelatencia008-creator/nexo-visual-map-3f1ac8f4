@@ -24,7 +24,7 @@ import { processos, clientes } from "@/lib/mock/data";
 import { formatDate } from "@/lib/format";
 import type { StatusProcesso } from "@/lib/mock/types";
 
-export const Route = createFileRoute("/app/processos")({
+export const Route = createFileRoute("/app/processos/")({
   head: () => ({
     meta: [
       { title: "Processos — Nexo Pericial 360" },

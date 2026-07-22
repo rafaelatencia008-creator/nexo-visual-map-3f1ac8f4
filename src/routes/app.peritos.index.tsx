@@ -18,7 +18,7 @@ const ESPECIALIDADE_LABEL: Record<TipoPericia, string> = {
   trabalhista: "Trabalhista",
 };
 
-export const Route = createFileRoute("/app/peritos")({
+export const Route = createFileRoute("/app/peritos/")({
   head: () => ({
     meta: [
       { title: "Peritos — Nexo Pericial 360" },

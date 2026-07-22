@@ -18,11 +18,11 @@ import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as AppProcessosRouteImport } from './routes/app.processos'
-import { Route as AppPeritosRouteImport } from './routes/app.peritos'
-import { Route as AppPericiasRouteImport } from './routes/app.pericias'
-import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
+import { Route as AppProcessosIndexRouteImport } from './routes/app.processos.index'
+import { Route as AppPeritosIndexRouteImport } from './routes/app.peritos.index'
+import { Route as AppPericiasIndexRouteImport } from './routes/app.pericias.index'
+import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
 import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppProcessosIdRouteImport } from './routes/app.processos.$id'
 import { Route as AppPeritosNovoRouteImport } from './routes/app.peritos.novo'
@@ -81,70 +81,70 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProcessosRoute = AppProcessosRouteImport.update({
-  id: '/processos',
-  path: '/processos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPeritosRoute = AppPeritosRouteImport.update({
-  id: '/peritos',
-  path: '/peritos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPericiasRoute = AppPericiasRouteImport.update({
-  id: '/pericias',
-  path: '/pericias',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProcessosIndexRoute = AppProcessosIndexRouteImport.update({
+  id: '/processos/',
+  path: '/processos/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPeritosIndexRoute = AppPeritosIndexRouteImport.update({
+  id: '/peritos/',
+  path: '/peritos/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPericiasIndexRoute = AppPericiasIndexRouteImport.update({
+  id: '/pericias/',
+  path: '/pericias/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProcessosNovoRoute = AppProcessosNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AppProcessosRoute,
+  id: '/processos/novo',
+  path: '/processos/novo',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppProcessosIdRoute = AppProcessosIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppProcessosRoute,
+  id: '/processos/$id',
+  path: '/processos/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPeritosNovoRoute = AppPeritosNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AppPeritosRoute,
+  id: '/peritos/novo',
+  path: '/peritos/novo',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPeritosIdRoute = AppPeritosIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppPeritosRoute,
+  id: '/peritos/$id',
+  path: '/peritos/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPericiasNovaRoute = AppPericiasNovaRouteImport.update({
-  id: '/nova',
-  path: '/nova',
-  getParentRoute: () => AppPericiasRoute,
+  id: '/pericias/nova',
+  path: '/pericias/nova',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPericiasIdRoute = AppPericiasIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppPericiasRoute,
+  id: '/pericias/$id',
+  path: '/pericias/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppClientesNovoRoute = AppClientesNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AppClientesRoute,
+  id: '/clientes/novo',
+  path: '/clientes/novo',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppClientesRoute,
+  id: '/clientes/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppProcessosIdEditarRoute = AppProcessosIdEditarRouteImport.update({
   id: '/editar',
@@ -177,10 +177,6 @@ export interface FileRoutesByFullPath {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
-  '/app/clientes': typeof AppClientesRouteWithChildren
-  '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRouteWithChildren
-  '/app/processos': typeof AppProcessosRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -190,6 +186,10 @@ export interface FileRoutesByFullPath {
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/clientes/': typeof AppClientesIndexRoute
+  '/app/pericias/': typeof AppPericiasIndexRoute
+  '/app/peritos/': typeof AppPeritosIndexRoute
+  '/app/processos/': typeof AppProcessosIndexRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
   '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
@@ -204,10 +204,6 @@ export interface FileRoutesByTo {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
-  '/app/clientes': typeof AppClientesRouteWithChildren
-  '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRouteWithChildren
-  '/app/processos': typeof AppProcessosRouteWithChildren
   '/app': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -217,6 +213,10 @@ export interface FileRoutesByTo {
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/clientes': typeof AppClientesIndexRoute
+  '/app/pericias': typeof AppPericiasIndexRoute
+  '/app/peritos': typeof AppPeritosIndexRoute
+  '/app/processos': typeof AppProcessosIndexRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
   '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
@@ -233,10 +233,6 @@ export interface FileRoutesById {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
-  '/app/clientes': typeof AppClientesRouteWithChildren
-  '/app/pericias': typeof AppPericiasRouteWithChildren
-  '/app/peritos': typeof AppPeritosRouteWithChildren
-  '/app/processos': typeof AppProcessosRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/clientes/$id': typeof AppClientesIdRouteWithChildren
   '/app/clientes/novo': typeof AppClientesNovoRoute
@@ -246,6 +242,10 @@ export interface FileRoutesById {
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/$id': typeof AppProcessosIdRouteWithChildren
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/clientes/': typeof AppClientesIndexRoute
+  '/app/pericias/': typeof AppPericiasIndexRoute
+  '/app/peritos/': typeof AppPeritosIndexRoute
+  '/app/processos/': typeof AppProcessosIndexRoute
   '/app/clientes/$id/editar': typeof AppClientesIdEditarRoute
   '/app/pericias/$id/editar': typeof AppPericiasIdEditarRoute
   '/app/peritos/$id/editar': typeof AppPeritosIdEditarRoute
@@ -263,10 +263,6 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
-    | '/app/clientes'
-    | '/app/pericias'
-    | '/app/peritos'
-    | '/app/processos'
     | '/app/'
     | '/app/clientes/$id'
     | '/app/clientes/novo'
@@ -276,6 +272,10 @@ export interface FileRouteTypes {
     | '/app/peritos/novo'
     | '/app/processos/$id'
     | '/app/processos/novo'
+    | '/app/clientes/'
+    | '/app/pericias/'
+    | '/app/peritos/'
+    | '/app/processos/'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
     | '/app/peritos/$id/editar'
@@ -290,10 +290,6 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
-    | '/app/clientes'
-    | '/app/pericias'
-    | '/app/peritos'
-    | '/app/processos'
     | '/app'
     | '/app/clientes/$id'
     | '/app/clientes/novo'
@@ -303,6 +299,10 @@ export interface FileRouteTypes {
     | '/app/peritos/novo'
     | '/app/processos/$id'
     | '/app/processos/novo'
+    | '/app/clientes'
+    | '/app/pericias'
+    | '/app/peritos'
+    | '/app/processos'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
     | '/app/peritos/$id/editar'
@@ -318,10 +318,6 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
-    | '/app/clientes'
-    | '/app/pericias'
-    | '/app/peritos'
-    | '/app/processos'
     | '/app/'
     | '/app/clientes/$id'
     | '/app/clientes/novo'
@@ -331,6 +327,10 @@ export interface FileRouteTypes {
     | '/app/peritos/novo'
     | '/app/processos/$id'
     | '/app/processos/novo'
+    | '/app/clientes/'
+    | '/app/pericias/'
+    | '/app/peritos/'
+    | '/app/processos/'
     | '/app/clientes/$id/editar'
     | '/app/pericias/$id/editar'
     | '/app/peritos/$id/editar'
@@ -413,34 +413,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/processos': {
-      id: '/app/processos'
-      path: '/processos'
-      fullPath: '/app/processos'
-      preLoaderRoute: typeof AppProcessosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/peritos': {
-      id: '/app/peritos'
-      path: '/peritos'
-      fullPath: '/app/peritos'
-      preLoaderRoute: typeof AppPeritosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/pericias': {
-      id: '/app/pericias'
-      path: '/pericias'
-      fullPath: '/app/pericias'
-      preLoaderRoute: typeof AppPericiasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/clientes': {
-      id: '/app/clientes'
-      path: '/clientes'
-      fullPath: '/app/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/agenda': {
       id: '/app/agenda'
       path: '/agenda'
@@ -448,61 +420,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/processos/': {
+      id: '/app/processos/'
+      path: '/processos'
+      fullPath: '/app/processos/'
+      preLoaderRoute: typeof AppProcessosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/peritos/': {
+      id: '/app/peritos/'
+      path: '/peritos'
+      fullPath: '/app/peritos/'
+      preLoaderRoute: typeof AppPeritosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pericias/': {
+      id: '/app/pericias/'
+      path: '/pericias'
+      fullPath: '/app/pericias/'
+      preLoaderRoute: typeof AppPericiasIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clientes/': {
+      id: '/app/clientes/'
+      path: '/clientes'
+      fullPath: '/app/clientes/'
+      preLoaderRoute: typeof AppClientesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/processos/novo': {
       id: '/app/processos/novo'
-      path: '/novo'
+      path: '/processos/novo'
       fullPath: '/app/processos/novo'
       preLoaderRoute: typeof AppProcessosNovoRouteImport
-      parentRoute: typeof AppProcessosRoute
+      parentRoute: typeof AppRoute
     }
     '/app/processos/$id': {
       id: '/app/processos/$id'
-      path: '/$id'
+      path: '/processos/$id'
       fullPath: '/app/processos/$id'
       preLoaderRoute: typeof AppProcessosIdRouteImport
-      parentRoute: typeof AppProcessosRoute
+      parentRoute: typeof AppRoute
     }
     '/app/peritos/novo': {
       id: '/app/peritos/novo'
-      path: '/novo'
+      path: '/peritos/novo'
       fullPath: '/app/peritos/novo'
       preLoaderRoute: typeof AppPeritosNovoRouteImport
-      parentRoute: typeof AppPeritosRoute
+      parentRoute: typeof AppRoute
     }
     '/app/peritos/$id': {
       id: '/app/peritos/$id'
-      path: '/$id'
+      path: '/peritos/$id'
       fullPath: '/app/peritos/$id'
       preLoaderRoute: typeof AppPeritosIdRouteImport
-      parentRoute: typeof AppPeritosRoute
+      parentRoute: typeof AppRoute
     }
     '/app/pericias/nova': {
       id: '/app/pericias/nova'
-      path: '/nova'
+      path: '/pericias/nova'
       fullPath: '/app/pericias/nova'
       preLoaderRoute: typeof AppPericiasNovaRouteImport
-      parentRoute: typeof AppPericiasRoute
+      parentRoute: typeof AppRoute
     }
     '/app/pericias/$id': {
       id: '/app/pericias/$id'
-      path: '/$id'
+      path: '/pericias/$id'
       fullPath: '/app/pericias/$id'
       preLoaderRoute: typeof AppPericiasIdRouteImport
-      parentRoute: typeof AppPericiasRoute
+      parentRoute: typeof AppRoute
     }
     '/app/clientes/novo': {
       id: '/app/clientes/novo'
-      path: '/novo'
+      path: '/clientes/novo'
       fullPath: '/app/clientes/novo'
       preLoaderRoute: typeof AppClientesNovoRouteImport
-      parentRoute: typeof AppClientesRoute
+      parentRoute: typeof AppRoute
     }
     '/app/clientes/$id': {
       id: '/app/clientes/$id'
-      path: '/$id'
+      path: '/clientes/$id'
       fullPath: '/app/clientes/$id'
       preLoaderRoute: typeof AppClientesIdRouteImport
-      parentRoute: typeof AppClientesRoute
+      parentRoute: typeof AppRoute
     }
     '/app/processos/$id/editar': {
       id: '/app/processos/$id/editar'
@@ -547,20 +547,6 @@ const AppClientesIdRouteWithChildren = AppClientesIdRoute._addFileChildren(
   AppClientesIdRouteChildren,
 )
 
-interface AppClientesRouteChildren {
-  AppClientesIdRoute: typeof AppClientesIdRouteWithChildren
-  AppClientesNovoRoute: typeof AppClientesNovoRoute
-}
-
-const AppClientesRouteChildren: AppClientesRouteChildren = {
-  AppClientesIdRoute: AppClientesIdRouteWithChildren,
-  AppClientesNovoRoute: AppClientesNovoRoute,
-}
-
-const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
-  AppClientesRouteChildren,
-)
-
 interface AppPericiasIdRouteChildren {
   AppPericiasIdEditarRoute: typeof AppPericiasIdEditarRoute
 }
@@ -571,20 +557,6 @@ const AppPericiasIdRouteChildren: AppPericiasIdRouteChildren = {
 
 const AppPericiasIdRouteWithChildren = AppPericiasIdRoute._addFileChildren(
   AppPericiasIdRouteChildren,
-)
-
-interface AppPericiasRouteChildren {
-  AppPericiasIdRoute: typeof AppPericiasIdRouteWithChildren
-  AppPericiasNovaRoute: typeof AppPericiasNovaRoute
-}
-
-const AppPericiasRouteChildren: AppPericiasRouteChildren = {
-  AppPericiasIdRoute: AppPericiasIdRouteWithChildren,
-  AppPericiasNovaRoute: AppPericiasNovaRoute,
-}
-
-const AppPericiasRouteWithChildren = AppPericiasRoute._addFileChildren(
-  AppPericiasRouteChildren,
 )
 
 interface AppPeritosIdRouteChildren {
@@ -599,20 +571,6 @@ const AppPeritosIdRouteWithChildren = AppPeritosIdRoute._addFileChildren(
   AppPeritosIdRouteChildren,
 )
 
-interface AppPeritosRouteChildren {
-  AppPeritosIdRoute: typeof AppPeritosIdRouteWithChildren
-  AppPeritosNovoRoute: typeof AppPeritosNovoRoute
-}
-
-const AppPeritosRouteChildren: AppPeritosRouteChildren = {
-  AppPeritosIdRoute: AppPeritosIdRouteWithChildren,
-  AppPeritosNovoRoute: AppPeritosNovoRoute,
-}
-
-const AppPeritosRouteWithChildren = AppPeritosRoute._addFileChildren(
-  AppPeritosRouteChildren,
-)
-
 interface AppProcessosIdRouteChildren {
   AppProcessosIdEditarRoute: typeof AppProcessosIdEditarRoute
 }
@@ -625,36 +583,38 @@ const AppProcessosIdRouteWithChildren = AppProcessosIdRoute._addFileChildren(
   AppProcessosIdRouteChildren,
 )
 
-interface AppProcessosRouteChildren {
-  AppProcessosIdRoute: typeof AppProcessosIdRouteWithChildren
-  AppProcessosNovoRoute: typeof AppProcessosNovoRoute
-}
-
-const AppProcessosRouteChildren: AppProcessosRouteChildren = {
-  AppProcessosIdRoute: AppProcessosIdRouteWithChildren,
-  AppProcessosNovoRoute: AppProcessosNovoRoute,
-}
-
-const AppProcessosRouteWithChildren = AppProcessosRoute._addFileChildren(
-  AppProcessosRouteChildren,
-)
-
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
-  AppClientesRoute: typeof AppClientesRouteWithChildren
-  AppPericiasRoute: typeof AppPericiasRouteWithChildren
-  AppPeritosRoute: typeof AppPeritosRouteWithChildren
-  AppProcessosRoute: typeof AppProcessosRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppClientesIdRoute: typeof AppClientesIdRouteWithChildren
+  AppClientesNovoRoute: typeof AppClientesNovoRoute
+  AppPericiasIdRoute: typeof AppPericiasIdRouteWithChildren
+  AppPericiasNovaRoute: typeof AppPericiasNovaRoute
+  AppPeritosIdRoute: typeof AppPeritosIdRouteWithChildren
+  AppPeritosNovoRoute: typeof AppPeritosNovoRoute
+  AppProcessosIdRoute: typeof AppProcessosIdRouteWithChildren
+  AppProcessosNovoRoute: typeof AppProcessosNovoRoute
+  AppClientesIndexRoute: typeof AppClientesIndexRoute
+  AppPericiasIndexRoute: typeof AppPericiasIndexRoute
+  AppPeritosIndexRoute: typeof AppPeritosIndexRoute
+  AppProcessosIndexRoute: typeof AppProcessosIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
-  AppClientesRoute: AppClientesRouteWithChildren,
-  AppPericiasRoute: AppPericiasRouteWithChildren,
-  AppPeritosRoute: AppPeritosRouteWithChildren,
-  AppProcessosRoute: AppProcessosRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppClientesIdRoute: AppClientesIdRouteWithChildren,
+  AppClientesNovoRoute: AppClientesNovoRoute,
+  AppPericiasIdRoute: AppPericiasIdRouteWithChildren,
+  AppPericiasNovaRoute: AppPericiasNovaRoute,
+  AppPeritosIdRoute: AppPeritosIdRouteWithChildren,
+  AppPeritosNovoRoute: AppPeritosNovoRoute,
+  AppProcessosIdRoute: AppProcessosIdRouteWithChildren,
+  AppProcessosNovoRoute: AppProcessosNovoRoute,
+  AppClientesIndexRoute: AppClientesIndexRoute,
+  AppPericiasIndexRoute: AppPericiasIndexRoute,
+  AppPeritosIndexRoute: AppPeritosIndexRoute,
+  AppProcessosIndexRoute: AppProcessosIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -672,13 +632,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
