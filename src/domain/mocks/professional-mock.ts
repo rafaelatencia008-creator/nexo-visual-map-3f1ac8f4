@@ -1,13 +1,18 @@
 /**
  * ProfessionalProfileService + CredentialService — implementação em memória.
+ *
+ * Invariantes:
+ *  - `create` e `update` de perfil não permitem duas entradas equivalentes
+ *    (mesma organização + usuário + área).
  */
 
 import type { Credential, ProfessionalProfile } from "../core/professional";
-import type {
-  CredentialService,
-  ProfessionalProfileService,
-  ProfessionalListRequest,
-  ChangeProfessionalStatusInput,
+import {
+  PROFESSIONAL_SORT_FIELDS,
+  type CredentialService,
+  type ProfessionalProfileService,
+  type ProfessionalListRequest,
+  type ChangeProfessionalStatusInput,
 } from "../services/professional-service";
 import type {
   CreateCredentialInput,
@@ -30,6 +35,7 @@ import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems } from "./pagination-mock";
 import { sortStable } from "./sort";
+import { validateSort } from "./sort-validation";
 
 function notFound<T>(): ServiceResult<T> {
   return { ok: false, error: { code: "not_found", message: "resource_not_found" } };
@@ -56,6 +62,12 @@ export function createProfessionalProfileServiceMock(
     ): Promise<ServiceResult<PageResult<ProfessionalProfile>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const sortCheck = validateSort(
+        request.sortBy,
+        request.sortDir,
+        PROFESSIONAL_SORT_FIELDS,
+      );
+      if (!sortCheck.ok) return sortCheck;
       const orgId = v.data.context.organizationId;
       let items = Array.from(store.professionalProfiles.values()).filter(
         (p) => p.organizationId === orgId,
@@ -86,16 +98,21 @@ export function createProfessionalProfileServiceMock(
         return { ok: false, error: { code: "not_found", message: "user_not_found" } };
       }
       for (const p of store.professionalProfiles.values()) {
-        if (p.organizationId === orgId && p.userId === input.userId && p.area === input.area) {
+        if (
+          p.organizationId === orgId &&
+          p.userId === input.userId &&
+          p.area === input.area
+        ) {
           return {
             ok: false,
             error: { code: "conflict", message: "duplicate_professional_profile" },
           };
         }
       }
+      const id = ids.next("professionalProfile");
       const now = clock.next();
       const next: ProfessionalProfile = {
-        id: ids.next("professionalProfile"),
+        id,
         organizationId: orgId,
         userId: input.userId,
         area: input.area,
@@ -158,20 +175,41 @@ function applyProfileMutation(
       },
     };
   }
-  const updatedAt = clock.next();
   const mutated = mutate(current);
-  const next: ProfessionalProfile = {
+  // Duplicidade (mesmo user+area+org) — nunca permita gerar equivalente.
+  for (const p of store.professionalProfiles.values()) {
+    if (
+      p.id !== current.id &&
+      p.organizationId === mutated.organizationId &&
+      p.userId === mutated.userId &&
+      p.area === mutated.area
+    ) {
+      return {
+        ok: false,
+        error: { code: "conflict", message: "duplicate_professional_profile" },
+      };
+    }
+  }
+  const preview: ProfessionalProfile = {
     ...mutated,
     metadata: {
       createdAt: current.metadata.createdAt,
-      updatedAt,
+      updatedAt: current.metadata.updatedAt,
       version: current.metadata.version + 1,
     },
   };
-  const check = validateProfessionalProfile(next);
+  const check = validateProfessionalProfile(preview);
   if (!check.ok) {
     return { ok: false, error: { code: "validation_error", message: check.reason } };
   }
+  const next: ProfessionalProfile = {
+    ...preview,
+    metadata: {
+      createdAt: current.metadata.createdAt,
+      updatedAt: clock.next(),
+      version: current.metadata.version + 1,
+    },
+  };
   store.professionalProfiles.set(next.id, next);
   return { ok: true, data: deepClone(next) };
 }
@@ -222,9 +260,10 @@ export function createCredentialServiceMock(
       if (!prof || prof.organizationId !== orgId) {
         return notFound<Credential>();
       }
+      const id = ids.next("credential");
       const now = clock.next();
       const next: Credential = {
-        id: ids.next("credential"),
+        id,
         organizationId: orgId,
         professionalProfileId: input.professionalProfileId,
         status: "not_informed",
@@ -257,22 +296,29 @@ export function createCredentialServiceMock(
           },
         };
       }
-      const updatedAt = clock.next();
-      const next: Credential = {
+      const preview: Credential = {
         ...current,
         status: input.status,
         metadata: {
           createdAt: current.metadata.createdAt,
-          updatedAt,
+          updatedAt: current.metadata.updatedAt,
           version: current.metadata.version + 1,
         },
       };
-      const check = validateCredential(next, {
+      const check = validateCredential(preview, {
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
+      const next: Credential = {
+        ...preview,
+        metadata: {
+          createdAt: current.metadata.createdAt,
+          updatedAt: clock.next(),
+          version: current.metadata.version + 1,
+        },
+      };
       store.credentials.set(next.id, next);
       return { ok: true, data: deepClone(next) };
     },
