@@ -130,30 +130,6 @@ function DashboardPage() {
   const totalPendencias = ALL_PEND.filter((p) => p.status !== "concluida").length;
   const atrasadas = ALL_PEND.filter((p) => p.status === "atrasada").length;
 
-  return (
-    <DashboardBody
-      dataFormatada={dataFormatada}
-      kpis={kpis}
-      proximosPrazos={proximosPrazos}
-      atividades={atividades}
-      pendenciasAtivas={pendenciasAtivas}
-      totalPendencias={totalPendencias}
-      atrasadas={atrasadas}
-    />
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DashboardBody(props: any) {
-  const {
-    dataFormatada,
-    kpis,
-    proximosPrazos,
-    atividades,
-    pendenciasAtivas,
-    totalPendencias,
-    atrasadas,
-  } = props;
   const { session } = useSession();
   const currentContext = getContextById(session?.currentContextId);
 
@@ -206,6 +182,7 @@ function DashboardBody(props: any) {
           </CardContent>
         </Card>
       )}
+
 
 
       {/* KPIs */}
