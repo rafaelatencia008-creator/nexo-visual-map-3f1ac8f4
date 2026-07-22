@@ -14,13 +14,17 @@ import {
   ProcessListEmptyFiltered,
   ProcessListEmptyOverall,
   ProcessListError,
+  ProcessListRefreshingIndicator,
   ProcessListSkeleton,
 } from "@/features/processos/ProcessListState";
 import {
   DEFAULT_SORT_ID,
   PROCESS_PAGE_LIMIT,
   buildCaseListRequest,
+  buildOverallCaseCountRequest,
+  classifyProcessListEmpty,
   mapServiceErrorToMessage,
+  type ProcessListEmptyKind,
 } from "@/features/processos/process-list-model";
 import type { Case } from "@/domain/core/case";
 import type { PageResult } from "@/domain/services/pagination";
@@ -48,9 +52,17 @@ const INITIAL_FILTERS: ProcessFiltersValue = {
   sortId: DEFAULT_SORT_ID,
 };
 
+type SuccessState = {
+  kind: "success";
+  page: PageResult<Case>;
+  hasFilters: boolean;
+  emptyKind?: ProcessListEmptyKind;
+  refreshing: boolean;
+};
+
 type ListState =
-  | { kind: "loading" }
-  | { kind: "success"; page: PageResult<Case>; hasFilters: boolean }
+  | { kind: "initialLoading" }
+  | SuccessState
   | { kind: "error"; message: string };
 
 function filtersAreEmpty(v: ProcessFiltersValue): boolean {
@@ -66,7 +78,7 @@ function ProcessosPage() {
   const [filters, setFilters] = React.useState<ProcessFiltersValue>(INITIAL_FILTERS);
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [history, setHistory] = React.useState<readonly string[]>([]);
-  const [state, setState] = React.useState<ListState>({ kind: "loading" });
+  const [state, setState] = React.useState<ListState>({ kind: "initialLoading" });
   const requestIdRef = React.useRef(0);
   const mountedRef = React.useRef(true);
 
@@ -83,7 +95,16 @@ function ProcessosPage() {
       nextCursor: string | undefined,
     ) => {
       const id = ++requestIdRef.current;
-      setState({ kind: "loading" });
+      const hasFilters = !filtersAreEmpty(nextFilters);
+
+      // Preserva conteúdo anterior quando existir; skeleton apenas no início.
+      setState((previous) => {
+        if (previous.kind === "success") {
+          return { ...previous, refreshing: true };
+        }
+        return { kind: "initialLoading" };
+      });
+
       const request = buildCaseListRequest({
         search: nextFilters.search,
         status: nextFilters.status,
@@ -92,11 +113,12 @@ function ProcessosPage() {
         cursor: nextCursor,
         limit: PROCESS_PAGE_LIMIT,
       });
+
       void environment.services.cases
         .list(context, request)
-        .then((result) => {
+        .then(async (result) => {
           if (!mountedRef.current) return;
-          if (id !== requestIdRef.current) return; // resposta obsoleta
+          if (id !== requestIdRef.current) return;
           if (!result.ok) {
             setState({
               kind: "error",
@@ -104,17 +126,61 @@ function ProcessosPage() {
             });
             return;
           }
+          const page = result.data;
+          const filteredTotal = page.total ?? page.items.length;
+
+          // Se não vazio, ou vazio sem filtros, decisão imediata.
+          if (page.items.length > 0 || !hasFilters) {
+            const emptyKind = classifyProcessListEmpty({
+              hasFilters,
+              filteredTotal,
+            });
+            setState({
+              kind: "success",
+              page,
+              hasFilters,
+              ...(emptyKind ? { emptyKind } : {}),
+              refreshing: false,
+            });
+            return;
+          }
+
+          // Vazio COM filtros: consulta auxiliar para saber se há algum caso.
+          const overallResult = await environment.services.cases.list(
+            context,
+            buildOverallCaseCountRequest(),
+          );
+          if (!mountedRef.current) return;
+          if (id !== requestIdRef.current) return;
+          if (!overallResult.ok) {
+            setState({
+              kind: "error",
+              message: mapServiceErrorToMessage(
+                overallResult.error as ServiceError,
+              ),
+            });
+            return;
+          }
+          const overallTotal =
+            overallResult.data.total ?? overallResult.data.items.length;
+          const emptyKind =
+            classifyProcessListEmpty({
+              hasFilters,
+              filteredTotal,
+              overallTotal,
+            }) ?? "overall";
           setState({
             kind: "success",
-            page: result.data,
-            hasFilters: !filtersAreEmpty(nextFilters),
+            page,
+            hasFilters,
+            emptyKind,
+            refreshing: false,
           });
         });
     },
     [environment, context],
   );
 
-  // Consulta inicial + toda vez que filtros/cursor mudam.
   React.useEffect(() => {
     runQuery(filters, cursor);
   }, [runQuery, filters, cursor]);
@@ -141,6 +207,7 @@ function ProcessosPage() {
   };
 
   const isFirstPage = history.length === 0;
+  const isRefreshing = state.kind === "success" && state.refreshing;
   const hasNext =
     state.kind === "success" && state.page.nextCursor !== undefined;
   const total = state.kind === "success" ? state.page.total : undefined;
@@ -187,7 +254,9 @@ function ProcessosPage() {
 
       <Card>
         <CardContent className="p-0">
-          {state.kind === "loading" && <ProcessListSkeleton />}
+          {isRefreshing && <ProcessListRefreshingIndicator />}
+
+          {state.kind === "initialLoading" && <ProcessListSkeleton />}
 
           {state.kind === "error" && (
             <ProcessListError
@@ -197,18 +266,24 @@ function ProcessosPage() {
           )}
 
           {state.kind === "success" && state.page.items.length === 0 && (
-            state.hasFilters ? (
-              <ProcessListEmptyFiltered onClear={clearFilters} />
-            ) : (
-              <ProcessListEmptyOverall />
-            )
+            <div
+              className={isRefreshing ? "opacity-70 transition-opacity" : undefined}
+            >
+              {state.emptyKind === "filtered" ? (
+                <ProcessListEmptyFiltered onClear={clearFilters} />
+              ) : state.emptyKind === "overall" ? (
+                <ProcessListEmptyOverall />
+              ) : null}
+            </div>
           )}
 
           {state.kind === "success" && state.page.items.length > 0 && (
-            <>
+            <div
+              className={isRefreshing ? "opacity-70 transition-opacity" : undefined}
+            >
               <ProcessListTable items={state.page.items} />
               <ProcessListCards items={state.page.items} />
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -222,7 +297,7 @@ function ProcessosPage() {
             type="button"
             variant="outline"
             onClick={goPrev}
-            disabled={isFirstPage}
+            disabled={isFirstPage || isRefreshing}
             className="gap-2"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -232,7 +307,7 @@ function ProcessosPage() {
             type="button"
             variant="outline"
             onClick={goNext}
-            disabled={!hasNext}
+            disabled={!hasNext || isRefreshing}
             className="gap-2"
           >
             Próxima
