@@ -95,4 +95,22 @@ type _HookReturns = ReturnType<typeof useMockDomain> extends MockDomainAccess
 const _hookOk: _HookReturns = true;
 void _hookOk;
 
+
+// 9) classifyProcessListEmpty devolve overall|filtered|undefined.
+const _emptyKind: "overall" | "filtered" | undefined = classifyProcessListEmpty({
+  hasFilters: true,
+  filteredTotal: 0,
+  overallTotal: 1,
+});
+void _emptyKind;
+
+// 10) buildOverallCaseCountRequest é CaseListRequest.
+const _overallRequest: CaseListRequest = buildOverallCaseCountRequest();
+void _overallRequest;
+
+// 11) Valores desconhecidos de ProcessListEmptyKind são rejeitados.
+// @ts-expect-error tipo de vazio desconhecido
+const _invalidEmptyKind: ProcessListEmptyKind = "empty";
+void _invalidEmptyKind;
+
 export {};
