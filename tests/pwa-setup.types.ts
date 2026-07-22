@@ -76,6 +76,7 @@ void _manifestNamed;
 void _workboxNamed;
 
 // O componente PwaUpdatePrompt tipa suas exportações sem `any`.
+import type { ReactElement } from "react";
 import { PwaUpdatePrompt } from "../src/components/pwa/PwaUpdatePrompt";
-const _comp: () => JSX.Element = PwaUpdatePrompt;
+const _comp: () => ReactElement = PwaUpdatePrompt;
 void _comp;
