@@ -264,23 +264,25 @@ export function createCredentialServiceMock(
       if (!prof || prof.organizationId !== orgId) {
         return notFound<Credential>();
       }
-      const id = ids.next("credential");
-      const now = clock.next();
-      const next: Credential = {
-        id,
+      const previewId = ids.previewNext("credential");
+      const previewTime = clock.previewNext();
+      const preview: Credential = {
+        id: previewId,
         organizationId: orgId,
         professionalProfileId: input.professionalProfileId,
         status: "not_informed",
-        metadata: { createdAt: now, updatedAt: now, version: 1 },
+        metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
-      const check = validateCredential(next, {
+      const check = validateCredential(preview, {
         professionalProfiles: Array.from(store.professionalProfiles.values()),
       });
       if (!check.ok) {
         return { ok: false, error: { code: "validation_error", message: check.reason } };
       }
-      store.credentials.set(next.id, next);
-      return { ok: true, data: deepClone(next) };
+      ids.next("credential");
+      clock.next();
+      store.credentials.set(preview.id, preview);
+      return { ok: true, data: deepClone(preview) };
     },
     async updateStatus(context, input: UpdateCredentialStatusInput) {
       const v = requireContext(store, context);
