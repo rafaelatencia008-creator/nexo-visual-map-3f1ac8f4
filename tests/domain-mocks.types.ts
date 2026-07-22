@@ -55,10 +55,16 @@ const _asn = services.assignments satisfies AssignmentService;
 void _org; void _cur; void _mem; void _pro; void _cre;
 void _cas; void _per; void _cp; void _rel; void _asn;
 
-// TT12 — snapshot expõe arrays readonly (não Array/Map)
-type CasesArrOk = MockDomainSnapshot["cases"] extends readonly Case[] ? true : false;
-const tt12: CasesArrOk = true;
+// TT12 — snapshot expõe arrays readonly reais (não Array mutável).
+// Prova real: `push` não existe em `readonly T[]`.
+type HasPush<T> = T extends { push: (...args: never[]) => number } ? true : false;
+type CasesHasPush = HasPush<MockDomainSnapshot["cases"]>;
+const tt12: CasesHasPush = false;
 void tt12;
+// @ts-expect-error — readonly arrays não têm .push
+snap.cases.push({} as Case);
+// @ts-expect-error — readonly arrays rejeitam atribuição indexada
+snap.cases[0] = {} as Case;
 
 // TT13 — snapshot NUNCA expõe Map
 type CasesIsMap = MockDomainSnapshot["cases"] extends Map<unknown, unknown> ? true : false;
