@@ -17,12 +17,29 @@ import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as ProfissoesRouteImport } from './routes/profissoes'
 import { Route as ProdutoRouteImport } from './routes/produto'
 import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as CriarContaRouteImport } from './routes/criar-conta'
 import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as ConflitoRouteImport } from './routes/conflito'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AcessoNegadoRouteImport } from './routes/acesso-negado'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppRelatoriosRouteImport } from './routes/app.relatorios'
+import { Route as AppQuesitosRouteImport } from './routes/app.quesitos'
+import { Route as AppPreferenciasRouteImport } from './routes/app.preferencias'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
+import { Route as AppPendenciasRouteImport } from './routes/app.pendencias'
+import { Route as AppOrganizacaoRouteImport } from './routes/app.organizacao'
+import { Route as AppModelosRouteImport } from './routes/app.modelos'
+import { Route as AppLaudosRouteImport } from './routes/app.laudos'
+import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
+import { Route as AppEquipeRouteImport } from './routes/app.equipe'
+import { Route as AppEntrevistasRouteImport } from './routes/app.entrevistas'
+import { Route as AppDocumentosRouteImport } from './routes/app.documentos'
+import { Route as AppConfiguracoesRouteImport } from './routes/app.configuracoes'
+import { Route as AppAjudaRouteImport } from './routes/app.ajuda'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppProcessosIndexRouteImport } from './routes/app.processos.index'
 import { Route as AppPeritosIndexRouteImport } from './routes/app.peritos.index'
@@ -81,6 +98,11 @@ const PlanosRoute = PlanosRouteImport.update({
   path: '/planos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OfflineRoute = OfflineRouteImport.update({
+  id: '/offline',
+  path: '/offline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EntrarRoute = EntrarRouteImport.update({
   id: '/entrar',
   path: '/entrar',
@@ -96,9 +118,19 @@ const ContatoRoute = ContatoRouteImport.update({
   path: '/contato',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConflitoRoute = ConflitoRouteImport.update({
+  id: '/conflito',
+  path: '/conflito',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcessoNegadoRoute = AcessoNegadoRouteImport.update({
+  id: '/acesso-negado',
+  path: '/acesso-negado',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -109,6 +141,76 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuesitosRoute = AppQuesitosRouteImport.update({
+  id: '/quesitos',
+  path: '/quesitos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPreferenciasRoute = AppPreferenciasRouteImport.update({
+  id: '/preferencias',
+  path: '/preferencias',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPendenciasRoute = AppPendenciasRouteImport.update({
+  id: '/pendencias',
+  path: '/pendencias',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrganizacaoRoute = AppOrganizacaoRouteImport.update({
+  id: '/organizacao',
+  path: '/organizacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppModelosRoute = AppModelosRouteImport.update({
+  id: '/modelos',
+  path: '/modelos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLaudosRoute = AppLaudosRouteImport.update({
+  id: '/laudos',
+  path: '/laudos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipeRoute = AppEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEntrevistasRoute = AppEntrevistasRouteImport.update({
+  id: '/entrevistas',
+  path: '/entrevistas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentosRoute = AppDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAjudaRoute = AppAjudaRouteImport.update({
+  id: '/ajuda',
+  path: '/ajuda',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -199,10 +301,13 @@ const AppClientesIdEditarRoute = AppClientesIdEditarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acesso-negado': typeof AcessoNegadoRoute
   '/app': typeof AppRouteWithChildren
+  '/conflito': typeof ConflitoRoute
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/offline': typeof OfflineRoute
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
@@ -212,6 +317,20 @@ export interface FileRoutesByFullPath {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/ajuda': typeof AppAjudaRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/documentos': typeof AppDocumentosRoute
+  '/app/entrevistas': typeof AppEntrevistasRoute
+  '/app/equipe': typeof AppEquipeRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/laudos': typeof AppLaudosRoute
+  '/app/modelos': typeof AppModelosRoute
+  '/app/organizacao': typeof AppOrganizacaoRoute
+  '/app/pendencias': typeof AppPendenciasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/preferencias': typeof AppPreferenciasRoute
+  '/app/quesitos': typeof AppQuesitosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
   '/app/': typeof AppIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
@@ -232,9 +351,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acesso-negado': typeof AcessoNegadoRoute
+  '/conflito': typeof ConflitoRoute
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/offline': typeof OfflineRoute
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
@@ -244,6 +366,20 @@ export interface FileRoutesByTo {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/ajuda': typeof AppAjudaRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/documentos': typeof AppDocumentosRoute
+  '/app/entrevistas': typeof AppEntrevistasRoute
+  '/app/equipe': typeof AppEquipeRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/laudos': typeof AppLaudosRoute
+  '/app/modelos': typeof AppModelosRoute
+  '/app/organizacao': typeof AppOrganizacaoRoute
+  '/app/pendencias': typeof AppPendenciasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/preferencias': typeof AppPreferenciasRoute
+  '/app/quesitos': typeof AppQuesitosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
   '/app': typeof AppIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
@@ -265,10 +401,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acesso-negado': typeof AcessoNegadoRoute
   '/app': typeof AppRouteWithChildren
+  '/conflito': typeof ConflitoRoute
   '/contato': typeof ContatoRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/offline': typeof OfflineRoute
   '/planos': typeof PlanosRoute
   '/produto': typeof ProdutoRoute
   '/profissoes': typeof ProfissoesRoute
@@ -278,6 +417,20 @@ export interface FileRoutesById {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/ajuda': typeof AppAjudaRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/documentos': typeof AppDocumentosRoute
+  '/app/entrevistas': typeof AppEntrevistasRoute
+  '/app/equipe': typeof AppEquipeRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/laudos': typeof AppLaudosRoute
+  '/app/modelos': typeof AppModelosRoute
+  '/app/organizacao': typeof AppOrganizacaoRoute
+  '/app/pendencias': typeof AppPendenciasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/preferencias': typeof AppPreferenciasRoute
+  '/app/quesitos': typeof AppQuesitosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
   '/app/': typeof AppIndexRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
@@ -300,10 +453,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acesso-negado'
     | '/app'
+    | '/conflito'
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/offline'
     | '/planos'
     | '/produto'
     | '/profissoes'
@@ -313,6 +469,20 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
+    | '/app/ajuda'
+    | '/app/configuracoes'
+    | '/app/documentos'
+    | '/app/entrevistas'
+    | '/app/equipe'
+    | '/app/financeiro'
+    | '/app/laudos'
+    | '/app/modelos'
+    | '/app/organizacao'
+    | '/app/pendencias'
+    | '/app/perfil'
+    | '/app/preferencias'
+    | '/app/quesitos'
+    | '/app/relatorios'
     | '/app/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
@@ -333,9 +503,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acesso-negado'
+    | '/conflito'
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/offline'
     | '/planos'
     | '/produto'
     | '/profissoes'
@@ -345,6 +518,20 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
+    | '/app/ajuda'
+    | '/app/configuracoes'
+    | '/app/documentos'
+    | '/app/entrevistas'
+    | '/app/equipe'
+    | '/app/financeiro'
+    | '/app/laudos'
+    | '/app/modelos'
+    | '/app/organizacao'
+    | '/app/pendencias'
+    | '/app/perfil'
+    | '/app/preferencias'
+    | '/app/quesitos'
+    | '/app/relatorios'
     | '/app'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
@@ -365,10 +552,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/acesso-negado'
     | '/app'
+    | '/conflito'
     | '/contato'
     | '/criar-conta'
     | '/entrar'
+    | '/offline'
     | '/planos'
     | '/produto'
     | '/profissoes'
@@ -378,6 +568,20 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/app/agenda'
+    | '/app/ajuda'
+    | '/app/configuracoes'
+    | '/app/documentos'
+    | '/app/entrevistas'
+    | '/app/equipe'
+    | '/app/financeiro'
+    | '/app/laudos'
+    | '/app/modelos'
+    | '/app/organizacao'
+    | '/app/pendencias'
+    | '/app/perfil'
+    | '/app/preferencias'
+    | '/app/quesitos'
+    | '/app/relatorios'
     | '/app/'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
@@ -399,10 +603,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcessoNegadoRoute: typeof AcessoNegadoRoute
   AppRoute: typeof AppRouteWithChildren
+  ConflitoRoute: typeof ConflitoRoute
   ContatoRoute: typeof ContatoRoute
   CriarContaRoute: typeof CriarContaRoute
   EntrarRoute: typeof EntrarRoute
+  OfflineRoute: typeof OfflineRoute
   PlanosRoute: typeof PlanosRoute
   ProdutoRoute: typeof ProdutoRoute
   ProfissoesRoute: typeof ProfissoesRoute
@@ -471,6 +678,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/offline': {
+      id: '/offline'
+      path: '/offline'
+      fullPath: '/offline'
+      preLoaderRoute: typeof OfflineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/entrar': {
       id: '/entrar'
       path: '/entrar'
@@ -492,11 +706,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContatoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conflito': {
+      id: '/conflito'
+      path: '/conflito'
+      fullPath: '/conflito'
+      preLoaderRoute: typeof ConflitoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acesso-negado': {
+      id: '/acesso-negado'
+      path: '/acesso-negado'
+      fullPath: '/acesso-negado'
+      preLoaderRoute: typeof AcessoNegadoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -511,6 +739,104 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/relatorios': {
+      id: '/app/relatorios'
+      path: '/relatorios'
+      fullPath: '/app/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/quesitos': {
+      id: '/app/quesitos'
+      path: '/quesitos'
+      fullPath: '/app/quesitos'
+      preLoaderRoute: typeof AppQuesitosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/preferencias': {
+      id: '/app/preferencias'
+      path: '/preferencias'
+      fullPath: '/app/preferencias'
+      preLoaderRoute: typeof AppPreferenciasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pendencias': {
+      id: '/app/pendencias'
+      path: '/pendencias'
+      fullPath: '/app/pendencias'
+      preLoaderRoute: typeof AppPendenciasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/organizacao': {
+      id: '/app/organizacao'
+      path: '/organizacao'
+      fullPath: '/app/organizacao'
+      preLoaderRoute: typeof AppOrganizacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/modelos': {
+      id: '/app/modelos'
+      path: '/modelos'
+      fullPath: '/app/modelos'
+      preLoaderRoute: typeof AppModelosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/laudos': {
+      id: '/app/laudos'
+      path: '/laudos'
+      fullPath: '/app/laudos'
+      preLoaderRoute: typeof AppLaudosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/financeiro': {
+      id: '/app/financeiro'
+      path: '/financeiro'
+      fullPath: '/app/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/equipe': {
+      id: '/app/equipe'
+      path: '/equipe'
+      fullPath: '/app/equipe'
+      preLoaderRoute: typeof AppEquipeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/entrevistas': {
+      id: '/app/entrevistas'
+      path: '/entrevistas'
+      fullPath: '/app/entrevistas'
+      preLoaderRoute: typeof AppEntrevistasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/documentos': {
+      id: '/app/documentos'
+      path: '/documentos'
+      fullPath: '/app/documentos'
+      preLoaderRoute: typeof AppDocumentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/configuracoes': {
+      id: '/app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/app/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ajuda': {
+      id: '/app/ajuda'
+      path: '/ajuda'
+      fullPath: '/app/ajuda'
+      preLoaderRoute: typeof AppAjudaRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/agenda': {
@@ -637,6 +963,20 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
+  AppAjudaRoute: typeof AppAjudaRoute
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppDocumentosRoute: typeof AppDocumentosRoute
+  AppEntrevistasRoute: typeof AppEntrevistasRoute
+  AppEquipeRoute: typeof AppEquipeRoute
+  AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppLaudosRoute: typeof AppLaudosRoute
+  AppModelosRoute: typeof AppModelosRoute
+  AppOrganizacaoRoute: typeof AppOrganizacaoRoute
+  AppPendenciasRoute: typeof AppPendenciasRoute
+  AppPerfilRoute: typeof AppPerfilRoute
+  AppPreferenciasRoute: typeof AppPreferenciasRoute
+  AppQuesitosRoute: typeof AppQuesitosRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppIndexRoute: typeof AppIndexRoute
   AppClientesNovoRoute: typeof AppClientesNovoRoute
   AppPericiasNovaRoute: typeof AppPericiasNovaRoute
@@ -658,6 +998,20 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
+  AppAjudaRoute: AppAjudaRoute,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppDocumentosRoute: AppDocumentosRoute,
+  AppEntrevistasRoute: AppEntrevistasRoute,
+  AppEquipeRoute: AppEquipeRoute,
+  AppFinanceiroRoute: AppFinanceiroRoute,
+  AppLaudosRoute: AppLaudosRoute,
+  AppModelosRoute: AppModelosRoute,
+  AppOrganizacaoRoute: AppOrganizacaoRoute,
+  AppPendenciasRoute: AppPendenciasRoute,
+  AppPerfilRoute: AppPerfilRoute,
+  AppPreferenciasRoute: AppPreferenciasRoute,
+  AppQuesitosRoute: AppQuesitosRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
   AppIndexRoute: AppIndexRoute,
   AppClientesNovoRoute: AppClientesNovoRoute,
   AppPericiasNovaRoute: AppPericiasNovaRoute,
@@ -681,10 +1035,13 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcessoNegadoRoute: AcessoNegadoRoute,
   AppRoute: AppRouteWithChildren,
+  ConflitoRoute: ConflitoRoute,
   ContatoRoute: ContatoRoute,
   CriarContaRoute: CriarContaRoute,
   EntrarRoute: EntrarRoute,
+  OfflineRoute: OfflineRoute,
   PlanosRoute: PlanosRoute,
   ProdutoRoute: ProdutoRoute,
   ProfissoesRoute: ProfissoesRoute,
