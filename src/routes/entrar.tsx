@@ -99,9 +99,11 @@ function EntrarPage() {
 
     setErrors({});
     setLoading(true);
+    // E-mail e senha foram usados APENAS para comparar com a credencial demo;
+    // não são gravados em lugar nenhum.
+    setSenha("");
     window.setTimeout(() => {
       signInAsUser({
-        email: cleanEmail,
         name: "Usuário de demonstração",
         remember,
       });
