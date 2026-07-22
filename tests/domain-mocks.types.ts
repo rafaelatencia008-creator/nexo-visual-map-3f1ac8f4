@@ -1,8 +1,8 @@
 /**
- * LV-07.3.1 — Provas de tipo dos mocks estáveis.
+ * LV-07.3.3 — Provas de tipo dos mocks estáveis (compile-only).
  *
- * Não executa em runtime. Verifica somente conformidade de tipos.
- * Usa `satisfies` e `@ts-expect-error` verificáveis.
+ * Não executa em runtime. Verifica somente conformidade de tipos com
+ * `satisfies` e `@ts-expect-error` verificáveis.
  */
 
 import {
@@ -30,6 +30,18 @@ import type { ServiceResult } from "../src/domain/services/result";
 import type { Case } from "../src/domain/core/case";
 import type { CaseId, OrganizationId, UserId, MembershipId } from "../src/domain/core/ids";
 import type { Role } from "../src/domain/shared/work-context";
+import type { Organization } from "../src/domain/core/organization";
+import type { User, Membership } from "../src/domain/core/access";
+import type {
+  ProfessionalProfile,
+  Credential,
+} from "../src/domain/core/professional";
+import type { Person } from "../src/domain/core/person";
+import type {
+  CasePerson,
+  Relationship,
+  Assignment,
+} from "../src/domain/core/assignment";
 
 // --- Fixture de compilação (nunca executa) ---
 const env: MockDomainEnvironment = createMockDomainEnvironment();
@@ -55,26 +67,12 @@ const _asn = services.assignments satisfies AssignmentService;
 void _org; void _cur; void _mem; void _pro; void _cre;
 void _cas; void _per; void _cp; void _rel; void _asn;
 
-// TT12 — snapshot expõe arrays readonly reais (não Array mutável).
-// Prova real: `push` não existe em `readonly T[]`.
-type HasPush<T> = T extends { push: (...args: never[]) => number } ? true : false;
-type CasesHasPush = HasPush<MockDomainSnapshot["cases"]>;
-const tt12: CasesHasPush = false;
-void tt12;
-// @ts-expect-error — readonly arrays não têm .push
-snap.cases.push({} as Case);
-// @ts-expect-error — readonly arrays rejeitam atribuição indexada
-snap.cases[0] = {} as Case;
-
-// TT13 — snapshot NUNCA expõe Map
+// TT12 — snapshot NUNCA expõe Map
 type CasesIsMap = MockDomainSnapshot["cases"] extends Map<unknown, unknown> ? true : false;
-const tt13: CasesIsMap = false;
-void tt13;
+const tt12: CasesIsMap = false;
+void tt12;
 
-// TT14 — MockDomainEnvironment não expõe `store`, `clock`, `ids`, `reset`
-type NoInternalKeys = keyof MockDomainEnvironment;
-const tt14a: Exclude<NoInternalKeys, "services" | "snapshot"> = null as never;
-void tt14a;
+// TT13 — MockDomainEnvironment não expõe `store`, `clock`, `ids`, `reset`
 // @ts-expect-error — env.store não existe
 env.store;
 // @ts-expect-error — env.clock não existe
@@ -84,14 +82,14 @@ env.ids;
 // @ts-expect-error — env.reset não existe
 env.reset;
 
-// TT15 — MockDomainOptions rejeita chave desconhecida
+// TT14 — MockDomainOptions rejeita chave desconhecida
 const opts: MockDomainOptions = { baseEpochMs: 0, tickMs: 1000 };
 void opts;
 // @ts-expect-error — chave 'seed' não faz parte das opções
 const badOpts: MockDomainOptions = { seed: true };
 void badOpts;
 
-// TT16 — Todos os métodos exigem ServiceContext (não string, não objeto solto)
+// TT15 — Todos os métodos exigem ServiceContext (não string, não objeto solto)
 const ctx: ServiceContext = {
   organizationId: "org_x" as OrganizationId,
   userId: "usr_x" as UserId,
@@ -104,11 +102,11 @@ services.cases.getById("not_a_context", "case_x" as CaseId);
 // @ts-expect-error — objeto solto sem os campos obrigatórios
 services.cases.getById({}, "case_x" as CaseId);
 
-// TT17 — Branded IDs continuam obrigatórios (string bruta é recusada)
+// TT16 — Branded IDs continuam obrigatórios (string bruta é recusada)
 // @ts-expect-error — string bruta não é CaseId
 services.cases.getById(ctx, "case_x");
 
-// TT18 — DTO de criação de caso NÃO aceita `organizationId`, `id`, `metadata`
+// TT17 — DTO de criação de caso NÃO aceita `organizationId`, `id`, `metadata`
 services.cases.create(ctx, {
   reference: "REF",
   title: "T",
@@ -136,26 +134,13 @@ services.cases.create(ctx, {
   metadata: {},
 });
 
-// TT19 — Métodos retornam Promise<ServiceResult<T>>
+// TT18 — Métodos retornam Promise<ServiceResult<T>>
 type CaseReturn = ReturnType<typeof services.cases.getById>;
 type CaseIsPromise = CaseReturn extends Promise<ServiceResult<Case>> ? true : false;
-const tt19: CaseIsPromise = true;
-void tt19;
+const tt18: CaseIsPromise = true;
+void tt18;
 
-// TT20 — Snapshot é Readonly a nível de propriedade (não permite reassign).
-// @ts-expect-error — snapshot.cases não é atribuível
-snap.cases = [] as unknown as MockDomainSnapshot["cases"];
-
-// TT21 — MockDomainSnapshot mantém readonly em todos os arrays: aceitar
-// somente `readonly` na coluna esquerda prova que o snapshot não expõe
-// Array mutável.
-const snapArr: readonly Case[] = snap.cases;
-void snapArr;
-// @ts-expect-error — não é atribuível a Array mutável
-const _mutableProbe: Case[] = snap.cases;
-void _mutableProbe;
-
-// TT22 — createMockDomainEnvironment aceita zero argumentos e retorna
+// TT19 — createMockDomainEnvironment aceita zero argumentos e retorna
 // exatamente MockDomainEnvironment (não uma união mais ampla)
 type CreateReturn = ReturnType<typeof createMockDomainEnvironment>;
 type CreateOk = CreateReturn extends MockDomainEnvironment
@@ -163,5 +148,162 @@ type CreateOk = CreateReturn extends MockDomainEnvironment
     ? true
     : false
   : false;
-const tt22: CreateOk = true;
-void tt22;
+const tt19: CreateOk = true;
+void tt19;
+
+// ---------------------------------------------------------------------------
+// TT20 — Readonly comprovado nos dez arrays do snapshot
+// ---------------------------------------------------------------------------
+
+type IsReadonlyArray<T> =
+  T extends unknown[]
+    ? false
+    : T extends readonly unknown[]
+      ? true
+      : false;
+
+type OrganizationsReadonly = IsReadonlyArray<MockDomainSnapshot["organizations"]>;
+type UsersReadonly = IsReadonlyArray<MockDomainSnapshot["users"]>;
+type MembershipsReadonly = IsReadonlyArray<MockDomainSnapshot["memberships"]>;
+type ProfessionalProfilesReadonly =
+  IsReadonlyArray<MockDomainSnapshot["professionalProfiles"]>;
+type CredentialsReadonly = IsReadonlyArray<MockDomainSnapshot["credentials"]>;
+type CasesReadonly = IsReadonlyArray<MockDomainSnapshot["cases"]>;
+type PersonsReadonly = IsReadonlyArray<MockDomainSnapshot["persons"]>;
+type CasePersonsReadonly = IsReadonlyArray<MockDomainSnapshot["casePersons"]>;
+type RelationshipsReadonly = IsReadonlyArray<MockDomainSnapshot["relationships"]>;
+type AssignmentsReadonly = IsReadonlyArray<MockDomainSnapshot["assignments"]>;
+
+const organizationsReadonly: OrganizationsReadonly = true;
+const usersReadonly: UsersReadonly = true;
+const membershipsReadonly: MembershipsReadonly = true;
+const professionalProfilesReadonly: ProfessionalProfilesReadonly = true;
+const credentialsReadonly: CredentialsReadonly = true;
+const casesReadonly: CasesReadonly = true;
+const personsReadonly: PersonsReadonly = true;
+const casePersonsReadonly: CasePersonsReadonly = true;
+const relationshipsReadonly: RelationshipsReadonly = true;
+const assignmentsReadonly: AssignmentsReadonly = true;
+void organizationsReadonly;
+void usersReadonly;
+void membershipsReadonly;
+void professionalProfilesReadonly;
+void credentialsReadonly;
+void casesReadonly;
+void personsReadonly;
+void casePersonsReadonly;
+void relationshipsReadonly;
+void assignmentsReadonly;
+
+// TT21 — Provas negativas reais: (1) atribuição de propriedade,
+// (2) `.push`, (3) atribuição indexada, (4) conversão para array mutável.
+
+// --- organizations
+// @ts-expect-error — reassign de propriedade readonly
+snap.organizations = [] as unknown as MockDomainSnapshot["organizations"];
+// @ts-expect-error — .push não existe em readonly array
+snap.organizations.push({} as Organization);
+// @ts-expect-error — atribuição indexada rejeitada
+snap.organizations[0] = {} as Organization;
+// @ts-expect-error — não é atribuível a Array mutável
+const _mutOrgs: Organization[] = snap.organizations;
+void _mutOrgs;
+
+// --- users
+// @ts-expect-error
+snap.users = [] as unknown as MockDomainSnapshot["users"];
+// @ts-expect-error
+snap.users.push({} as User);
+// @ts-expect-error
+snap.users[0] = {} as User;
+// @ts-expect-error
+const _mutUsers: User[] = snap.users;
+void _mutUsers;
+
+// --- memberships
+// @ts-expect-error
+snap.memberships = [] as unknown as MockDomainSnapshot["memberships"];
+// @ts-expect-error
+snap.memberships.push({} as Membership);
+// @ts-expect-error
+snap.memberships[0] = {} as Membership;
+// @ts-expect-error
+const _mutMems: Membership[] = snap.memberships;
+void _mutMems;
+
+// --- professionalProfiles
+// @ts-expect-error
+snap.professionalProfiles = [] as unknown as MockDomainSnapshot["professionalProfiles"];
+// @ts-expect-error
+snap.professionalProfiles.push({} as ProfessionalProfile);
+// @ts-expect-error
+snap.professionalProfiles[0] = {} as ProfessionalProfile;
+// @ts-expect-error
+const _mutProfs: ProfessionalProfile[] = snap.professionalProfiles;
+void _mutProfs;
+
+// --- credentials
+// @ts-expect-error
+snap.credentials = [] as unknown as MockDomainSnapshot["credentials"];
+// @ts-expect-error
+snap.credentials.push({} as Credential);
+// @ts-expect-error
+snap.credentials[0] = {} as Credential;
+// @ts-expect-error
+const _mutCreds: Credential[] = snap.credentials;
+void _mutCreds;
+
+// --- cases
+// @ts-expect-error
+snap.cases = [] as unknown as MockDomainSnapshot["cases"];
+// @ts-expect-error
+snap.cases.push({} as Case);
+// @ts-expect-error
+snap.cases[0] = {} as Case;
+// @ts-expect-error
+const _mutCases: Case[] = snap.cases;
+void _mutCases;
+
+// --- persons
+// @ts-expect-error
+snap.persons = [] as unknown as MockDomainSnapshot["persons"];
+// @ts-expect-error
+snap.persons.push({} as Person);
+// @ts-expect-error
+snap.persons[0] = {} as Person;
+// @ts-expect-error
+const _mutPersons: Person[] = snap.persons;
+void _mutPersons;
+
+// --- casePersons
+// @ts-expect-error
+snap.casePersons = [] as unknown as MockDomainSnapshot["casePersons"];
+// @ts-expect-error
+snap.casePersons.push({} as CasePerson);
+// @ts-expect-error
+snap.casePersons[0] = {} as CasePerson;
+// @ts-expect-error
+const _mutCP: CasePerson[] = snap.casePersons;
+void _mutCP;
+
+// --- relationships
+// @ts-expect-error
+snap.relationships = [] as unknown as MockDomainSnapshot["relationships"];
+// @ts-expect-error
+snap.relationships.push({} as Relationship);
+// @ts-expect-error
+snap.relationships[0] = {} as Relationship;
+// @ts-expect-error
+const _mutRels: Relationship[] = snap.relationships;
+void _mutRels;
+
+// --- assignments
+// @ts-expect-error
+snap.assignments = [] as unknown as MockDomainSnapshot["assignments"];
+// @ts-expect-error
+snap.assignments.push({} as Assignment);
+// @ts-expect-error
+snap.assignments[0] = {} as Assignment;
+// @ts-expect-error
+const _mutAsn: Assignment[] = snap.assignments;
+void _mutAsn;

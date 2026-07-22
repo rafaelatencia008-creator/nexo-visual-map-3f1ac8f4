@@ -87,6 +87,9 @@ export function paginateItems<T>(
       return invalidCursor<T>();
     }
     if (raw >= total) return invalidCursor<T>();
+    // Offsets emitidos ocorrem sempre depois de uma página completa,
+    // portanto devem ser múltiplos exatos do limite atual da consulta.
+    if (raw % req.limit !== 0) return invalidCursor<T>();
     offset = raw;
   }
   const slice = items.slice(offset, offset + req.limit).map((it) => deepClone(it));
