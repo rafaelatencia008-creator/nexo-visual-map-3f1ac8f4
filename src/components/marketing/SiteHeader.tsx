@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Menu, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { GuestDemoButton } from "@/components/marketing/GuestDemoButton";
 import {
   Sheet,
   SheetContent,
@@ -76,7 +77,7 @@ export function SiteHeader() {
             <Link to="/criar-conta">Criar conta</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link to="/app">Painel de demonstração</Link>
+            <GuestDemoButton>Painel de demonstração</GuestDemoButton>
           </Button>
         </div>
 
@@ -144,10 +145,10 @@ export function SiteHeader() {
                   </Link>
                 </Button>
                 <Button className="w-full justify-start gap-2" asChild>
-                  <Link to="/app" onClick={() => setOpen(false)}>
+                  <GuestDemoButton onClick={() => setOpen(false)}>
                     <LayoutDashboard className="h-4 w-4" />
                     Painel de demonstração
-                  </Link>
+                  </GuestDemoButton>
                 </Button>
               </div>
 

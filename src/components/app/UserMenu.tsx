@@ -20,10 +20,29 @@ import {
 } from "@/components/ui/alert-dialog";
 import { User, Building2, SlidersHorizontal, ExternalLink, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useSession, PERFIL_LABEL } from "@/hooks/use-session";
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("") || "UD";
+}
 
 export function UserMenu() {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const navigate = useNavigate();
+  const { session, signOut } = useSession();
+
+  const isGuest = session?.mode === "guest";
+  const name = session?.name ?? "Usuário de demonstração";
+  const label = isGuest
+    ? "Modo convidado · dados fictícios"
+    : session?.perfil
+      ? `${PERFIL_LABEL[session.perfil] ?? "Perfil profissional"} · sessão simulada`
+      : "Sessão simulada · dados fictícios";
 
   return (
     <>
@@ -34,15 +53,13 @@ export function UserMenu() {
             aria-label="Abrir menu do usuário"
             className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            UD
+            {initials(name)}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">Usuário de demonstração</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Perfil profissional · dados fictícios
-            </span>
+            <span className="text-sm font-medium">{name}</span>
+            <span className="text-xs font-normal text-muted-foreground">{label}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
@@ -88,7 +105,8 @@ export function UserMenu() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sair da demonstração?</AlertDialogTitle>
             <AlertDialogDescription>
-              Não há sessão real ativa. Ao confirmar, você retornará à página inicial pública.
+              Não há sessão real ativa. Ao confirmar, a sessão simulada será
+              encerrada e você retornará à página inicial pública.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -96,6 +114,7 @@ export function UserMenu() {
             <AlertDialogAction
               onClick={() => {
                 setConfirmOpen(false);
+                signOut();
                 toast.success("Demonstração encerrada");
                 navigate({ to: "/" });
               }}

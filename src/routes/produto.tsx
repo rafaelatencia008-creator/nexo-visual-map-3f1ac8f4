@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { GuestDemoButton } from "@/components/marketing/GuestDemoButton";
 import {
   ArrowRight,
   ShieldCheck,
@@ -226,7 +227,7 @@ function ProdutoPage() {
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link to="/app">Ver painel de demonstração</Link>
+                  <GuestDemoButton>Ver painel de demonstração</GuestDemoButton>
                 </Button>
               </div>
             </div>

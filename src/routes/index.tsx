@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { GuestDemoButton } from "@/components/marketing/GuestDemoButton";
 import {
   ArrowRight,
   ShieldCheck,
@@ -202,12 +203,9 @@ function Index() {
                   Segurança
                 </Link>
                 <span aria-hidden>·</span>
-                <Link
-                  to="/app"
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                >
+                <GuestDemoButton className="font-medium text-foreground underline-offset-4 hover:underline">
                   Ver painel de demonstração
-                </Link>
+                </GuestDemoButton>
               </div>
 
               <p className="mt-8 text-xs text-muted-foreground">
@@ -425,7 +423,7 @@ function Index() {
                   className="border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
                   asChild
                 >
-                  <Link to="/app">Ver painel de demonstração</Link>
+                  <GuestDemoButton>Ver painel de demonstração</GuestDemoButton>
                 </Button>
               </div>
             </div>

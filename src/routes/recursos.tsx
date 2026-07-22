@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { GuestDemoButton } from "@/components/marketing/GuestDemoButton";
 import {
   ClipboardList,
   Users,
@@ -230,10 +231,10 @@ function RecursosPage() {
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild>
-                <Link to="/app" className="gap-2">
+                <GuestDemoButton className="gap-2">
                   Ver painel de demonstração
                   <ArrowRight className="h-4 w-4" />
-                </Link>
+                </GuestDemoButton>
               </Button>
               <Button variant="outline" asChild>
                 <Link to="/contato">Solicitar demonstração</Link>
