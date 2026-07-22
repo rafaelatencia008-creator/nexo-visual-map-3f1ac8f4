@@ -9,6 +9,9 @@ import type { CaseSortField } from "../src/domain/services/inputs";
 import type { PageResult } from "../src/domain/services/pagination";
 import {
   buildCaseListRequest,
+  buildOverallCaseCountRequest,
+  classifyProcessListEmpty,
+  type ProcessListEmptyKind,
   type ProcessListFilterInput,
 } from "../src/features/processos/process-list-model";
 import { useMockDomain, type MockDomainAccess } from "../src/components/app/MockDomainProvider";
