@@ -31,8 +31,8 @@ import type { CaseTimelineService } from "../services/case-timeline-service";
 import type { PermissionPolicy } from "../services/permissions";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
-import type { AuditEventService } from "./audit-service";
-import type { CaseSnapshotService } from "./case-snapshot-service";
+import type { AuditEventService } from "../services/audit-service";
+import type { CaseSnapshotService } from "../services/case-snapshot-service";
 
 export type MockDomainServices = Readonly<{
   organization: OrganizationService;
