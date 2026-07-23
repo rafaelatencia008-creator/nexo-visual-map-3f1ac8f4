@@ -199,3 +199,18 @@ const _e1: _Assert1 = true;
 const _e2: _Assert2 = true;
 const _e3: _Assert3 = true;
 void _e1; void _e2; void _e3;
+
+// ---- LV-08.5B.1 — collectDistinctProfessionalProfileIds retorna branded ---
+
+import type { ProfessionalProfileId as _PPId } from "@/domain/core/ids";
+import type { Assignment as _Asg } from "@/domain/core/assignment";
+import { collectDistinctProfessionalProfileIds as _collect } from "@/features/processos/process-plan-model";
+
+declare const _asgs: readonly _Asg[];
+const _pids: readonly _PPId[] = _collect(_asgs);
+void _pids;
+
+// string comum não pode virar ProfessionalProfileId sem guarda
+// @ts-expect-error string não é ProfessionalProfileId
+const _badPid: _PPId = "professionalProfile_x";
+void _badPid;
