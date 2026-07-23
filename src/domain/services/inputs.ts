@@ -11,6 +11,8 @@ import type {
   AssignmentId,
   CaseId,
   CasePersonId,
+  CasePlanItemId,
+  CaseTimelineEntryId,
   CredentialId,
   MembershipId,
   PersonId,
@@ -39,6 +41,12 @@ import type { MembershipStatus } from "../core/access";
 import type { OrganizationStatus } from "../core/organization";
 import type { IsoDate } from "../core/common";
 import type { Perfil, Role, WorkMode } from "../shared/work-context";
+import type {
+  CasePlanItemKind,
+  CasePlanItemPriority,
+  CasePlanItemStatus,
+  CaseTimelineEntryKind,
+} from "../core/case-plan";
 
 // ---- Organization ----------------------------------------------------------
 
@@ -221,16 +229,6 @@ export type ChangeAssignmentStatusInput = Readonly<{
 
 // ---- CasePlanItem (LV-08.5A) -----------------------------------------------
 
-import type {
-  CasePlanItemId as _CasePlanItemId,
-  CaseTimelineEntryId as _CaseTimelineEntryId,
-} from "../core/ids";
-import type {
-  CasePlanItemKind,
-  CasePlanItemPriority,
-  CasePlanItemStatus,
-  CaseTimelineEntryKind,
-} from "../core/case-plan";
 
 export type CreateCasePlanItemInput = Readonly<{
   caseId: CaseId;
@@ -243,7 +241,7 @@ export type CreateCasePlanItemInput = Readonly<{
 }>;
 
 export type UpdateCasePlanItemInput = Readonly<{
-  planItemId: _CasePlanItemId;
+  planItemId: CasePlanItemId;
   kind?: CasePlanItemKind;
   title?: string;
   description?: string | null;
@@ -254,7 +252,7 @@ export type UpdateCasePlanItemInput = Readonly<{
 }>;
 
 export type ChangeCasePlanItemStatusInput = Readonly<{
-  planItemId: _CasePlanItemId;
+  planItemId: CasePlanItemId;
   status: CasePlanItemStatus;
   expectedVersion: number;
 }>;
@@ -270,7 +268,7 @@ export type CreateCaseTimelineEntryInput = Readonly<{
 }>;
 
 export type UpdateCaseTimelineEntryInput = Readonly<{
-  timelineEntryId: _CaseTimelineEntryId;
+  timelineEntryId: CaseTimelineEntryId;
   kind?: CaseTimelineEntryKind;
   occurredOn?: IsoDate;
   title?: string;

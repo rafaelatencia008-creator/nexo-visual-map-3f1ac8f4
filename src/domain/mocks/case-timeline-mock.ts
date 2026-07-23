@@ -1,5 +1,5 @@
 /**
- * CaseTimelineService — implementação em memória (LV-08.5A).
+ * CaseTimelineService — implementação em memória (LV-08.5A / LV-08.5A.1).
  */
 
 import type { CaseTimelineEntry, CaseTimelineEntryKind } from "../core/case-plan";
@@ -9,8 +9,14 @@ import {
   isCaseTimelineEntry,
   isCaseTimelineEntryKind,
 } from "../core/case-plan";
-import { isIsoDate } from "../core/common";
+import {
+  containsForbiddenKey,
+  hasOnlyAllowedKeys,
+  isIsoDate,
+  isValidVersion,
+} from "../core/common";
 import type { CaseId, CaseTimelineEntryId } from "../core/ids";
+import { isCaseId, isCaseTimelineEntryId } from "../core/ids";
 import type { CaseTimelineService } from "../services/case-timeline-service";
 import type {
   CreateCaseTimelineEntryInput,
@@ -39,16 +45,46 @@ function conflict<T>(msg: string, e: number, a: number): ServiceResult<T> {
   };
 }
 
-function validateTitle(v: string): string | null {
+const CREATE_ALLOWED: ReadonlySet<string> = new Set([
+  "caseId",
+  "kind",
+  "occurredOn",
+  "title",
+  "description",
+]);
+const UPDATE_ALLOWED: ReadonlySet<string> = new Set([
+  "timelineEntryId",
+  "kind",
+  "occurredOn",
+  "title",
+  "description",
+  "expectedVersion",
+]);
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+function validateInputEnvelope<T>(
+  input: unknown,
+  allowed: ReadonlySet<string>,
+): ServiceResult<T> | null {
+  if (!isPlainObject(input)) return invalid<T>("invalid_input_shape");
+  if (containsForbiddenKey(input)) return invalid<T>("forbidden_key");
+  if (!hasOnlyAllowedKeys(input, allowed)) return invalid<T>("unknown_key");
+  return null;
+}
+
+function validateTitle(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
-  if (t.length < 1 || t.length > CASE_TIMELINE_ENTRY_TITLE_MAX) return null;
+  if (t.length < 1 || v.length > CASE_TIMELINE_ENTRY_TITLE_MAX) return null;
   return t;
 }
-function validateDescription(v: string): string | null {
+function validateDescription(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
-  if (t.length < 1 || t.length > CASE_TIMELINE_ENTRY_DESCRIPTION_MAX) return null;
+  if (t.length < 1 || v.length > CASE_TIMELINE_ENTRY_DESCRIPTION_MAX) return null;
   return t;
 }
 
@@ -71,6 +107,9 @@ export function createCaseTimelineServiceMock(
     async getById(context, caseId, timelineEntryId) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<CaseTimelineEntry>("invalid_case_id");
+      if (!isCaseTimelineEntryId(timelineEntryId))
+        return invalid<CaseTimelineEntry>("invalid_timeline_entry_id");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<CaseTimelineEntry>();
@@ -88,6 +127,8 @@ export function createCaseTimelineServiceMock(
     ): Promise<ServiceResult<PageResult<CaseTimelineEntry>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId))
+        return invalid<PageResult<CaseTimelineEntry>>("invalid_case_id");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) {
@@ -104,18 +145,23 @@ export function createCaseTimelineServiceMock(
     async create(context, input: CreateCaseTimelineEntryInput) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const envelope = validateInputEnvelope<CaseTimelineEntry>(input, CREATE_ALLOWED);
+      if (envelope) return envelope;
+      const raw = input as unknown as Record<string, unknown>;
+      if (!isCaseId(raw.caseId))
+        return invalid<CaseTimelineEntry>("invalid_case_id");
       const orgId = v.data.context.organizationId;
-      const c = store.cases.get(input.caseId);
+      const c = store.cases.get(raw.caseId);
       if (!c || c.organizationId !== orgId) return notFound<CaseTimelineEntry>();
-      if (!isCaseTimelineEntryKind(input.kind))
+      if (!isCaseTimelineEntryKind(raw.kind))
         return invalid<CaseTimelineEntry>("invalid_timeline_entry");
-      if (!isIsoDate(input.occurredOn))
+      if (!isIsoDate(raw.occurredOn))
         return invalid<CaseTimelineEntry>("invalid_timeline_entry");
-      const title = validateTitle(input.title);
+      const title = validateTitle(raw.title);
       if (title === null) return invalid<CaseTimelineEntry>("invalid_timeline_entry");
       let description: string | undefined = undefined;
-      if (input.description !== undefined) {
-        const d = validateDescription(input.description);
+      if (raw.description !== undefined) {
+        const d = validateDescription(raw.description);
         if (d === null) return invalid<CaseTimelineEntry>("invalid_timeline_entry");
         description = d;
       }
@@ -124,9 +170,9 @@ export function createCaseTimelineServiceMock(
       const preview: CaseTimelineEntry = {
         id: previewId,
         organizationId: orgId,
-        caseId: input.caseId,
-        kind: input.kind,
-        occurredOn: input.occurredOn,
+        caseId: raw.caseId,
+        kind: raw.kind,
+        occurredOn: raw.occurredOn,
         title,
         ...(description !== undefined ? { description } : {}),
         metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
@@ -146,17 +192,25 @@ export function createCaseTimelineServiceMock(
     ) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<CaseTimelineEntry>("invalid_case_id");
+      const envelope = validateInputEnvelope<CaseTimelineEntry>(input, UPDATE_ALLOWED);
+      if (envelope) return envelope;
+      const raw = input as unknown as Record<string, unknown>;
+      if (!isCaseTimelineEntryId(raw.timelineEntryId))
+        return invalid<CaseTimelineEntry>("invalid_timeline_entry_id");
+      if (!isValidVersion(raw.expectedVersion))
+        return invalid<CaseTimelineEntry>("invalid_expected_version");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<CaseTimelineEntry>();
-      const current = store.caseTimelineEntries.get(input.timelineEntryId);
+      const current = store.caseTimelineEntries.get(raw.timelineEntryId);
       if (!current || current.organizationId !== orgId || current.caseId !== caseId) {
         return notFound<CaseTimelineEntry>();
       }
-      if (input.expectedVersion !== current.metadata.version) {
+      if (raw.expectedVersion !== current.metadata.version) {
         return conflict<CaseTimelineEntry>(
           "timeline_entry_version_conflict",
-          input.expectedVersion,
+          raw.expectedVersion,
           current.metadata.version,
         );
       }
@@ -166,28 +220,28 @@ export function createCaseTimelineServiceMock(
       let nextDescription: string | undefined = current.description;
       let changed = false;
 
-      if (input.kind !== undefined) {
-        if (!isCaseTimelineEntryKind(input.kind))
+      if (raw.kind !== undefined) {
+        if (!isCaseTimelineEntryKind(raw.kind))
           return invalid<CaseTimelineEntry>("invalid_timeline_entry");
-        if (input.kind !== current.kind) { nextKind = input.kind; changed = true; }
+        if (raw.kind !== current.kind) { nextKind = raw.kind; changed = true; }
       }
-      if (input.occurredOn !== undefined) {
-        if (!isIsoDate(input.occurredOn))
+      if (raw.occurredOn !== undefined) {
+        if (!isIsoDate(raw.occurredOn))
           return invalid<CaseTimelineEntry>("invalid_timeline_entry");
-        if (input.occurredOn !== current.occurredOn) {
-          nextOccurredOn = input.occurredOn; changed = true;
+        if (raw.occurredOn !== current.occurredOn) {
+          nextOccurredOn = raw.occurredOn; changed = true;
         }
       }
-      if (input.title !== undefined) {
-        const t = validateTitle(input.title);
+      if (raw.title !== undefined) {
+        const t = validateTitle(raw.title);
         if (t === null) return invalid<CaseTimelineEntry>("invalid_timeline_entry");
         if (t !== current.title) { nextTitle = t; changed = true; }
       }
-      if (input.description !== undefined) {
-        if (input.description === null) {
+      if (raw.description !== undefined) {
+        if (raw.description === null) {
           if (current.description !== undefined) { nextDescription = undefined; changed = true; }
         } else {
-          const d = validateDescription(input.description);
+          const d = validateDescription(raw.description);
           if (d === null) return invalid<CaseTimelineEntry>("invalid_timeline_entry");
           if (d !== current.description) { nextDescription = d; changed = true; }
         }
@@ -223,6 +277,11 @@ export function createCaseTimelineServiceMock(
     ) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<void>("invalid_case_id");
+      if (!isCaseTimelineEntryId(timelineEntryId))
+        return invalid<void>("invalid_timeline_entry_id");
+      if (!isValidVersion(expectedVersion))
+        return invalid<void>("invalid_expected_version");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<void>();

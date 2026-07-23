@@ -98,6 +98,7 @@ export const SEED_PLAN_BETA_2_ID = buildDomainId("casePlanItem", "seed_beta_2");
 // ---- CaseTimelineEntries ---------------------------------------------------
 export const SEED_TL_ALFA_1_ID = buildDomainId("caseTimelineEntry", "seed_alfa_1");
 export const SEED_TL_ALFA_2_ID = buildDomainId("caseTimelineEntry", "seed_alfa_2");
+export const SEED_TL_ALFA_3_ID = buildDomainId("caseTimelineEntry", "seed_alfa_3");
 export const SEED_TL_BETA_1_ID = buildDomainId("caseTimelineEntry", "seed_beta_1");
 
 // ---- Builder ---------------------------------------------------------------
@@ -391,7 +392,7 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       organizationId: SEED_ORG_ALFA_ID,
       caseId: SEED_CASE_ALFA_2_ID,
       kind: "activity",
-      title: "Analisar documentos iniciais",
+      title: "Revisar objeto e limites do trabalho",
       status: "in_progress",
       priority: "high",
       dueOn: "2026-02-01" as IsoDate,
@@ -402,8 +403,8 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       id: SEED_PLAN_ALFA_2_ID,
       organizationId: SEED_ORG_ALFA_ID,
       caseId: SEED_CASE_ALFA_2_ID,
-      kind: "pending",
-      title: "Aguardar retorno do juízo",
+      kind: "activity",
+      title: "Organizar fontes iniciais",
       status: "planned",
       priority: "normal",
       dueOn: "2026-02-15" as IsoDate,
@@ -413,9 +414,9 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       id: SEED_PLAN_ALFA_3_ID,
       organizationId: SEED_ORG_ALFA_ID,
       caseId: SEED_CASE_ALFA_2_ID,
-      kind: "activity",
-      title: "Reunião de alinhamento inicial",
-      status: "completed",
+      kind: "pending",
+      title: "Confirmar informação pendente",
+      status: "blocked",
       priority: "normal",
       metadata: meta,
     },
@@ -450,7 +451,7 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       caseId: SEED_CASE_ALFA_2_ID,
       kind: "milestone",
       occurredOn: "2026-01-05" as IsoDate,
-      title: "Abertura do processo",
+      title: "Processo cadastrado no ambiente demonstrativo",
       metadata: meta,
     },
     {
@@ -459,7 +460,16 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       caseId: SEED_CASE_ALFA_2_ID,
       kind: "note",
       occurredOn: "2026-01-08" as IsoDate,
-      title: "Registro de primeira leitura dos autos",
+      title: "Checklist inicial revisado",
+      metadata: meta,
+    },
+    {
+      id: SEED_TL_ALFA_3_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "note",
+      occurredOn: "2026-01-12" as IsoDate,
+      title: "Pessoas vinculadas ao processo",
       metadata: meta,
     },
     {
@@ -548,8 +558,12 @@ export function validateMockDomainSeed(
       const a = assignByIdEarly.get(p.assignmentId);
       if (!a)
         issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_not_found" });
-      else if (a.caseId !== p.caseId)
-        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
+      else {
+        if (a.caseId !== p.caseId)
+          issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
+        if (a.organizationId !== p.organizationId)
+          issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_org_mismatch" });
+      }
     }
   }
   for (const t of seed.caseTimelineEntries) {
