@@ -1,5 +1,5 @@
 /**
- * CasePlanService — implementação em memória (LV-08.5A).
+ * CasePlanService — implementação em memória (LV-08.5A / LV-08.5A.1).
  */
 
 import type {
@@ -17,9 +17,14 @@ import {
   isCasePlanItemPriority,
   isCasePlanItemStatus,
 } from "../core/case-plan";
-import { isIsoDate } from "../core/common";
+import {
+  containsForbiddenKey,
+  hasOnlyAllowedKeys,
+  isIsoDate,
+  isValidVersion,
+} from "../core/common";
 import type { AssignmentId, CaseId, CasePlanItemId } from "../core/ids";
-import { isAssignmentId } from "../core/ids";
+import { isAssignmentId, isCaseId, isCasePlanItemId } from "../core/ids";
 import type { CasePlanService } from "../services/case-plan-service";
 import type {
   ChangeCasePlanItemStatusInput,
@@ -54,16 +59,45 @@ function conflict<T>(msg: string, expected: number, actual: number): ServiceResu
   };
 }
 
-function validateTitle(v: string): string | null {
+const CREATE_ALLOWED: ReadonlySet<string> = new Set([
+  "caseId",
+  "kind",
+  "title",
+  "description",
+  "priority",
+  "dueOn",
+  "assignmentId",
+]);
+const UPDATE_ALLOWED: ReadonlySet<string> = new Set([
+  "planItemId",
+  "kind",
+  "title",
+  "description",
+  "priority",
+  "dueOn",
+  "assignmentId",
+  "expectedVersion",
+]);
+const CHANGE_STATUS_ALLOWED: ReadonlySet<string> = new Set([
+  "planItemId",
+  "status",
+  "expectedVersion",
+]);
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+function validateTitle(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
-  if (t.length < 1 || t.length > CASE_PLAN_ITEM_TITLE_MAX) return null;
+  if (t.length < 1 || v.length > CASE_PLAN_ITEM_TITLE_MAX) return null;
   return t;
 }
-function validateDescription(v: string): string | null {
+function validateDescription(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
-  if (t.length < 1 || t.length > CASE_PLAN_ITEM_DESCRIPTION_MAX) return null;
+  if (t.length < 1 || v.length > CASE_PLAN_ITEM_DESCRIPTION_MAX) return null;
   return t;
 }
 
@@ -98,6 +132,16 @@ function assignmentInCase(
   return !!a && a.organizationId === orgId && a.caseId === caseId;
 }
 
+function validateInputEnvelope<T>(
+  input: unknown,
+  allowed: ReadonlySet<string>,
+): ServiceResult<T> | null {
+  if (!isPlainObject(input)) return invalid<T>("invalid_input_shape");
+  if (containsForbiddenKey(input)) return invalid<T>("forbidden_key");
+  if (!hasOnlyAllowedKeys(input, allowed)) return invalid<T>("unknown_key");
+  return null;
+}
+
 export function createCasePlanServiceMock(
   store: MockStore,
   clock: MockClock,
@@ -107,6 +151,9 @@ export function createCasePlanServiceMock(
     async getById(context, caseId, planItemId) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<CasePlanItem>("invalid_case_id");
+      if (!isCasePlanItemId(planItemId))
+        return invalid<CasePlanItem>("invalid_plan_item_id");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<CasePlanItem>();
@@ -124,6 +171,8 @@ export function createCasePlanServiceMock(
     ): Promise<ServiceResult<PageResult<CasePlanItem>>> {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId))
+        return invalid<PageResult<CasePlanItem>>("invalid_case_id");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) {
@@ -140,45 +189,50 @@ export function createCasePlanServiceMock(
     async create(context, input: CreateCasePlanItemInput) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      const envelope = validateInputEnvelope<CasePlanItem>(input, CREATE_ALLOWED);
+      if (envelope) return envelope;
+      const raw = input as unknown as Record<string, unknown>;
+      if (!isCaseId(raw.caseId)) return invalid<CasePlanItem>("invalid_case_id");
       const orgId = v.data.context.organizationId;
-      const c = store.cases.get(input.caseId);
+      const c = store.cases.get(raw.caseId);
       if (!c || c.organizationId !== orgId) return notFound<CasePlanItem>();
-      if (!isCasePlanItemKind(input.kind)) return invalid<CasePlanItem>("invalid_plan_item");
-      if (!isCasePlanItemPriority(input.priority))
+      if (!isCasePlanItemKind(raw.kind))
         return invalid<CasePlanItem>("invalid_plan_item");
-      const title = validateTitle(input.title);
+      if (!isCasePlanItemPriority(raw.priority))
+        return invalid<CasePlanItem>("invalid_plan_item");
+      const title = validateTitle(raw.title);
       if (title === null) return invalid<CasePlanItem>("invalid_plan_item");
       let description: string | undefined = undefined;
-      if (input.description !== undefined) {
-        const d = validateDescription(input.description);
+      if (raw.description !== undefined) {
+        const d = validateDescription(raw.description);
         if (d === null) return invalid<CasePlanItem>("invalid_plan_item");
         description = d;
       }
-      if (input.dueOn !== undefined && !isIsoDate(input.dueOn)) {
+      if (raw.dueOn !== undefined && !isIsoDate(raw.dueOn)) {
         return invalid<CasePlanItem>("invalid_plan_item");
       }
-      if (input.assignmentId !== undefined) {
-        if (!isAssignmentId(input.assignmentId))
+      let assignmentId: AssignmentId | undefined = undefined;
+      if (raw.assignmentId !== undefined) {
+        if (!isAssignmentId(raw.assignmentId))
           return invalid<CasePlanItem>("invalid_plan_item");
-        if (!assignmentInCase(store, orgId, input.caseId, input.assignmentId)) {
+        if (!assignmentInCase(store, orgId, raw.caseId, raw.assignmentId)) {
           return invalid<CasePlanItem>("assignment_not_in_case");
         }
+        assignmentId = raw.assignmentId;
       }
       const previewId = ids.previewNext("casePlanItem");
       const previewTime = clock.previewNext();
       const preview: CasePlanItem = {
         id: previewId,
         organizationId: orgId,
-        caseId: input.caseId,
-        kind: input.kind,
+        caseId: raw.caseId,
+        kind: raw.kind,
         title,
         ...(description !== undefined ? { description } : {}),
         status: "planned",
-        priority: input.priority,
-        ...(input.dueOn !== undefined ? { dueOn: input.dueOn } : {}),
-        ...(input.assignmentId !== undefined
-          ? { assignmentId: input.assignmentId }
-          : {}),
+        priority: raw.priority,
+        ...(raw.dueOn !== undefined ? { dueOn: raw.dueOn } : {}),
+        ...(assignmentId !== undefined ? { assignmentId } : {}),
         metadata: { createdAt: previewTime, updatedAt: previewTime, version: 1 },
       };
       if (!isCasePlanItem(preview)) return invalid<CasePlanItem>("invalid_plan_item");
@@ -195,17 +249,26 @@ export function createCasePlanServiceMock(
     ) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<CasePlanItem>("invalid_case_id");
+      const envelope = validateInputEnvelope<CasePlanItem>(input, UPDATE_ALLOWED);
+      if (envelope) return envelope;
+      const raw = input as unknown as Record<string, unknown>;
+      if (!isCasePlanItemId(raw.planItemId))
+        return invalid<CasePlanItem>("invalid_plan_item_id");
+      if (!isValidVersion(raw.expectedVersion))
+        return invalid<CasePlanItem>("invalid_expected_version");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<CasePlanItem>();
-      const current = store.casePlanItems.get(input.planItemId);
+      const current = store.casePlanItems.get(raw.planItemId);
       if (!current || current.organizationId !== orgId || current.caseId !== caseId) {
         return notFound<CasePlanItem>();
       }
-      if (input.expectedVersion !== current.metadata.version) {
+      const expectedVersion = raw.expectedVersion;
+      if (expectedVersion !== current.metadata.version) {
         return conflict<CasePlanItem>(
           "plan_item_version_conflict",
-          input.expectedVersion,
+          expectedVersion,
           current.metadata.version,
         );
       }
@@ -217,51 +280,52 @@ export function createCasePlanServiceMock(
       let nextAssignmentId: AssignmentId | undefined = current.assignmentId;
       let changed = false;
 
-      if (input.kind !== undefined) {
-        if (!isCasePlanItemKind(input.kind)) return invalid<CasePlanItem>("invalid_plan_item");
-        if (input.kind !== current.kind) { nextKind = input.kind; changed = true; }
+      if (raw.kind !== undefined) {
+        if (!isCasePlanItemKind(raw.kind))
+          return invalid<CasePlanItem>("invalid_plan_item");
+        if (raw.kind !== current.kind) { nextKind = raw.kind; changed = true; }
       }
-      if (input.title !== undefined) {
-        const t = validateTitle(input.title);
+      if (raw.title !== undefined) {
+        const t = validateTitle(raw.title);
         if (t === null) return invalid<CasePlanItem>("invalid_plan_item");
         if (t !== current.title) { nextTitle = t; changed = true; }
       }
-      if (input.description !== undefined) {
-        if (input.description === null) {
+      if (raw.description !== undefined) {
+        if (raw.description === null) {
           if (current.description !== undefined) { nextDescription = undefined; changed = true; }
         } else {
-          const d = validateDescription(input.description);
+          const d = validateDescription(raw.description);
           if (d === null) return invalid<CasePlanItem>("invalid_plan_item");
           if (d !== current.description) { nextDescription = d; changed = true; }
         }
       }
-      if (input.priority !== undefined) {
-        if (!isCasePlanItemPriority(input.priority))
+      if (raw.priority !== undefined) {
+        if (!isCasePlanItemPriority(raw.priority))
           return invalid<CasePlanItem>("invalid_plan_item");
-        if (input.priority !== current.priority) {
-          nextPriority = input.priority; changed = true;
+        if (raw.priority !== current.priority) {
+          nextPriority = raw.priority; changed = true;
         }
       }
-      if (input.dueOn !== undefined) {
-        if (input.dueOn === null) {
+      if (raw.dueOn !== undefined) {
+        if (raw.dueOn === null) {
           if (current.dueOn !== undefined) { nextDueOn = undefined; changed = true; }
         } else {
-          if (!isIsoDate(input.dueOn)) return invalid<CasePlanItem>("invalid_plan_item");
-          if (input.dueOn !== current.dueOn) { nextDueOn = input.dueOn; changed = true; }
+          if (!isIsoDate(raw.dueOn)) return invalid<CasePlanItem>("invalid_plan_item");
+          if (raw.dueOn !== current.dueOn) { nextDueOn = raw.dueOn; changed = true; }
         }
       }
-      if (input.assignmentId !== undefined) {
-        if (input.assignmentId === null) {
+      if (raw.assignmentId !== undefined) {
+        if (raw.assignmentId === null) {
           if (current.assignmentId !== undefined) {
             nextAssignmentId = undefined; changed = true;
           }
         } else {
-          if (!isAssignmentId(input.assignmentId))
+          if (!isAssignmentId(raw.assignmentId))
             return invalid<CasePlanItem>("invalid_plan_item");
-          if (!assignmentInCase(store, orgId, caseId, input.assignmentId))
+          if (!assignmentInCase(store, orgId, caseId, raw.assignmentId))
             return invalid<CasePlanItem>("assignment_not_in_case");
-          if (input.assignmentId !== current.assignmentId) {
-            nextAssignmentId = input.assignmentId; changed = true;
+          if (raw.assignmentId !== current.assignmentId) {
+            nextAssignmentId = raw.assignmentId; changed = true;
           }
         }
       }
@@ -297,27 +361,38 @@ export function createCasePlanServiceMock(
     ) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<CasePlanItem>("invalid_case_id");
+      const envelope = validateInputEnvelope<CasePlanItem>(
+        input,
+        CHANGE_STATUS_ALLOWED,
+      );
+      if (envelope) return envelope;
+      const raw = input as unknown as Record<string, unknown>;
+      if (!isCasePlanItemId(raw.planItemId))
+        return invalid<CasePlanItem>("invalid_plan_item_id");
+      if (!isValidVersion(raw.expectedVersion))
+        return invalid<CasePlanItem>("invalid_expected_version");
+      if (!isCasePlanItemStatus(raw.status))
+        return invalid<CasePlanItem>("invalid_plan_item");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<CasePlanItem>();
-      const current = store.casePlanItems.get(input.planItemId);
+      const current = store.casePlanItems.get(raw.planItemId);
       if (!current || current.organizationId !== orgId || current.caseId !== caseId) {
         return notFound<CasePlanItem>();
       }
-      if (input.expectedVersion !== current.metadata.version) {
+      if (raw.expectedVersion !== current.metadata.version) {
         return conflict<CasePlanItem>(
           "plan_item_version_conflict",
-          input.expectedVersion,
+          raw.expectedVersion,
           current.metadata.version,
         );
       }
-      if (!isCasePlanItemStatus(input.status))
-        return invalid<CasePlanItem>("invalid_plan_item");
-      if (input.status === current.status) return invalid<CasePlanItem>("no_changes");
+      if (raw.status === current.status) return invalid<CasePlanItem>("no_changes");
       const nextTime = clock.next();
       const next: CasePlanItem = {
         ...current,
-        status: input.status,
+        status: raw.status,
         metadata: {
           createdAt: current.metadata.createdAt,
           updatedAt: nextTime,
@@ -336,6 +411,11 @@ export function createCasePlanServiceMock(
     ) {
       const v = requireContext(store, context);
       if (!v.ok) return v;
+      if (!isCaseId(caseId)) return invalid<void>("invalid_case_id");
+      if (!isCasePlanItemId(planItemId))
+        return invalid<void>("invalid_plan_item_id");
+      if (!isValidVersion(expectedVersion))
+        return invalid<void>("invalid_expected_version");
       const orgId = v.data.context.organizationId;
       const c = store.cases.get(caseId);
       if (!c || c.organizationId !== orgId) return notFound<void>();
