@@ -187,10 +187,10 @@ void _cpBadId;
 const _cpBadOrg: CreatePersonInput = { displayLabel: "A", ageClassification: "adult", organizationId };
 void _cpBadOrg;
 
-// @ts-expect-error — metadata não pertence ao DTO de criação de pessoa
 const _cpBadMeta: CreatePersonInput = {
   displayLabel: "A",
   ageClassification: "adult",
+  // @ts-expect-error — metadata não pertence ao DTO de criação de pessoa
   metadata: { createdAt: "x", updatedAt: "x", version: 1 },
 };
 void _cpBadMeta;
