@@ -94,7 +94,7 @@ void _snap_bad_case;
 const _snap_payload: CreateCaseSnapshotInput = {
   caseId,
   label: "L",
-  payload: {} as CaseSnapshotPayload,
+  payload: {},
 };
 void _snap_payload;
 
