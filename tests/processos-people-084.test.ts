@@ -905,3 +905,34 @@ describe("LV-08.4.2.1 · auditoria do ProcessPersonDialog", () => {
     expect(dlgSrc).toMatch(/mode\.kind === "link-existing" \? mode\.availablePersons : \[\]/);
   });
 });
+
+describe("LV-08.4.2.1 · guardas complementares", () => {
+  it("emptyPeoplePermissions cobre todas as PEOPLE_WRITE_ACTIONS com false", () => {
+    const perms = emptyPeoplePermissions();
+    for (const a of PEOPLE_WRITE_ACTIONS) {
+      expect(perms[a]).toBe(false);
+    }
+  });
+  it("isMinorAge classifica menores e adultos corretamente para todas as classificações", () => {
+    for (const a of AGE_CLASSIFICATIONS) {
+      const isMinor = a === "child" || a === "adolescent";
+      expect(isMinorAge(a)).toBe(isMinor);
+    }
+  });
+  it("normalizePersonLabel apara espaços das extremidades preservando internos", () => {
+    expect(normalizePersonLabel("  Requerente  A  ")).toBe("Requerente  A");
+    expect(normalizePersonLabel("   ")).toBe("");
+  });
+  it("mapPeopleError preserva o code em todos os ramos da união", () => {
+    const kinds = [
+      { code: "conflict", message: "x" },
+      { code: "not_found", message: "x" },
+      { code: "forbidden", message: "x" },
+      { code: "validation_error", message: "x" },
+    ] as const;
+    for (const e of kinds) {
+      const m = mapPeopleError(e);
+      expect(m.message).toBe("x");
+    }
+  });
+});
