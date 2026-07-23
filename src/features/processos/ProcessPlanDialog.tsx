@@ -94,23 +94,20 @@ export function ProcessPlanDialog(props: ProcessPlanDialogProps) {
   const titleOk = values.title.trim().length > 0;
   const canSubmit = !submitting && !isConflict && titleOk;
 
-  // Combina opções atuais + a opção atualmente atribuída (mesmo inativa).
+  // LV-08.5B.1 — Filtra opções conforme o modo:
+  // - create: somente assignments ativos;
+  // - edit: assignments ativos + o atual (mesmo inativo), evitando expor
+  //   outros assignments inativos como escolha.
   const combinedOptions: readonly AssignmentOption[] = React.useMemo(() => {
-    if (mode.kind !== "edit") return assignmentOptions;
+    const activeOnly = assignmentOptions.filter((o) => o.availableForNewAssignments);
+    if (mode.kind !== "edit") return activeOnly;
     const currentId = mode.item.assignmentId;
-    if (!currentId) return assignmentOptions;
-    if (assignmentOptions.some((o) => o.assignmentId === currentId)) {
-      return assignmentOptions;
-    }
-    return assignmentOptions; // opção não resolvida: mantém no select como valor bruto abaixo
+    if (!currentId) return activeOnly;
+    const current = assignmentOptions.find((o) => o.assignmentId === currentId);
+    if (!current) return activeOnly;
+    if (current.availableForNewAssignments) return activeOnly;
+    return [...activeOnly, current];
   }, [assignmentOptions, mode]);
-
-  const currentEditAssignmentInactiveOption: AssignmentOption | null =
-    mode.kind === "edit" &&
-    mode.item.assignmentId &&
-    !assignmentOptions.some((o) => o.assignmentId === mode.item.assignmentId)
-      ? null // sem detalhes do perfil aqui — usamos rótulo genérico abaixo
-      : null;
 
   const title = mode.kind === "create"
     ? mode.itemKind === "activity" ? "Nova atividade" : "Nova pendência"
