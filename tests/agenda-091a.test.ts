@@ -1474,8 +1474,6 @@ async function setupWorker(
 
 describe("LV-09.1A.2 · admins acessam qualquer caso da própria org", () => {
   for (const role of ADMIN_ROLES_LIST) {
-    it(`(200-${role}) ${role}: policy allow em Alfa 1 sem profile nenhum`, async () => {
-  for (const role of ADMIN_ROLES_LIST) {
     async function adminCtx(env: ReturnType<typeof createMockDomainEnvironment>): Promise<ServiceContext> {
       if (role === "proprietario") return { ...OWNER_ALFA };
       // Cria uma membership de administrador para SEED_USER_3.
