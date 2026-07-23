@@ -2260,6 +2260,7 @@ describe("LV-08.6A.2 — imutabilidade histórica comportamental", () => {
         SEED_SNAPSHOT_ALFA_1_ID,
       ),
     );
+    const originalLen = snap.payload.casePlanItems.length;
     try {
       (snap.payload.casePlanItems as unknown as CaseSnapshot[]).push({} as never);
     } catch {
@@ -2272,8 +2273,7 @@ describe("LV-08.6A.2 — imutabilidade histórica comportamental", () => {
         SEED_SNAPSHOT_ALFA_1_ID,
       ),
     );
-    expect(again.payload.casePlanItems.length).toBe(snap.payload.casePlanItems.length - 0);
-    // A releitura reflete o store, não a mutação local.
+    expect(again.payload.casePlanItems.length).toBe(originalLen);
     expect(again.payload.casePlanItems.every((p) => typeof p.id === "string")).toBe(true);
   });
 
