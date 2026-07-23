@@ -26,6 +26,8 @@ export const ID_PREFIX = {
   assignment: "assign_",
   casePlanItem: "planItem_",
   caseTimelineEntry: "timelineEntry_",
+  auditEvent: "audit_",
+  caseSnapshot: "caseSnapshot_",
 
   // Entidades reservadas — apenas catalogadas nesta microetapa.
   deadline: "deadline_",
@@ -58,7 +60,6 @@ export const ID_PREFIX = {
   feeProposal: "fee_",
   expense: "expense_",
   aiExecution: "aiexec_",
-  auditEvent: "audit_",
   consentRecord: "consent_",
   retentionPolicy: "retention_",
 } as const;
@@ -83,6 +84,8 @@ export type RelationshipId = Brand<string, "RelationshipId">;
 export type AssignmentId = Brand<string, "AssignmentId">;
 export type CasePlanItemId = Brand<string, "CasePlanItemId">;
 export type CaseTimelineEntryId = Brand<string, "CaseTimelineEntryId">;
+export type AuditEventId = Brand<string, "AuditEventId">;
+export type CaseSnapshotId = Brand<string, "CaseSnapshotId">;
 
 /**
  * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
@@ -101,6 +104,8 @@ export type ImplementedIdMap = {
   assignment: AssignmentId;
   casePlanItem: CasePlanItemId;
   caseTimelineEntry: CaseTimelineEntryId;
+  auditEvent: AuditEventId;
+  caseSnapshot: CaseSnapshotId;
 };
 
 // ---- Validação de forma ----------------------------------------------------
@@ -121,7 +126,12 @@ export function hasExpectedPrefix(value: unknown, kind: IdKind): boolean {
 
 export function parseDomainId(value: unknown): { kind: IdKind; value: string } | null {
   if (!isNonEmptyString(value)) return null;
-  for (const [prefix, kind] of PREFIX_TO_KIND) {
+  // Ordena por comprimento descendente para casar prefixos mais longos primeiro
+  // (evita, por ex., `caseSnapshot_` colidir com `case_`).
+  const ordered = Array.from(PREFIX_TO_KIND.entries()).sort(
+    (a, b) => b[0].length - a[0].length,
+  );
+  for (const [prefix, kind] of ordered) {
     if (value.startsWith(prefix)) {
       const suffix = value.slice(prefix.length);
       if (!suffix || !SUFFIX_RE.test(suffix)) return null;
@@ -154,6 +164,10 @@ export const isCasePlanItemId = (v: unknown): v is CasePlanItemId =>
   hasExpectedPrefix(v, "casePlanItem");
 export const isCaseTimelineEntryId = (v: unknown): v is CaseTimelineEntryId =>
   hasExpectedPrefix(v, "caseTimelineEntry");
+export const isAuditEventId = (v: unknown): v is AuditEventId =>
+  hasExpectedPrefix(v, "auditEvent");
+export const isCaseSnapshotId = (v: unknown): v is CaseSnapshotId =>
+  hasExpectedPrefix(v, "caseSnapshot");
 
 // ---- Builders determinísticos ---------------------------------------------
 
@@ -174,7 +188,7 @@ export function buildDomainId(kind: IdKind, suffix: string): string {
   return `${ID_PREFIX[kind]}${suffix}`;
 }
 
-// ---- Fábricas nomeadas (LV-08.5A) -----------------------------------------
+// ---- Fábricas nomeadas -----------------------------------------------------
 
 export function createCasePlanItemId(suffix: string): CasePlanItemId {
   return buildDomainId("casePlanItem", suffix);
@@ -182,4 +196,12 @@ export function createCasePlanItemId(suffix: string): CasePlanItemId {
 
 export function createCaseTimelineEntryId(suffix: string): CaseTimelineEntryId {
   return buildDomainId("caseTimelineEntry", suffix);
+}
+
+export function createAuditEventId(suffix: string): AuditEventId {
+  return buildDomainId("auditEvent", suffix);
+}
+
+export function createCaseSnapshotId(suffix: string): CaseSnapshotId {
+  return buildDomainId("caseSnapshot", suffix);
 }
