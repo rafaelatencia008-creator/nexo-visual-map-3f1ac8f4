@@ -1633,6 +1633,7 @@ describe("LV-08.6A.1 — imutabilidade histórica", () => {
         label: "mutavel",
       }),
     );
+    const originalLen = snap.payload.casePlanItems.length;
     try {
       (snap.payload.casePlanItems as unknown as { push: (x: unknown) => void })
         .push?.({});
@@ -1642,7 +1643,7 @@ describe("LV-08.6A.1 — imutabilidade histórica", () => {
     const again = unwrapOk<CaseSnapshot>(
       await env.services.caseSnapshots.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, snap.id),
     );
-    expect(again.payload.casePlanItems.length).toBe(snap.payload.casePlanItems.length);
+    expect(again.payload.casePlanItems.length).toBe(originalLen);
   });
 
   it("dois ambientes são isolados", async () => {
