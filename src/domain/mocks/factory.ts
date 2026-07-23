@@ -28,6 +28,8 @@ import {
   createRelationshipServiceMock,
 } from "./person-mock";
 import { createAssignmentServiceMock } from "./assignment-mock";
+import { createCasePlanServiceMock } from "./case-plan-mock";
+import { createCaseTimelineServiceMock } from "./case-timeline-mock";
 import { createPermissionPolicyMock } from "./permission-mock";
 import {
   guardOrganizationService,
@@ -39,6 +41,8 @@ import {
   guardCasePersonService,
   guardRelationshipService,
   guardAssignmentService,
+  guardCasePlanService,
+  guardCaseTimelineService,
 } from "./permission-guards";
 import {
   MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS,
@@ -68,6 +72,9 @@ function loadSeed(store: MockStore): void {
   for (const cp of seed.casePersons) store.casePersons.set(cp.id, deepClone(cp));
   for (const r of seed.relationships) store.relationships.set(r.id, deepClone(r));
   for (const a of seed.assignments) store.assignments.set(a.id, deepClone(a));
+  for (const p of seed.casePlanItems) store.casePlanItems.set(p.id, deepClone(p));
+  for (const t of seed.caseTimelineEntries)
+    store.caseTimelineEntries.set(t.id, deepClone(t));
 }
 
 function snapshot(store: MockStore): MockDomainSnapshot {
@@ -82,6 +89,8 @@ function snapshot(store: MockStore): MockDomainSnapshot {
     casePersons: Array.from(store.casePersons.values()).map(deepClone),
     relationships: Array.from(store.relationships.values()).map(deepClone),
     assignments: Array.from(store.assignments.values()).map(deepClone),
+    casePlanItems: Array.from(store.casePlanItems.values()).map(deepClone),
+    caseTimelineEntries: Array.from(store.caseTimelineEntries.values()).map(deepClone),
   }) as MockDomainSnapshot;
 }
 
@@ -159,6 +168,14 @@ export function createMockDomainEnvironment(
     assignments: guardAssignmentService(
       store,
       createAssignmentServiceMock(store, clock, ids),
+    ),
+    casePlan: guardCasePlanService(
+      store,
+      createCasePlanServiceMock(store, clock, ids),
+    ),
+    caseTimeline: guardCaseTimelineService(
+      store,
+      createCaseTimelineServiceMock(store, clock, ids),
     ),
     permissions: createPermissionPolicyMock(store),
   });
