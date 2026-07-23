@@ -1,9 +1,10 @@
 /**
  * Helper interno usado pelos serviços mock para exigir permissão antes
- * de qualquer efeito colateral. Ordem: contexto → pedido → matriz.
+ * de qualquer efeito colateral. Ordem: contexto → pedido → matriz → acesso
+ * contextual (Agenda).
  *
- * Negativas são retornadas como `forbidden / permission_denied`, sem
- * dados internos, sem stack e sem detalhes da matriz.
+ * Negativas são retornadas como `forbidden / permission_denied` (matriz)
+ * ou `forbidden / case_access_denied` (acesso contextual da Agenda).
  */
 
 import { isPermissionRequest, type PermissionRequest } from "../services/permissions";
@@ -11,6 +12,7 @@ import type { ServiceResult } from "../services/result";
 import type { MockStore } from "./store";
 import { requireContext, type ValidatedContext } from "./context-validation";
 import { isActionAllowedForRole } from "./permission-mock";
+import { hasAgendaCaseAccess, isAgendaAction } from "./agenda-case-access";
 
 export function requirePermission(
   store: MockStore,
@@ -33,6 +35,14 @@ export function requirePermission(
       ok: false,
       error: { code: "forbidden", message: "permission_denied" },
     };
+  }
+  if (isAgendaAction(request.action) && request.caseId !== undefined) {
+    if (!hasAgendaCaseAccess(store, ctx.data.context, request.caseId)) {
+      return {
+        ok: false,
+        error: { code: "forbidden", message: "case_access_denied" },
+      };
+    }
   }
   return ctx;
 }
