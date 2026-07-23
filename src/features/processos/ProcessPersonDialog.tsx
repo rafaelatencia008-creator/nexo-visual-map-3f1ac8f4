@@ -141,6 +141,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
   const [role, setRole] = React.useState<CasePersonRole>(initialRole);
   const [restricted, setRestricted] = React.useState(initialRestricted);
   const [personId, setPersonId] = React.useState<PersonId | "">(initialPersonId);
+  const [search, setSearch] = React.useState("");
 
   const modeKind = mode.kind;
   React.useEffect(() => {
