@@ -1432,7 +1432,8 @@ async function setupWorker(
   },
 ) {
   const env = createMockDomainEnvironment();
-  const userId = SEED_USER_3_ID as never;
+  const userId = SEED_USER_3_ID;
+  const seedStartedOn = env.snapshot().assignments[0]!.startedOn;
   const mem = ok(await env.services.memberships.create(OWNER_ALFA, { userId, role }));
   const ctx: ServiceContext = {
     organizationId: SEED_ORG_ALFA_ID,
@@ -1441,7 +1442,6 @@ async function setupWorker(
     role,
   };
   if (opts.profile !== "none") {
-    // Cria profile no contexto do OWNER passando o userId trabalhador.
     const prof = ok(await env.services.professionalProfiles.create(OWNER_ALFA, {
       userId,
       area: "psicologia",
@@ -1457,7 +1457,7 @@ async function setupWorker(
         caseId: opts.assignCase,
         professionalProfileId: prof.id,
         role: assignRoleForContextRole(role),
-        startedOn: "2026-01-05" as never,
+        startedOn: seedStartedOn,
       }));
       if (opts.assignStatus && opts.assignStatus !== "active") {
         ok(await env.services.assignments.changeStatus(OWNER_ALFA, opts.assignCase, {
