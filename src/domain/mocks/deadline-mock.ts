@@ -57,7 +57,7 @@ import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems, stableStringify } from "./pagination-mock";
-import { computeAgendaAccessibleCaseIds, hasAgendaCaseAccess } from "./agenda-case-access";
+import { computeAgendaAccessibleCaseIds } from "./agenda-case-access";
 
 function invalid<T>(msg: string): ServiceResult<T> {
   return { ok: false, error: { code: "validation_error", message: msg } };
