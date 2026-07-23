@@ -9,6 +9,7 @@ import {
 import { ProcessDetailSummary } from "@/features/processos/ProcessDetailSummary";
 import { ProcessPeopleRelations } from "@/features/processos/ProcessPeopleRelations";
 import { ProcessPlanTimeline } from "@/features/processos/ProcessPlanTimeline";
+import { ProcessAuditSnapshots } from "@/features/processos/ProcessAuditSnapshots";
 import {
   ProcessReadinessChecklist,
   type ChecklistSaveResult,
@@ -234,6 +235,7 @@ function ProcessoDetalhePage() {
       />
       <ProcessPeopleRelations case={state.case} />
       <ProcessPlanTimeline case={state.case} />
+      <ProcessAuditSnapshots caseId={state.case.id} />
     </div>
   );
 }
