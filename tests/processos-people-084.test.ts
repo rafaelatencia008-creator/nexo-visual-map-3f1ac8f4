@@ -861,6 +861,7 @@ describe("LV-08.4.2.1 · permissão de leitura criada por memberships.create", (
       role: "leitura",
     };
     const list = await env.services.persons.list(readerCtx, { pageSize: 5 });
+    if (!list.ok) console.log("LIST_ERR", list.error);
     expect(list.ok).toBe(true);
     const attempt = await env.services.persons.create(
       readerCtx,
