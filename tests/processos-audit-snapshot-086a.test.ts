@@ -967,7 +967,9 @@ describe("LV-08.6A — auditoria automática de CasePerson e Relationship", () =
   it("casePerson.updated audita update de vínculo", async () => {
     const env = createMockDomainEnvironment();
     const list = unwrapOk(
-      await env.services.casePersons.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+      await env.services.casePersons.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        limit: 50,
+      }),
     );
     const cp = list.items[0]!;
     await env.services.casePersons.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
@@ -983,7 +985,9 @@ describe("LV-08.6A — auditoria automática de CasePerson e Relationship", () =
   it("relationship.updated audita update de relação", async () => {
     const env = createMockDomainEnvironment();
     const list = unwrapOk(
-      await env.services.relationships.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+      await env.services.relationships.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        limit: 50,
+      }),
     );
     if (list.items.length > 0) {
       const rel = list.items[0]!;
@@ -1003,7 +1007,9 @@ describe("LV-08.6A — auditoria automática de Assignment", () => {
   it("assignment.updated audita update", async () => {
     const env = createMockDomainEnvironment();
     const list = unwrapOk(
-      await env.services.assignments.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+      await env.services.assignments.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        limit: 50,
+      }),
     );
     const a = list.items.find((x) => x.id === SEED_ASSIGN_ALFA_1_ID) ?? list.items[0]!;
     await env.services.assignments.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
