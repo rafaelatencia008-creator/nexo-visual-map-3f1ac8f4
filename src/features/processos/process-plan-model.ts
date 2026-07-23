@@ -265,14 +265,23 @@ export type PlanItemFormValues = Readonly<{
   assignmentId: string; // "" = sem responsável.
 }>;
 
-function normalizeAssignmentIdOrNull(
+/**
+ * Normaliza um assignmentId para uma NOVA atribuição.
+ *
+ * Só aceita opção presente em `valid` E com `availableForNewAssignments === true`.
+ * Assignments suspensos/concluídos/cancelados são rejeitados mesmo que o ID
+ * esteja no array (o array pode conter opções preservadas para edição).
+ */
+function normalizeAssignmentForNew(
   value: string,
   valid: readonly AssignmentOption[],
 ): AssignmentId | null | "invalid" {
   const t = value.trim();
   if (t.length === 0) return null;
   if (!isAssignmentId(t)) return "invalid";
-  if (!valid.some((o) => o.assignmentId === t)) return "invalid";
+  const opt = valid.find((o) => o.assignmentId === t);
+  if (!opt) return "invalid";
+  if (!opt.availableForNewAssignments) return "invalid";
   return t;
 }
 
@@ -295,9 +304,9 @@ export function buildCreateCasePlanItemInput(
   const desc = values.description.trim();
   const due = normalizeIsoDateOrNull(values.dueOn);
   if (due === "invalid") return { ok: false, reason: "invalid_due" };
-  const aid = normalizeAssignmentIdOrNull(values.assignmentId, validOptions);
+  const aid = normalizeAssignmentForNew(values.assignmentId, validOptions);
   if (aid === "invalid") return { ok: false, reason: "invalid_assignment" };
-  const base: CreateCasePlanItemInput = {
+  const input: CreateCasePlanItemInput = {
     caseId,
     kind: values.kind,
     title,
@@ -306,7 +315,7 @@ export function buildCreateCasePlanItemInput(
     ...(due !== null ? { dueOn: due } : {}),
     ...(aid !== null ? { assignmentId: aid } : {}),
   };
-  return { ok: true, input: base };
+  return { ok: true, input };
 }
 
 export function buildUpdateCasePlanItemInput(
@@ -321,57 +330,74 @@ export function buildUpdateCasePlanItemInput(
   const descTrim = values.description.trim();
   const due = normalizeIsoDateOrNull(values.dueOn);
   if (due === "invalid") return { ok: false, reason: "invalid_due" };
-  // Assignment: se aponta para um assignment não ativo já presente no item,
-  // preservamos a validade mesmo quando não está entre `validOptions` (opções
-  // para novas atribuições). Só invalidamos quando o valor é diferente do atual.
+
   const rawAid = values.assignmentId.trim();
-  let nextAssignment: AssignmentId | null | undefined = undefined;
+  type AssignAction =
+    | { op: "noop" }
+    | { op: "set"; value: AssignmentId }
+    | { op: "unset" };
+  let assignAction: AssignAction = { op: "noop" };
   if (rawAid.length === 0) {
-    nextAssignment = null;
+    if (item.assignmentId !== undefined) assignAction = { op: "unset" };
   } else {
     if (!isAssignmentId(rawAid)) return { ok: false, reason: "invalid_assignment" };
     if (rawAid === item.assignmentId) {
-      nextAssignment = rawAid;
-    } else if (validOptions.some((o) => o.assignmentId === rawAid)) {
-      nextAssignment = rawAid;
+      assignAction = { op: "noop" };
     } else {
-      return { ok: false, reason: "invalid_assignment" };
+      const opt = validOptions.find((o) => o.assignmentId === rawAid);
+      if (!opt) return { ok: false, reason: "invalid_assignment" };
+      if (!opt.availableForNewAssignments) return { ok: false, reason: "invalid_assignment" };
+      assignAction = { op: "set", value: rawAid };
     }
   }
-  const patch: Record<string, unknown> = {
+
+  const kindChanged = values.kind !== item.kind;
+  const titleChanged = title !== item.title;
+  const currentDesc = item.description;
+  type DescAction = "noop" | "set" | "unset";
+  const descAction: DescAction =
+    descTrim.length === 0
+      ? currentDesc !== undefined
+        ? "unset"
+        : "noop"
+      : descTrim !== currentDesc
+        ? "set"
+        : "noop";
+  const priorityChanged = values.priority !== item.priority;
+  const currentDue = item.dueOn;
+  type DueAction = { op: "noop" } | { op: "set"; value: IsoDate } | { op: "unset" };
+  const dueAction: DueAction =
+    due === null
+      ? currentDue !== undefined
+        ? { op: "unset" }
+        : { op: "noop" }
+      : due !== currentDue
+        ? { op: "set", value: due }
+        : { op: "noop" };
+
+  const changed =
+    kindChanged ||
+    titleChanged ||
+    descAction !== "noop" ||
+    priorityChanged ||
+    dueAction.op !== "noop" ||
+    assignAction.op !== "noop";
+  if (!changed) return { ok: true, input: null };
+
+  const input: UpdateCasePlanItemInput = {
     planItemId: item.id,
     expectedVersion: item.metadata.version,
+    ...(kindChanged ? { kind: values.kind } : {}),
+    ...(titleChanged ? { title } : {}),
+    ...(descAction === "set" ? { description: descTrim } : {}),
+    ...(descAction === "unset" ? { description: null } : {}),
+    ...(priorityChanged ? { priority: values.priority } : {}),
+    ...(dueAction.op === "set" ? { dueOn: dueAction.value } : {}),
+    ...(dueAction.op === "unset" ? { dueOn: null } : {}),
+    ...(assignAction.op === "set" ? { assignmentId: assignAction.value } : {}),
+    ...(assignAction.op === "unset" ? { assignmentId: null } : {}),
   };
-  let changed = false;
-  if (values.kind !== item.kind) { patch.kind = values.kind; changed = true; }
-  if (title !== item.title) { patch.title = title; changed = true; }
-  // descrição
-  const currentDesc = item.description;
-  if (descTrim.length === 0) {
-    if (currentDesc !== undefined) { patch.description = null; changed = true; }
-  } else {
-    if (descTrim !== currentDesc) { patch.description = descTrim; changed = true; }
-  }
-  if (values.priority !== item.priority) { patch.priority = values.priority; changed = true; }
-  // dueOn
-  const currentDue = item.dueOn;
-  if (due === null) {
-    if (currentDue !== undefined) { patch.dueOn = null; changed = true; }
-  } else {
-    if (due !== currentDue) { patch.dueOn = due; changed = true; }
-  }
-  // assignmentId
-  const currentAssign = item.assignmentId;
-  if (nextAssignment === null) {
-    if (currentAssign !== undefined) { patch.assignmentId = null; changed = true; }
-  } else if (nextAssignment !== undefined) {
-    if (nextAssignment !== currentAssign) {
-      patch.assignmentId = nextAssignment;
-      changed = true;
-    }
-  }
-  if (!changed) return { ok: true, input: null };
-  return { ok: true, input: patch as unknown as UpdateCasePlanItemInput };
+  return { ok: true, input };
 }
 
 export function buildChangeCasePlanItemStatusInput(
@@ -406,14 +432,14 @@ export function buildCreateCaseTimelineEntryInput(
   const raw = values.occurredOn.trim();
   if (raw.length === 0 || !isIsoDate(raw)) return { ok: false, reason: "date_required" };
   const desc = values.description.trim();
-  const base: CreateCaseTimelineEntryInput = {
+  const input: CreateCaseTimelineEntryInput = {
     caseId,
     kind: values.kind,
     occurredOn: raw,
     title,
     ...(desc.length > 0 ? { description: desc } : {}),
   };
-  return { ok: true, input: base };
+  return { ok: true, input };
 }
 
 export function buildUpdateCaseTimelineEntryInput(
@@ -427,22 +453,34 @@ export function buildUpdateCaseTimelineEntryInput(
   const rawDate = values.occurredOn.trim();
   if (rawDate.length === 0 || !isIsoDate(rawDate)) return { ok: false, reason: "date_required" };
   const descTrim = values.description.trim();
-  const patch: Record<string, unknown> = {
+
+  const kindChanged = values.kind !== entry.kind;
+  const dateChanged = rawDate !== entry.occurredOn;
+  const titleChanged = title !== entry.title;
+  const currentDesc = entry.description;
+  type DescAction = "noop" | "set" | "unset";
+  const descAction: DescAction =
+    descTrim.length === 0
+      ? currentDesc !== undefined
+        ? "unset"
+        : "noop"
+      : descTrim !== currentDesc
+        ? "set"
+        : "noop";
+
+  const changed = kindChanged || dateChanged || titleChanged || descAction !== "noop";
+  if (!changed) return { ok: true, input: null };
+
+  const input: UpdateCaseTimelineEntryInput = {
     timelineEntryId: entry.id,
     expectedVersion: entry.metadata.version,
+    ...(kindChanged ? { kind: values.kind } : {}),
+    ...(dateChanged ? { occurredOn: rawDate } : {}),
+    ...(titleChanged ? { title } : {}),
+    ...(descAction === "set" ? { description: descTrim } : {}),
+    ...(descAction === "unset" ? { description: null } : {}),
   };
-  let changed = false;
-  if (values.kind !== entry.kind) { patch.kind = values.kind; changed = true; }
-  if (rawDate !== entry.occurredOn) { patch.occurredOn = rawDate; changed = true; }
-  if (title !== entry.title) { patch.title = title; changed = true; }
-  const currentDesc = entry.description;
-  if (descTrim.length === 0) {
-    if (currentDesc !== undefined) { patch.description = null; changed = true; }
-  } else {
-    if (descTrim !== currentDesc) { patch.description = descTrim; changed = true; }
-  }
-  if (!changed) return { ok: true, input: null };
-  return { ok: true, input: patch as unknown as UpdateCaseTimelineEntryInput };
+  return { ok: true, input };
 }
 
 // ---- Mapeamento público de erros ------------------------------------------
