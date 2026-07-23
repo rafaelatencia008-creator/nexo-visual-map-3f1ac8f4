@@ -42,6 +42,19 @@ async function enforce<T>(
   return delegate();
 }
 
+async function enforceWithCase<T>(
+  store: MockStore,
+  context: ServiceContext,
+  action: PermissionAction,
+  caseId: import("../core/ids").CaseId,
+  delegate: () => Promise<ServiceResult<T>>,
+): Promise<ServiceResult<T>> {
+  const req: PermissionRequest = { action, caseId };
+  const r = requirePermission(store, context, req);
+  if (!r.ok) return { ok: false, error: r.error };
+  return delegate();
+}
+
 export function guardOrganizationService(
   store: MockStore,
   s: OrganizationService,
