@@ -218,3 +218,62 @@ export type ChangeAssignmentStatusInput = Readonly<{
   status: AssignmentStatus;
   expectedVersion: number;
 }>;
+
+// ---- CasePlanItem (LV-08.5A) -----------------------------------------------
+
+import type {
+  CasePlanItemId as _CasePlanItemId,
+  CaseTimelineEntryId as _CaseTimelineEntryId,
+} from "../core/ids";
+import type {
+  CasePlanItemKind,
+  CasePlanItemPriority,
+  CasePlanItemStatus,
+  CaseTimelineEntryKind,
+} from "../core/case-plan";
+
+export type CreateCasePlanItemInput = Readonly<{
+  caseId: CaseId;
+  kind: CasePlanItemKind;
+  title: string;
+  description?: string;
+  priority: CasePlanItemPriority;
+  dueOn?: IsoDate;
+  assignmentId?: AssignmentId;
+}>;
+
+export type UpdateCasePlanItemInput = Readonly<{
+  planItemId: _CasePlanItemId;
+  kind?: CasePlanItemKind;
+  title?: string;
+  description?: string | null;
+  priority?: CasePlanItemPriority;
+  dueOn?: IsoDate | null;
+  assignmentId?: AssignmentId | null;
+  expectedVersion: number;
+}>;
+
+export type ChangeCasePlanItemStatusInput = Readonly<{
+  planItemId: _CasePlanItemId;
+  status: CasePlanItemStatus;
+  expectedVersion: number;
+}>;
+
+// ---- CaseTimelineEntry -----------------------------------------------------
+
+export type CreateCaseTimelineEntryInput = Readonly<{
+  caseId: CaseId;
+  kind: CaseTimelineEntryKind;
+  occurredOn: IsoDate;
+  title: string;
+  description?: string;
+}>;
+
+export type UpdateCaseTimelineEntryInput = Readonly<{
+  timelineEntryId: _CaseTimelineEntryId;
+  kind?: CaseTimelineEntryKind;
+  occurredOn?: IsoDate;
+  title?: string;
+  description?: string | null;
+  expectedVersion: number;
+}>;
