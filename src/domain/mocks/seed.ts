@@ -503,6 +503,122 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     },
   ];
 
+  // ---- AuditEvents (seed trail para Case Alfa 2 + Beta 2) ----------------
+  const auditActorAlfa = {
+    actorUserId: SEED_USER_1_ID,
+    actorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+    organizationId: SEED_ORG_ALFA_ID,
+    caseId: SEED_CASE_ALFA_2_ID,
+  } as const;
+  const auditActorBeta = {
+    actorUserId: SEED_USER_2_ID,
+    actorMembershipId: SEED_MEM_BETA_OWNER_ID,
+    organizationId: SEED_ORG_BETA_ID,
+    caseId: SEED_CASE_BETA_2_ID,
+  } as const;
+  const evt = (
+    id: string,
+    actor: typeof auditActorAlfa | typeof auditActorBeta,
+    action: keyof typeof AUDIT_SUMMARY,
+    targetType: AuditEvent["targetType"],
+    targetId: string,
+    occurredAt: IsoDateTime,
+  ): AuditEvent => ({
+    id: id as AuditEvent["id"],
+    organizationId: actor.organizationId,
+    caseId: actor.caseId,
+    actorUserId: actor.actorUserId,
+    actorMembershipId: actor.actorMembershipId,
+    action,
+    targetType,
+    targetId,
+    summary: AUDIT_SUMMARY[action],
+    occurredAt,
+    metadata: metaAt(occurredAt),
+  });
+  const auditEvents: AuditEvent[] = [
+    evt(SEED_AUDIT_ALFA_1_ID, auditActorAlfa, "case.created", "case",
+      SEED_CASE_ALFA_2_ID, "2026-01-05T09:00:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_2_ID, auditActorAlfa, "assignment.created", "assignment",
+      SEED_ASSIGN_ALFA_1_ID, "2026-01-05T09:05:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_3_ID, auditActorAlfa, "casePerson.created", "casePerson",
+      SEED_CP_ALFA_1_ID, "2026-01-06T10:00:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_4_ID, auditActorAlfa, "casePerson.created", "casePerson",
+      SEED_CP_ALFA_2_ID, "2026-01-06T10:05:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_5_ID, auditActorAlfa, "relationship.created", "relationship",
+      SEED_REL_ALFA_1_ID, "2026-01-06T10:10:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_6_ID, auditActorAlfa, "casePlanItem.created", "casePlanItem",
+      SEED_PLAN_ALFA_1_ID, "2026-01-07T11:00:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_7_ID, auditActorAlfa, "casePlanItem.created", "casePlanItem",
+      SEED_PLAN_ALFA_2_ID, "2026-01-07T11:05:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_8_ID, auditActorAlfa, "casePlanItem.created", "casePlanItem",
+      SEED_PLAN_ALFA_3_ID, "2026-01-07T11:10:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_9_ID, auditActorAlfa, "caseTimelineEntry.created", "caseTimelineEntry",
+      SEED_TL_ALFA_1_ID, "2026-01-08T08:00:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_10_ID, auditActorAlfa, "caseTimelineEntry.created", "caseTimelineEntry",
+      SEED_TL_ALFA_2_ID, "2026-01-08T08:05:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_ALFA_11_ID, auditActorAlfa, "caseTimelineEntry.created", "caseTimelineEntry",
+      SEED_TL_ALFA_3_ID, "2026-01-12T08:00:00.000Z" as IsoDateTime),
+    evt(SEED_AUDIT_BETA_1_ID, auditActorBeta, "case.created", "case",
+      SEED_CASE_BETA_2_ID, "2026-01-07T09:00:00.000Z" as IsoDateTime),
+  ];
+
+  // ---- CaseSnapshots (para Case Alfa 2) ----------------------------------
+  const snapshotAt1: IsoDateTime = "2026-01-15T12:00:00.000Z" as IsoDateTime;
+  const snapshotAt2: IsoDateTime = "2026-01-20T15:30:00.000Z" as IsoDateTime;
+  const alfa2Case = cases.find((c) => c.id === SEED_CASE_ALFA_2_ID)!;
+  const alfa2CasePersons = casePersons.filter(
+    (cp) => cp.caseId === SEED_CASE_ALFA_2_ID,
+  );
+  const alfa2PersonIds = new Set(alfa2CasePersons.map((cp) => cp.personId));
+  const alfa2Persons = persons.filter((p) => alfa2PersonIds.has(p.id));
+  const alfa2Relationships = relationships.filter(
+    (r) => r.caseId === SEED_CASE_ALFA_2_ID,
+  );
+  const alfa2Assignments = assignments.filter(
+    (a) => a.caseId === SEED_CASE_ALFA_2_ID,
+  );
+  const alfa2PlanItems = casePlanItems.filter(
+    (p) => p.caseId === SEED_CASE_ALFA_2_ID,
+  );
+  const alfa2Timeline = caseTimelineEntries.filter(
+    (t) => t.caseId === SEED_CASE_ALFA_2_ID,
+  );
+  const alfa2Payload = {
+    case: alfa2Case,
+    casePersons: alfa2CasePersons,
+    persons: alfa2Persons,
+    relationships: alfa2Relationships,
+    assignments: alfa2Assignments,
+    casePlanItems: alfa2PlanItems,
+    caseTimelineEntries: alfa2Timeline,
+  };
+  const caseSnapshots: CaseSnapshot[] = [
+    {
+      id: SEED_SNAPSHOT_ALFA_1_ID as CaseSnapshot["id"],
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      createdByUserId: SEED_USER_1_ID,
+      createdByMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      createdAt: snapshotAt1,
+      label: "Marco inicial do processo",
+      reason: "Registro fotográfico do estado após vínculos iniciais.",
+      payload: alfa2Payload,
+      metadata: metaAt(snapshotAt1),
+    },
+    {
+      id: SEED_SNAPSHOT_ALFA_2_ID as CaseSnapshot["id"],
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      createdByUserId: SEED_USER_1_ID,
+      createdByMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      createdAt: snapshotAt2,
+      label: "Marco após revisão do plano",
+      payload: alfa2Payload,
+      metadata: metaAt(snapshotAt2),
+    },
+  ];
+
   return {
     organizations,
     users,
@@ -516,6 +632,8 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     assignments,
     casePlanItems,
     caseTimelineEntries,
+    auditEvents,
+    caseSnapshots,
   };
 }
 
