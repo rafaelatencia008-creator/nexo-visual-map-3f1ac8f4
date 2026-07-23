@@ -129,11 +129,11 @@ function emit(
   action: AuditAction,
   targetType: AuditTargetType,
   targetId: string,
-  caseId: string,
+  caseId: CaseId,
 ): void {
   audit.append({
     organizationId: ctx.organizationId,
-    caseId: caseId as never,
+    caseId,
     actorUserId: ctx.userId,
     actorMembershipId: ctx.membershipId,
     action,
