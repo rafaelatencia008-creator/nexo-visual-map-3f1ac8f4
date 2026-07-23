@@ -331,3 +331,40 @@ export function guardCaseTimelineService(
       ),
   };
 }
+
+// ---- LV-08.6A: Auditoria e Snapshot ----------------------------------------
+
+import type { AuditEventService } from "../services/audit-service";
+import type { CaseSnapshotService } from "../services/case-snapshot-service";
+
+export function guardAuditEventService(
+  store: MockStore,
+  s: AuditEventService,
+): AuditEventService {
+  return {
+    listByCase: (ctx, cid, opts) =>
+      enforceWithCase(store, ctx, "auditEvent.read", cid, () =>
+        s.listByCase(ctx, cid, opts),
+      ),
+  };
+}
+
+export function guardCaseSnapshotService(
+  store: MockStore,
+  s: CaseSnapshotService,
+): CaseSnapshotService {
+  return {
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "caseSnapshot.create", input, () =>
+        s.create(ctx, input),
+      ),
+    getById: (ctx, cid, sid) =>
+      enforceWithCase(store, ctx, "caseSnapshot.read", cid, () =>
+        s.getById(ctx, cid, sid),
+      ),
+    listByCase: (ctx, cid, opts) =>
+      enforceWithCase(store, ctx, "caseSnapshot.read", cid, () =>
+        s.listByCase(ctx, cid, opts),
+      ),
+  };
+}
