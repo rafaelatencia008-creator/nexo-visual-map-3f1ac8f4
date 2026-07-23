@@ -1,5 +1,5 @@
 /**
- * LV-08.6B — card de "Histórico de alterações" (auditoria).
+ * LV-08.6B / LV-08.6B.1 — card de "Histórico de alterações" (auditoria).
  */
 
 import * as React from "react";
@@ -19,44 +19,23 @@ import {
 import type { AuditEvent } from "@/domain/core/case-audit";
 import type { UserId } from "@/domain/core/ids";
 import {
+  AUDIT_ACTION_LABELS_PT,
+  AUDIT_ACTION_TO_CATEGORY,
   AUDIT_CATEGORIES,
   AUDIT_CATEGORY_LABELS_PT,
-  AUDIT_ACTION_TO_CATEGORY,
   EMPTY_AUDIT_FILTER,
   buildAuditFilter,
   formatIsoDateTimePtBr,
   getPublicAuthorLabel,
+  isAuditCategory,
   isAuditFilterActive,
-  type AuditCategory,
   type AuditFilterFormValues,
 } from "@/features/processos/process-audit-snapshot-model";
-import type { CaseId } from "@/domain/core/ids";
 import type { AuditEventListOptions } from "@/domain/services/audit-service";
 
-const ACTION_LABEL_PT: Readonly<Record<string, string>> = {
-  "case.created": "Processo cadastrado",
-  "case.updated": "Processo atualizado",
-  "casePerson.created": "Pessoa vinculada",
-  "casePerson.updated": "Pessoa atualizada",
-  "casePerson.removed": "Pessoa desvinculada",
-  "relationship.created": "Relação registrada",
-  "relationship.updated": "Relação atualizada",
-  "relationship.removed": "Relação removida",
-  "assignment.created": "Profissional vinculado",
-  "assignment.updated": "Vínculo atualizado",
-  "assignment.removed": "Vínculo encerrado",
-  "casePlanItem.created": "Item do plano criado",
-  "casePlanItem.updated": "Item do plano atualizado",
-  "casePlanItem.statusChanged": "Status do plano alterado",
-  "casePlanItem.removed": "Item do plano removido",
-  "caseTimelineEntry.created": "Registro adicionado à cronologia",
-  "caseTimelineEntry.updated": "Registro da cronologia atualizado",
-  "caseTimelineEntry.removed": "Registro removido da cronologia",
-  "caseSnapshot.created": "Snapshot criado",
-};
+export const AUDIT_HISTORY_TITLE_ID = "audit-history-title";
 
 export type ProcessAuditHistoryCardProps = Readonly<{
-  caseId: CaseId;
   events: readonly AuditEvent[];
   currentUserId: UserId;
   filter: AuditFilterFormValues;
@@ -64,6 +43,7 @@ export type ProcessAuditHistoryCardProps = Readonly<{
   onApplyFilter: (options: AuditEventListOptions | null) => void;
   filterError: string | null;
   loading: boolean;
+  filtered: boolean;
 }>;
 
 export function ProcessAuditHistoryCard({
@@ -74,6 +54,7 @@ export function ProcessAuditHistoryCard({
   onApplyFilter,
   filterError,
   loading,
+  filtered,
 }: ProcessAuditHistoryCardProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -83,28 +64,27 @@ export function ProcessAuditHistoryCard({
       onApplyFilter(null);
       return;
     }
-    const opts: AuditEventListOptions = {};
-    if (built.actions !== undefined) {
-      (opts as { actions?: readonly string[] }).actions = built.actions;
-    }
-    if (built.occurredFrom !== undefined) {
-      (opts as { occurredFrom?: string }).occurredFrom = built.occurredFrom;
-    }
-    if (built.occurredTo !== undefined) {
-      (opts as { occurredTo?: string }).occurredTo = built.occurredTo;
-    }
-    onApplyFilter(Object.keys(opts).length === 0 ? {} : opts);
+    onApplyFilter(built.options);
   };
 
   const clearFilter = () => {
     onFilterChange(EMPTY_AUDIT_FILTER);
-    onApplyFilter({});
+    onApplyFilter(null);
   };
 
+  const emptyTitle = filtered
+    ? "Nenhuma alteração encontrada"
+    : "Nenhuma alteração registrada";
+  const emptyDesc = filtered
+    ? "Revise os filtros aplicados."
+    : "As ações realizadas neste processo aparecerão aqui.";
+
   return (
-    <Card>
+    <Card aria-labelledby={AUDIT_HISTORY_TITLE_ID}>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Histórico de alterações</CardTitle>
+        <CardTitle id={AUDIT_HISTORY_TITLE_ID} className="text-base">
+          Histórico de alterações
+        </CardTitle>
         <Button
           type="button"
           variant="ghost"
@@ -133,13 +113,13 @@ export function ProcessAuditHistoryCard({
               <Label htmlFor="audit-cat">Categoria</Label>
               <Select
                 value={filter.category === "" ? "__all__" : filter.category}
-                onValueChange={(v) =>
-                  onFilterChange({
-                    ...filter,
-                    category:
-                      v === "__all__" ? "" : (v as AuditCategory),
-                  })
-                }
+                onValueChange={(v) => {
+                  if (v === "__all__") {
+                    onFilterChange({ ...filter, category: "" });
+                  } else if (isAuditCategory(v)) {
+                    onFilterChange({ ...filter, category: v });
+                  }
+                }}
               >
                 <SelectTrigger id="audit-cat">
                   <SelectValue placeholder="Todas" />
@@ -204,9 +184,10 @@ export function ProcessAuditHistoryCard({
         ) : null}
 
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhuma alteração registrada para este processo.
-          </p>
+          <div className="rounded-md border border-dashed p-4 text-center">
+            <p className="text-sm font-medium text-foreground">{emptyTitle}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{emptyDesc}</p>
+          </div>
         ) : (
           <ol className="space-y-3">
             {events.map((e) => {
@@ -224,7 +205,7 @@ export function ProcessAuditHistoryCard({
                       {AUDIT_CATEGORY_LABELS_PT[category]}
                     </Badge>
                     <span className="text-sm font-medium">
-                      {ACTION_LABEL_PT[e.action] ?? e.action}
+                      {AUDIT_ACTION_LABELS_PT[e.action]}
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-foreground">{e.summary}</p>
