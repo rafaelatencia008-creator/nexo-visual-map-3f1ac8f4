@@ -371,11 +371,14 @@ export function ProcessAuditSnapshots({
           currentUserId={context.userId}
           filter={filter}
           onFilterChange={setFilter}
-          onApplyFilter={applyFilter}
+          onApplyFilter={handleApplyFilter}
+          onFilterValidationError={handleFilterValidationError}
+          onClearFilter={handleClearFilter}
           filterError={filterError}
           loading={state.refreshing}
           filtered={state.filtered}
         />
+
       ) : null}
       {state.permissions.canReadSnapshots ? (
         <ProcessSnapshotsCard
