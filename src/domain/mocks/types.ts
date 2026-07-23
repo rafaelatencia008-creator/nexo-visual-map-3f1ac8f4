@@ -30,6 +30,9 @@ import type { CasePlanService } from "../services/case-plan-service";
 import type { CaseTimelineService } from "../services/case-timeline-service";
 import type { PermissionPolicy } from "../services/permissions";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
+import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
+import type { AuditEventService } from "./audit-service";
+import type { CaseSnapshotService } from "./case-snapshot-service";
 
 export type MockDomainServices = Readonly<{
   organization: OrganizationService;
@@ -45,6 +48,8 @@ export type MockDomainServices = Readonly<{
   casePlan: CasePlanService;
   caseTimeline: CaseTimelineService;
   permissions: PermissionPolicy;
+  auditEvents: AuditEventService;
+  caseSnapshots: CaseSnapshotService;
 }>;
 
 export type MockDomainSnapshot = Readonly<{
@@ -60,6 +65,8 @@ export type MockDomainSnapshot = Readonly<{
   assignments: readonly Assignment[];
   casePlanItems: readonly CasePlanItem[];
   caseTimelineEntries: readonly CaseTimelineEntry[];
+  auditEvents: readonly AuditEvent[];
+  caseSnapshots: readonly CaseSnapshot[];
 }>;
 
 export const MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS: ReadonlySet<string> = new Set([
