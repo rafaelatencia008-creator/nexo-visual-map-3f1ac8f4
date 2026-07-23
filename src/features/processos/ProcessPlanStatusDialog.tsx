@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   CASE_PLAN_ITEM_STATUSES,
+  isCasePlanItemStatus,
   type CasePlanItem,
   type CasePlanItemStatus,
 } from "@/domain/core/case-plan";
@@ -76,7 +77,10 @@ export function ProcessPlanStatusDialog(props: ProcessPlanStatusDialogProps) {
             <Label htmlFor="plan-status">Andamento</Label>
             <Select
               value={status}
-              onValueChange={(v) => setStatus(v as CasePlanItemStatus)}
+              onValueChange={(v) => {
+                if (!isCasePlanItemStatus(v)) return;
+                setStatus(v);
+              }}
               disabled={submitting}
             >
               <SelectTrigger id="plan-status" aria-label="Andamento">

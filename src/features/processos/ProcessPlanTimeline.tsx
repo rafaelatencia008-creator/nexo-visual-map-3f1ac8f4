@@ -51,8 +51,7 @@ import type {
   CaseTimelineEntry,
 } from "@/domain/core/case-plan";
 import type { ProfessionalProfileId } from "@/domain/core/ids";
-import { isProfessionalProfileId } from "@/domain/core/ids";
-import type { ServiceError, ServiceResult } from "@/domain/services/result";
+import type { ServiceResult } from "@/domain/services/result";
 import {
   ALL_PLAN_TIMELINE_ACTIONS,
   ASSIGNMENT_ROLE_LABELS_PT,
@@ -225,25 +224,28 @@ export function ProcessPlanTimeline({ case: c }: ProcessPlanTimelineProps) {
       const permissions = buildPlanTimelinePermissions(entries);
 
       // Resolver perfis dos responsáveis. Deduplica IDs; uma chamada por ID.
-      const distinct = collectDistinctProfessionalProfileIds(asgRes.data.items);
+      // Assignment.professionalProfileId já é branded (ProfessionalProfileId),
+      // então collectDistinctProfessionalProfileIds retorna diretamente o tipo
+      // oficial — nenhum cast necessário.
+      const distinct: readonly ProfessionalProfileId[] =
+        collectDistinctProfessionalProfileIds(asgRes.data.items);
       const profileResults: ServiceResult<ProfessionalProfile>[] = await Promise.all(
-        distinct.map((id) => {
-          if (!isProfessionalProfileId(id)) {
-            const err: ServiceError = { code: "internal_error", message: "invalid_profile_id" };
-            return Promise.resolve<ServiceResult<ProfessionalProfile>>({ ok: false, error: err });
-          }
-          return environment.services.professionalProfiles.getById(
-            context,
-            id as ProfessionalProfileId,
-          );
-        }),
+        distinct.map((id) =>
+          environment.services.professionalProfiles.getById(context, id),
+        ),
       );
       if (!mountedRef.current || reqId !== requestIdRef.current) return;
+
+      const RESOLVE_FAIL_MESSAGE =
+        "Não foi possível identificar todos os responsáveis do processo.";
 
       const profiles: ProfessionalProfile[] = [];
       for (const r of profileResults) {
         if (!r.ok) {
-          setState({ kind: "error", error: mapPlanTimelineError(r.error) });
+          setState({
+            kind: "error",
+            error: { kind: "generic", message: RESOLVE_FAIL_MESSAGE },
+          });
           return;
         }
         profiles.push(r.data);
@@ -253,10 +255,7 @@ export function ProcessPlanTimeline({ case: c }: ProcessPlanTimelineProps) {
       if (!built.ok) {
         setState({
           kind: "error",
-          error: {
-            kind: "generic",
-            message: "Não foi possível identificar todos os responsáveis do processo.",
-          },
+          error: { kind: "generic", message: RESOLVE_FAIL_MESSAGE },
         });
         return;
       }
@@ -733,14 +732,9 @@ type PlanBodyProps = Readonly<{
 function PlanBody({
   items, options, permissions, refreshing, onEdit, onChangeStatus, onRemove,
 }: PlanBodyProps) {
-  if (items.length === 0) {
-    return (
-      <ProcessPlanTimelineEmpty
-        title="Nenhum item no plano de trabalho"
-        description="Adicione uma atividade ou pendência para organizar os próximos passos do processo."
-      />
-    );
-  }
+  // LV-08.5B.1 — Hooks SEMPRE antes de qualquer retorno condicional para
+  // garantir a mesma ordem de hooks em todas as renderizações (zero itens →
+  // primeiro item → refresh).
   const counters = React.useMemo(() => {
     const c = { planned: 0, in_progress: 0, blocked: 0, completed: 0, cancelled: 0 };
     for (const it of items) c[it.status] += 1;
@@ -750,6 +744,15 @@ function PlanBody({
     () => new Map(options.map((o) => [o.assignmentId, o])),
     [options],
   );
+
+  if (items.length === 0) {
+    return (
+      <ProcessPlanTimelineEmpty
+        title="Nenhum item no plano de trabalho"
+        description="Adicione uma atividade ou pendência para organizar os próximos passos do processo."
+      />
+    );
+  }
 
   return (
     <div className="space-y-4" aria-busy={refreshing || undefined}>

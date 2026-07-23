@@ -24,9 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import type {
-  CaseTimelineEntry,
-  CaseTimelineEntryKind,
+import {
+  isCaseTimelineEntryKind,
+  type CaseTimelineEntry,
+  type CaseTimelineEntryKind,
 } from "@/domain/core/case-plan";
 import {
   CASE_TIMELINE_ENTRY_KIND_LABELS_PT,
@@ -104,7 +105,10 @@ export function ProcessTimelineDialog(props: ProcessTimelineDialogProps) {
               <Label htmlFor="tl-kind">Tipo</Label>
               <Select
                 value={values.kind}
-                onValueChange={(v) => setValues((s) => ({ ...s, kind: v as CaseTimelineEntryKind }))}
+                onValueChange={(v) => {
+                  if (!isCaseTimelineEntryKind(v)) return;
+                  setValues((s) => ({ ...s, kind: v }));
+                }}
                 disabled={submitting}
               >
                 <SelectTrigger id="tl-kind" aria-label="Tipo do registro">
