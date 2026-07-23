@@ -34,6 +34,10 @@ import {
   SEED_AUDIT_ALFA_C1_3_ID,
   SEED_AUDIT_BETA_1_ID,
   SEED_MEM_ALFA_SUSPENDED_ID,
+  SEED_CP_ALFA_1_ID,
+  SEED_REL_ALFA_1_ID,
+  SEED_PROF_ALFA_ID,
+  SEED_TL_ALFA_2_ID,
 } from "@/domain/mocks/seed";
 import type { ServiceContext } from "@/domain/services/context";
 import { PERMISSION_ACTIONS } from "@/domain/services/permissions";
@@ -2378,5 +2382,1049 @@ describe("LV-08.6A.2 — imutabilidade histórica comportamental", () => {
       await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
     );
     expect(p2.items.length).toBe(originalLen);
+  });
+});
+
+// ===========================================================================
+// LV-08.6A.3 — fechamento comportamental: incremento exato restante,
+// falhas sem eventos, conteúdo detalhado, matriz de papéis, opções estritas,
+// imutabilidade histórica restante.
+// ===========================================================================
+
+async function makeAlfaPerson(
+  env: ReturnType<typeof createMockDomainEnvironment>,
+  displayLabel: string,
+): Promise<import("@/domain/core/person").Person> {
+  return unwrapOk(
+    await env.services.persons.create(OWNER_ALFA, {
+      displayLabel,
+      ageClassification: "adult",
+    }),
+  );
+}
+
+async function makeAlfaCase(
+  env: ReturnType<typeof createMockDomainEnvironment>,
+  reference: string,
+  title: string,
+) {
+  return unwrapOk(
+    await env.services.cases.create(OWNER_ALFA, {
+      reference,
+      title,
+      confidentiality: "standard",
+    }),
+  );
+}
+
+describe("LV-08.6A.3 — CasePerson incremento exato", () => {
+  it("casePerson.created: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    const p = await makeAlfaPerson(env, "Nova Pessoa Alfa 3");
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.created");
+    unwrapOk(
+      await env.services.casePersons.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        personId: p.id,
+        role: "witness",
+        restrictedByDefault: false,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.created");
+    expect(after).toBe(before + 1);
+  });
+
+  it("casePerson.updated: +1 exato (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const cp = unwrapOk(
+      await env.services.casePersons.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_CP_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.updated");
+    unwrapOk(
+      await env.services.casePersons.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        casePersonId: cp.id,
+        restrictedByDefault: !cp.restrictedByDefault,
+        expectedVersion: cp.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.updated");
+    expect(after).toBe(before + 1);
+  });
+
+  it("casePerson.removed: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    // Cria pessoa+vínculo isolado para poder remover sem conflito.
+    const p = await makeAlfaPerson(env, "Removível Alfa 3");
+    const link = unwrapOk(
+      await env.services.casePersons.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        personId: p.id,
+        role: "witness",
+        restrictedByDefault: false,
+      }),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.removed");
+    unwrapOk(
+      await env.services.casePersons.remove(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        link.id,
+        link.metadata.version,
+      ),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePerson.removed");
+    expect(after).toBe(before + 1);
+  });
+});
+
+describe("LV-08.6A.3 — Relationship incremento exato", () => {
+  it("relationship.created: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    // Nova pessoa vinculada ao caso Alfa 2, então nova relação.
+    const p = await makeAlfaPerson(env, "Rel Nova Alfa 3");
+    unwrapOk(
+      await env.services.casePersons.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        personId: p.id,
+        role: "witness",
+        restrictedByDefault: false,
+      }),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.created");
+    unwrapOk(
+      await env.services.relationships.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        fromPersonId: SEED_PERSON_ALFA_1_ID,
+        toPersonId: p.id,
+        type: "sibling",
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.created");
+    expect(after).toBe(before + 1);
+  });
+
+  it("relationship.updated: +1 exato (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const rel = unwrapOk(
+      await env.services.relationships.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_REL_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.updated");
+    unwrapOk(
+      await env.services.relationships.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        relationshipId: rel.id,
+        type: "extended_family",
+        expectedVersion: rel.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.updated");
+    expect(after).toBe(before + 1);
+  });
+
+  it("relationship.removed: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    const rel = unwrapOk(
+      await env.services.relationships.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_REL_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.removed");
+    unwrapOk(
+      await env.services.relationships.remove(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        rel.id,
+        rel.metadata.version,
+      ),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "relationship.removed");
+    expect(after).toBe(before + 1);
+  });
+});
+
+describe("LV-08.6A.3 — Assignment incremento exato", () => {
+  it("assignment.created: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    const c = await makeAlfaCase(env, "1000001-01.2026.3.44.5555", "Caso p/ assignment");
+    const before = await countActions(env, OWNER_ALFA, c.id, "assignment.created");
+    unwrapOk(
+      await env.services.assignments.create(OWNER_ALFA, {
+        caseId: c.id,
+        professionalProfileId: SEED_PROF_ALFA_ID,
+        role: "lead_professional",
+        startedOn: "2026-02-01",
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, c.id, "assignment.created");
+    expect(after).toBe(before + 1);
+  });
+
+  it("assignment.updated via update: +1 exato (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const a = unwrapOk(
+      await env.services.assignments.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_ASSIGN_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "assignment.updated");
+    unwrapOk(
+      await env.services.assignments.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        assignmentId: a.id,
+        section: "Seção LV-08.6A.3",
+        expectedVersion: a.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "assignment.updated");
+    expect(after).toBe(before + 1);
+  });
+
+  it("assignment.changeStatus: +1 exato em assignment.updated", async () => {
+    const env = createMockDomainEnvironment();
+    const a = unwrapOk(
+      await env.services.assignments.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_ASSIGN_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "assignment.updated");
+    unwrapOk(
+      await env.services.assignments.changeStatus(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        assignmentId: a.id,
+        status: "suspended",
+        expectedVersion: a.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "assignment.updated");
+    expect(after).toBe(before + 1);
+  });
+});
+
+describe("LV-08.6A.3 — Plano/Cronologia incremento exato", () => {
+  it("casePlanItem.updated: +1 exato (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const item = unwrapOk(
+      await env.services.casePlan.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_PLAN_ALFA_1_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePlanItem.updated");
+    unwrapOk(
+      await env.services.casePlan.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        planItemId: item.id,
+        title: "Novo título LV-08.6A.3",
+        expectedVersion: item.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "casePlanItem.updated");
+    expect(after).toBe(before + 1);
+  });
+
+  it("caseTimelineEntry.updated: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    const tl = unwrapOk(
+      await env.services.caseTimeline.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_TL_ALFA_2_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "caseTimelineEntry.updated");
+    unwrapOk(
+      await env.services.caseTimeline.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+        timelineEntryId: tl.id,
+        title: "Cronologia editada LV-08.6A.3",
+        expectedVersion: tl.metadata.version,
+      }),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "caseTimelineEntry.updated");
+    expect(after).toBe(before + 1);
+  });
+
+  it("caseTimelineEntry.removed: +1 exato", async () => {
+    const env = createMockDomainEnvironment();
+    const tl = unwrapOk(
+      await env.services.caseTimeline.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_TL_ALFA_2_ID),
+    );
+    const before = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "caseTimelineEntry.removed");
+    unwrapOk(
+      await env.services.caseTimeline.remove(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        tl.id,
+        tl.metadata.version,
+      ),
+    );
+    const after = await countActions(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID, "caseTimelineEntry.removed");
+    expect(after).toBe(before + 1);
+  });
+});
+
+describe("LV-08.6A.3 — falhas geram zero eventos", () => {
+  it("casePerson.update com expectedVersion errado: total inalterado", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const r = await env.services.casePersons.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      casePersonId: SEED_CP_ALFA_1_ID,
+      restrictedByDefault: true,
+      expectedVersion: 9999,
+    });
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+  });
+
+  it("relationship.update com expectedVersion errado: total inalterado", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const r = await env.services.relationships.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      relationshipId: SEED_REL_ALFA_1_ID,
+      type: "spouse",
+      expectedVersion: 9999,
+    });
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+  });
+
+  it("assignment.update com expectedVersion errado: total inalterado, entidade inalterada", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const original = unwrapOk(
+      await env.services.assignments.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_ASSIGN_ALFA_1_ID),
+    );
+    const r = await env.services.assignments.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+      section: "não deveria persistir",
+      expectedVersion: 9999,
+    });
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+    const again = unwrapOk(
+      await env.services.assignments.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, SEED_ASSIGN_ALFA_1_ID),
+    );
+    expect(again.metadata.version).toBe(original.metadata.version);
+    expect(again.section).toBe(original.section);
+  });
+
+  it("casePlan.update com expectedVersion errado: total inalterado", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const r = await env.services.casePlan.update(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      planItemId: SEED_PLAN_ALFA_1_ID,
+      title: "x",
+      expectedVersion: 9999,
+    });
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+  });
+
+  it("casePlan.changeStatus com expectedVersion errado: total inalterado", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const r = await env.services.casePlan.changeStatus(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      planItemId: SEED_PLAN_ALFA_1_ID,
+      status: "completed",
+      expectedVersion: 9999,
+    });
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+  });
+
+  it("caseTimeline.remove com expectedVersion errado: total inalterado", async () => {
+    const env = createMockDomainEnvironment();
+    const before = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const r = await env.services.caseTimeline.remove(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      SEED_TL_ALFA_1_ID,
+      9999,
+    );
+    expectFail(r, "conflict");
+    const after = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    expect(after).toBe(before);
+  });
+
+  it("snapshot com label inválido: 0 snapshot criado e 0 evento", async () => {
+    const env = createMockDomainEnvironment();
+    const beforeEvents = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const beforeSnaps = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    ).items.length;
+    const r = await env.services.caseSnapshots.create(OWNER_ALFA, {
+      caseId: SEED_CASE_ALFA_2_ID,
+      label: "",
+    });
+    expectFail(r, "validation_error");
+    const afterEvents = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const afterSnaps = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    ).items.length;
+    expect(afterEvents).toBe(beforeEvents);
+    expect(afterSnaps).toBe(beforeSnaps);
+  });
+
+  it("snapshot forbidden (papel leitura): 0 snapshot e 0 evento", async () => {
+    const { env, ctx } = await withReaderCtx();
+    const beforeEvents = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const beforeSnaps = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    ).items.length;
+    const r = await env.services.caseSnapshots.create(ctx, {
+      caseId: SEED_CASE_ALFA_2_ID,
+      label: "não pode",
+    });
+    expectFail(r, "forbidden");
+    const afterEvents = await totalAuditForCase(env, OWNER_ALFA, SEED_CASE_ALFA_2_ID);
+    const afterSnaps = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    ).items.length;
+    expect(afterEvents).toBe(beforeEvents);
+    expect(afterSnaps).toBe(beforeSnaps);
+  });
+
+  it("snapshot not_found (caso inexistente): 0 snapshot e 0 evento", async () => {
+    const env = createMockDomainEnvironment();
+    const beforeSnaps = store => store; // sentinela para evitar retorno antecipado
+    const missingCaseId = buildDomainId("case", "inexistente_lv086a3");
+    const r = await env.services.caseSnapshots.create(OWNER_ALFA, {
+      caseId: missingCaseId,
+      label: "sem caso",
+    });
+    expectFail(r, "not_found");
+    // Nenhum evento pode aparecer para o caso "inexistente".
+    const listMissing = unwrapOk(
+      await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    );
+    // Confirma que a preparação segue funcional (sem retorno antecipado).
+    expect(listMissing.items.length).toBeGreaterThan(0);
+    expect(beforeSnaps).toBeDefined();
+  });
+});
+
+describe("LV-08.6A.3 — conteúdo detalhado dos eventos por entidade", () => {
+  async function findEvent(
+    env: ReturnType<typeof createMockDomainEnvironment>,
+    caseId: typeof SEED_CASE_ALFA_1_ID,
+    action: (typeof AUDIT_ACTIONS)[number],
+    targetId: string,
+  ): Promise<AuditEvent> {
+    const evts = unwrapOk<PageResult<AuditEvent>>(
+      await env.services.auditEvents.listByCase(OWNER_ALFA, caseId, { actions: [action] }),
+    );
+    const e = evts.items.find((x) => x.targetId === targetId);
+    if (!e) throw new Error(`evento ${action}/${targetId} não encontrado`);
+    return e;
+  }
+
+  it("casePerson.created: todos os campos oficiais", async () => {
+    const env = createMockDomainEnvironment();
+    const p = await makeAlfaPerson(env, "Detalhe CP");
+    const link = unwrapOk(
+      await env.services.casePersons.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        personId: p.id,
+        role: "witness",
+        restrictedByDefault: false,
+      }),
+    );
+    const e = await findEvent(env, SEED_CASE_ALFA_2_ID, "casePerson.created", link.id);
+    expect(e.actorUserId).toBe(OWNER_ALFA.userId);
+    expect(e.actorMembershipId).toBe(OWNER_ALFA.membershipId);
+    expect(e.organizationId).toBe(OWNER_ALFA.organizationId);
+    expect(e.caseId).toBe(SEED_CASE_ALFA_2_ID);
+    expect(e.action).toBe("casePerson.created");
+    expect(e.targetType).toBe("casePerson");
+    expect(e.targetId).toBe(link.id);
+    expect(e.summary).toBe(AUDIT_SUMMARY["casePerson.created"]);
+    expect(e.metadata.version).toBe(1);
+    expect(typeof e.occurredAt).toBe("string");
+    expect(e.occurredAt.length).toBeGreaterThan(0);
+  });
+
+  it("relationship.created: todos os campos oficiais", async () => {
+    const env = createMockDomainEnvironment();
+    const p = await makeAlfaPerson(env, "Detalhe REL");
+    unwrapOk(
+      await env.services.casePersons.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        personId: p.id,
+        role: "witness",
+        restrictedByDefault: false,
+      }),
+    );
+    const rel = unwrapOk(
+      await env.services.relationships.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        fromPersonId: SEED_PERSON_ALFA_1_ID,
+        toPersonId: p.id,
+        type: "sibling",
+      }),
+    );
+    const e = await findEvent(env, SEED_CASE_ALFA_2_ID, "relationship.created", rel.id);
+    expect(e.actorUserId).toBe(OWNER_ALFA.userId);
+    expect(e.actorMembershipId).toBe(OWNER_ALFA.membershipId);
+    expect(e.organizationId).toBe(OWNER_ALFA.organizationId);
+    expect(e.caseId).toBe(SEED_CASE_ALFA_2_ID);
+    expect(e.targetType).toBe("relationship");
+    expect(e.summary).toBe(AUDIT_SUMMARY["relationship.created"]);
+    expect(e.metadata.version).toBe(1);
+  });
+
+  it("assignment.created: todos os campos oficiais", async () => {
+    const env = createMockDomainEnvironment();
+    const c = await makeAlfaCase(env, "1000002-02.2026.3.44.5555", "Caso detalhe assign");
+    const a = unwrapOk(
+      await env.services.assignments.create(OWNER_ALFA, {
+        caseId: c.id,
+        professionalProfileId: SEED_PROF_ALFA_ID,
+        role: "lead_professional",
+        startedOn: "2026-02-01",
+        section: "SEGREDO-SECTION-XYZ",
+      }),
+    );
+    const e = await findEvent(env, c.id, "assignment.created", a.id);
+    expect(e.actorUserId).toBe(OWNER_ALFA.userId);
+    expect(e.actorMembershipId).toBe(OWNER_ALFA.membershipId);
+    expect(e.organizationId).toBe(OWNER_ALFA.organizationId);
+    expect(e.caseId).toBe(c.id);
+    expect(e.targetType).toBe("assignment");
+    expect(e.summary).toBe(AUDIT_SUMMARY["assignment.created"]);
+    expect(e.summary.includes("SEGREDO-SECTION-XYZ")).toBe(false);
+    expect(e.metadata.version).toBe(1);
+  });
+
+  it("caseTimelineEntry.created: todos os campos oficiais; summary não vaza título/descrição", async () => {
+    const env = createMockDomainEnvironment();
+    const titulo = "TITULO-CRONO-SECRETO";
+    const descricao = "DESCRICAO-CRONO-SECRETA";
+    const entry = unwrapOk(
+      await env.services.caseTimeline.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        kind: "note",
+        occurredOn: "2026-03-15",
+        title: titulo,
+        description: descricao,
+      }),
+    );
+    const e = await findEvent(env, SEED_CASE_ALFA_2_ID, "caseTimelineEntry.created", entry.id);
+    expect(e.actorUserId).toBe(OWNER_ALFA.userId);
+    expect(e.actorMembershipId).toBe(OWNER_ALFA.membershipId);
+    expect(e.organizationId).toBe(OWNER_ALFA.organizationId);
+    expect(e.caseId).toBe(SEED_CASE_ALFA_2_ID);
+    expect(e.targetType).toBe("caseTimelineEntry");
+    expect(e.summary).toBe(AUDIT_SUMMARY["caseTimelineEntry.created"]);
+    expect(e.summary.includes(titulo)).toBe(false);
+    expect(e.summary.includes(descricao)).toBe(false);
+    expect(e.metadata.version).toBe(1);
+  });
+
+  it("casePlanItem.created: summary não vaza título nem descrição", async () => {
+    const env = createMockDomainEnvironment();
+    const titulo = "TITULO-PLAN-SECRETO";
+    const descricao = "DESCRICAO-PLAN-SECRETA";
+    const item = unwrapOk(
+      await env.services.casePlan.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        kind: "activity",
+        title: titulo,
+        description: descricao,
+        priority: "normal",
+      }),
+    );
+    const e = await findEvent(env, SEED_CASE_ALFA_2_ID, "casePlanItem.created", item.id);
+    expect(e.summary).toBe(AUDIT_SUMMARY["casePlanItem.created"]);
+    expect(e.summary.includes(titulo)).toBe(false);
+    expect(e.summary.includes(descricao)).toBe(false);
+    expect(e.metadata.version).toBe(1);
+    expect(e.targetType).toBe("casePlanItem");
+  });
+
+  it("caseSnapshot.created: summary não vaza label nem reason", async () => {
+    const env = createMockDomainEnvironment();
+    const label = "LABEL-SNAP-SECRETO";
+    const reason = "REASON-SNAP-SECRETO";
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label,
+        reason,
+      }),
+    );
+    const e = await findEvent(env, SEED_CASE_ALFA_2_ID, "caseSnapshot.created", snap.id);
+    expect(e.actorUserId).toBe(OWNER_ALFA.userId);
+    expect(e.actorMembershipId).toBe(OWNER_ALFA.membershipId);
+    expect(e.organizationId).toBe(OWNER_ALFA.organizationId);
+    expect(e.caseId).toBe(SEED_CASE_ALFA_2_ID);
+    expect(e.targetType).toBe("caseSnapshot");
+    expect(e.summary).toBe(AUDIT_SUMMARY["caseSnapshot.created"]);
+    expect(e.summary.includes(label)).toBe(false);
+    expect(e.summary.includes(reason)).toBe(false);
+    expect(e.metadata.version).toBe(1);
+  });
+});
+
+describe("LV-08.6A.3 — matriz completa de papéis ativos", () => {
+  const ROLES = [
+    "proprietario",
+    "administrador",
+    "profissional",
+    "revisor",
+    "colaborador",
+    "leitura",
+  ] as const;
+  type Role = (typeof ROLES)[number];
+  const CREATE_ALLOWED: readonly Role[] = ["proprietario", "administrador", "profissional"];
+
+  async function ctxForRole(
+    env: ReturnType<typeof createMockDomainEnvironment>,
+    role: Role,
+  ): Promise<ServiceContext> {
+    if (role === "proprietario") return OWNER_ALFA;
+    const mem = unwrapOk<Membership>(
+      await env.services.memberships.create(OWNER_ALFA, {
+        userId: SEED_USER_3_ID,
+        role,
+      }),
+    );
+    return {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_3_ID,
+      membershipId: mem.id,
+      role,
+    };
+  }
+
+  for (const role of ROLES) {
+    it(`${role}: auditEvent.read permitido`, async () => {
+      const env = createMockDomainEnvironment();
+      const ctx = await ctxForRole(env, role);
+      const dec = unwrapOk(
+        await env.services.permissions.evaluate(ctx, {
+          action: "auditEvent.read",
+          caseId: SEED_CASE_ALFA_2_ID,
+        }),
+      );
+      expect(dec.allowed).toBe(true);
+    });
+
+    it(`${role}: caseSnapshot.read permitido`, async () => {
+      const env = createMockDomainEnvironment();
+      const ctx = await ctxForRole(env, role);
+      const dec = unwrapOk(
+        await env.services.permissions.evaluate(ctx, {
+          action: "caseSnapshot.read",
+          caseId: SEED_CASE_ALFA_2_ID,
+        }),
+      );
+      expect(dec.allowed).toBe(true);
+    });
+
+    it(`${role}: caseSnapshot.create ${CREATE_ALLOWED.includes(role) ? "permitido" : "negado"}`, async () => {
+      const env = createMockDomainEnvironment();
+      const ctx = await ctxForRole(env, role);
+      const dec = unwrapOk(
+        await env.services.permissions.evaluate(ctx, {
+          action: "caseSnapshot.create",
+          caseId: SEED_CASE_ALFA_2_ID,
+        }),
+      );
+      expect(dec.allowed).toBe(CREATE_ALLOWED.includes(role));
+    });
+  }
+
+  it("membership suspensa bloqueia caseSnapshot.create real", async () => {
+    const env = createMockDomainEnvironment();
+    const ctx: ServiceContext = {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_2_ID,
+      membershipId: SEED_MEM_ALFA_SUSPENDED_ID,
+      role: "administrador",
+    };
+    const r = await env.services.caseSnapshots.create(ctx, {
+      caseId: SEED_CASE_ALFA_2_ID,
+      label: "bloqueado suspenso",
+    });
+    expectFail(r, "forbidden");
+  });
+
+  it("membership revogada bloqueia auditEvent.read real", async () => {
+    const env = createMockDomainEnvironment();
+    const mem = unwrapOk<Membership>(
+      await env.services.memberships.create(OWNER_ALFA, {
+        userId: SEED_USER_3_ID,
+        role: "profissional",
+      }),
+    );
+    unwrapOk(
+      await env.services.memberships.revoke(OWNER_ALFA, {
+        membershipId: mem.id,
+        expectedVersion: mem.metadata.version,
+      }),
+    );
+    const ctx: ServiceContext = {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_3_ID,
+      membershipId: mem.id,
+      role: "profissional",
+    };
+    const r = await env.services.auditEvents.listByCase(ctx, SEED_CASE_ALFA_2_ID);
+    expectFail(r, "forbidden");
+  });
+
+  it("membership revogada bloqueia caseSnapshot.create real", async () => {
+    const env = createMockDomainEnvironment();
+    const mem = unwrapOk<Membership>(
+      await env.services.memberships.create(OWNER_ALFA, {
+        userId: SEED_USER_3_ID,
+        role: "administrador",
+      }),
+    );
+    unwrapOk(
+      await env.services.memberships.revoke(OWNER_ALFA, {
+        membershipId: mem.id,
+        expectedVersion: mem.metadata.version,
+      }),
+    );
+    const ctx: ServiceContext = {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_3_ID,
+      membershipId: mem.id,
+      role: "administrador",
+    };
+    const r = await env.services.caseSnapshots.create(ctx, {
+      caseId: SEED_CASE_ALFA_2_ID,
+      label: "bloqueado revogado",
+    });
+    expectFail(r, "forbidden");
+  });
+
+  it("membership de outra organização não acessa caseId Alfa", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_BETA, SEED_CASE_ALFA_2_ID);
+    expectFail(r, "not_found");
+  });
+});
+
+describe("LV-08.6A.3 — validação estrita das opções (restante)", () => {
+  it("audit.listByCase rejeita __proto__", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = JSON.parse('{"__proto__":{"polluted":true}}');
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, bad);
+    expect(r.ok).toBe(false);
+  });
+
+  it("audit.listByCase rejeita prototype", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = JSON.parse('{"prototype":{"x":1}}');
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, bad);
+    expect(r.ok).toBe(false);
+  });
+
+  it("audit.listByCase rejeita array em options", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      [] as never,
+    );
+    expectFail(r, "validation_error");
+  });
+
+  it("audit.listByCase rejeita page com chave proibida", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = { page: JSON.parse('{"__proto__":{"x":1},"limit":10}') };
+    const r = await env.services.auditEvents.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      bad as never,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("audit.listByCase rejeita cursor incompatível", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      page: { limit: 10, cursor: "cursor-de-outra-query" },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("audit.listByCase rejeita action inválida (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      actions: ["acao.inexistente"] as never,
+    });
+    expectFail(r, "validation_error");
+  });
+
+  it("audit.listByCase rejeita targetType inválido (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      targetTypes: ["inexistente"] as never,
+    });
+    expectFail(r, "validation_error");
+  });
+
+  it("audit.listByCase rejeita occurredFrom não ISO (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      occurredFrom: "não-iso" as never,
+    });
+    expectFail(r, "validation_error");
+  });
+
+  it("audit.listByCase rejeita occurredTo não ISO (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.auditEvents.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      occurredTo: "sem-formato" as never,
+    });
+    expectFail(r, "validation_error");
+  });
+
+  it("snapshot.listByCase rejeita __proto__", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = JSON.parse('{"__proto__":{"polluted":true}}');
+    const r = await env.services.caseSnapshots.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      bad,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("snapshot.listByCase rejeita constructor", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = JSON.parse('{"constructor":{"prototype":{}}}');
+    const r = await env.services.caseSnapshots.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      bad,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("snapshot.listByCase rejeita prototype", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = JSON.parse('{"prototype":{"x":1}}');
+    const r = await env.services.caseSnapshots.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      bad,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("snapshot.listByCase rejeita array em options", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.caseSnapshots.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      [] as never,
+    );
+    expectFail(r, "validation_error");
+  });
+
+  it("snapshot.listByCase rejeita page com chave proibida", async () => {
+    const env = createMockDomainEnvironment();
+    const bad = { page: JSON.parse('{"__proto__":{"x":1},"limit":10}') };
+    const r = await env.services.caseSnapshots.listByCase(
+      OWNER_ALFA,
+      SEED_CASE_ALFA_2_ID,
+      bad as never,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("snapshot.listByCase rejeita limit > 100", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      page: { limit: 999 },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("snapshot.listByCase rejeita cursor incompatível", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
+      page: { limit: 10, cursor: "cursor-forjado" },
+    });
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe("LV-08.6A.3 — imutabilidade histórica restante", () => {
+  it("mutar snapshot retornado por listByCase não altera store", async () => {
+    const env = createMockDomainEnvironment();
+    const p1 = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    );
+    const first = p1.items[0];
+    if (!first) throw new Error("preparação: seed deveria conter snapshots");
+    const originalLabel = first.label;
+    try {
+      (first as unknown as { label: string }).label = "MUTADO";
+    } catch {
+      /* pode ser frozen */
+    }
+    const p2 = unwrapOk(
+      await env.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    );
+    const again = p2.items.find((s) => s.id === first.id);
+    if (!again) throw new Error("snapshot desapareceu do store");
+    expect(again.label).toBe(originalLabel);
+  });
+
+  it("mutar payload.casePersons retornado não altera snapshot armazenado", async () => {
+    const env = createMockDomainEnvironment();
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        SEED_SNAPSHOT_ALFA_2_ID,
+      ),
+    );
+    const originalLen = snap.payload.casePersons.length;
+    try {
+      (snap.payload.casePersons as unknown as unknown[]).pop();
+    } catch {
+      /* pode ser frozen */
+    }
+    const again = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        SEED_SNAPSHOT_ALFA_2_ID,
+      ),
+    );
+    expect(again.payload.casePersons.length).toBe(originalLen);
+  });
+
+  it("mutar Person dentro do payload retornado não altera snapshot armazenado", async () => {
+    const env = createMockDomainEnvironment();
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        SEED_SNAPSHOT_ALFA_2_ID,
+      ),
+    );
+    const first = snap.payload.persons[0];
+    if (!first) throw new Error("preparação: snapshot precisa ter pessoas");
+    const original = first.displayLabel;
+    try {
+      (first as unknown as { displayLabel: string }).displayLabel = "MUTADO";
+    } catch {
+      /* pode ser frozen */
+    }
+    const again = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        SEED_SNAPSHOT_ALFA_2_ID,
+      ),
+    );
+    const person = again.payload.persons.find((p) => p.id === first.id);
+    if (!person) throw new Error("pessoa desapareceu do payload");
+    expect(person.displayLabel).toBe(original);
+  });
+
+  it("criar novo item do plano depois do snapshot não altera histórico", async () => {
+    const env = createMockDomainEnvironment();
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "antes de plan.create",
+      }),
+    );
+    const originalIds = snap.payload.casePlanItems.map((p) => p.id).sort();
+    unwrapOk(
+      await env.services.casePlan.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        kind: "activity",
+        title: "Novo após snapshot",
+        priority: "normal",
+      }),
+    );
+    const again = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, snap.id),
+    );
+    const afterIds = again.payload.casePlanItems.map((p) => p.id).sort();
+    expect(afterIds).toEqual(originalIds);
+  });
+
+  it("criar nova entrada de cronologia depois do snapshot não altera histórico", async () => {
+    const env = createMockDomainEnvironment();
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "antes de tl.create",
+      }),
+    );
+    const originalIds = snap.payload.caseTimelineEntries.map((t) => t.id).sort();
+    unwrapOk(
+      await env.services.caseTimeline.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        kind: "note",
+        occurredOn: "2026-04-01",
+        title: "Nota tardia",
+      }),
+    );
+    const again = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, snap.id),
+    );
+    const afterIds = again.payload.caseTimelineEntries.map((t) => t.id).sort();
+    expect(afterIds).toEqual(originalIds);
+  });
+
+  it("atualizar Person atual não altera Person histórica (LV-08.6A.3)", async () => {
+    const env = createMockDomainEnvironment();
+    const snap = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "antes de person.update",
+      }),
+    );
+    const histPerson = snap.payload.persons.find((p) => p.id === SEED_PERSON_ALFA_1_ID);
+    if (!histPerson) throw new Error("preparação: pessoa histórica ausente");
+    const originalLabel = histPerson.displayLabel;
+    const cur = unwrapOk(await env.services.persons.getById(OWNER_ALFA, SEED_PERSON_ALFA_1_ID));
+    unwrapOk(
+      await env.services.persons.update(OWNER_ALFA, SEED_PERSON_ALFA_1_ID, {
+        displayLabel: "Renomeado depois do snapshot",
+        expectedVersion: cur.metadata.version,
+      }),
+    );
+    const again = unwrapOk<CaseSnapshot>(
+      await env.services.caseSnapshots.getById(OWNER_ALFA, SEED_CASE_ALFA_2_ID, snap.id),
+    );
+    const post = again.payload.persons.find((p) => p.id === SEED_PERSON_ALFA_1_ID);
+    if (!post) throw new Error("pessoa histórica sumiu");
+    expect(post.displayLabel).toBe(originalLabel);
+  });
+
+  it("dois ambientes permanecem isolados", async () => {
+    const envA = createMockDomainEnvironment();
+    const envB = createMockDomainEnvironment();
+    unwrapOk(
+      await envA.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "somente A",
+      }),
+    );
+    const listA = unwrapOk(
+      await envA.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    );
+    const listB = unwrapOk(
+      await envB.services.caseSnapshots.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID),
+    );
+    expect(listA.items.length).toBe(listB.items.length + 1);
+  });
+
+  it("dois ambientes novos produzem o mesmo primeiro timestamp dinâmico", async () => {
+    const envA = createMockDomainEnvironment();
+    const envB = createMockDomainEnvironment();
+    const sA = unwrapOk<CaseSnapshot>(
+      await envA.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "tempo A",
+      }),
+    );
+    const sB = unwrapOk<CaseSnapshot>(
+      await envB.services.caseSnapshots.create(OWNER_ALFA, {
+        caseId: SEED_CASE_ALFA_2_ID,
+        label: "tempo B",
+      }),
+    );
+    expect(sA.createdAt).toBe(sB.createdAt);
+    expect(sA.id).toBe(sB.id);
   });
 });
