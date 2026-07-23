@@ -535,31 +535,33 @@ export function validateMockDomainSeed(
   const assignByIdEarly = new Map(seed.assignments.map((a) => [a.id, a]));
 
   for (const p of seed.casePlanItems) {
+    const pid = p.id;
     if (!isCasePlanItem(p)) {
-      issues.push({ entity: "casePlanItem", id: p.id, reason: "invalid_shape" });
+      issues.push({ entity: "casePlanItem", id: pid, reason: "invalid_shape" });
       continue;
     }
     const c = caseByIdEarly.get(p.caseId);
-    if (!c) issues.push({ entity: "casePlanItem", id: p.id, reason: "case_not_found" });
+    if (!c) issues.push({ entity: "casePlanItem", id: pid, reason: "case_not_found" });
     else if (c.organizationId !== p.organizationId)
-      issues.push({ entity: "casePlanItem", id: p.id, reason: "case_org_mismatch" });
+      issues.push({ entity: "casePlanItem", id: pid, reason: "case_org_mismatch" });
     if (p.assignmentId !== undefined) {
       const a = assignByIdEarly.get(p.assignmentId);
       if (!a)
-        issues.push({ entity: "casePlanItem", id: p.id, reason: "assignment_not_found" });
+        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_not_found" });
       else if (a.caseId !== p.caseId)
-        issues.push({ entity: "casePlanItem", id: p.id, reason: "assignment_case_mismatch" });
+        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
     }
   }
   for (const t of seed.caseTimelineEntries) {
+    const tid = t.id;
     if (!isCaseTimelineEntry(t)) {
-      issues.push({ entity: "caseTimelineEntry", id: t.id, reason: "invalid_shape" });
+      issues.push({ entity: "caseTimelineEntry", id: tid, reason: "invalid_shape" });
       continue;
     }
     const c = caseByIdEarly.get(t.caseId);
-    if (!c) issues.push({ entity: "caseTimelineEntry", id: t.id, reason: "case_not_found" });
+    if (!c) issues.push({ entity: "caseTimelineEntry", id: tid, reason: "case_not_found" });
     else if (c.organizationId !== t.organizationId)
-      issues.push({ entity: "caseTimelineEntry", id: t.id, reason: "case_org_mismatch" });
+      issues.push({ entity: "caseTimelineEntry", id: tid, reason: "case_org_mismatch" });
   }
 
   for (const o of seed.organizations) {
