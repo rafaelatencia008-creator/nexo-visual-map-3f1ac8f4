@@ -103,6 +103,24 @@ export const SEED_TL_ALFA_2_ID = buildDomainId("caseTimelineEntry", "seed_alfa_2
 export const SEED_TL_ALFA_3_ID = buildDomainId("caseTimelineEntry", "seed_alfa_3");
 export const SEED_TL_BETA_1_ID = buildDomainId("caseTimelineEntry", "seed_beta_1");
 
+// ---- AuditEvents (LV-08.6A) -----------------------------------------------
+export const SEED_AUDIT_ALFA_1_ID = buildDomainId("auditEvent", "seed_alfa_1");
+export const SEED_AUDIT_ALFA_2_ID = buildDomainId("auditEvent", "seed_alfa_2");
+export const SEED_AUDIT_ALFA_3_ID = buildDomainId("auditEvent", "seed_alfa_3");
+export const SEED_AUDIT_ALFA_4_ID = buildDomainId("auditEvent", "seed_alfa_4");
+export const SEED_AUDIT_ALFA_5_ID = buildDomainId("auditEvent", "seed_alfa_5");
+export const SEED_AUDIT_ALFA_6_ID = buildDomainId("auditEvent", "seed_alfa_6");
+export const SEED_AUDIT_ALFA_7_ID = buildDomainId("auditEvent", "seed_alfa_7");
+export const SEED_AUDIT_ALFA_8_ID = buildDomainId("auditEvent", "seed_alfa_8");
+export const SEED_AUDIT_ALFA_9_ID = buildDomainId("auditEvent", "seed_alfa_9");
+export const SEED_AUDIT_ALFA_10_ID = buildDomainId("auditEvent", "seed_alfa_10");
+export const SEED_AUDIT_ALFA_11_ID = buildDomainId("auditEvent", "seed_alfa_11");
+export const SEED_AUDIT_BETA_1_ID = buildDomainId("auditEvent", "seed_beta_1");
+
+// ---- CaseSnapshots (LV-08.6A) ---------------------------------------------
+export const SEED_SNAPSHOT_ALFA_1_ID = buildDomainId("caseSnapshot", "seed_alfa_1");
+export const SEED_SNAPSHOT_ALFA_2_ID = buildDomainId("caseSnapshot", "seed_alfa_2");
+
 // ---- Builder ---------------------------------------------------------------
 
 export function buildSeedSnapshot(): MockDomainSnapshot {
