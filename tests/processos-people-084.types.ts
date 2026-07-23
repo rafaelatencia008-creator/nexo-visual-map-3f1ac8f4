@@ -257,12 +257,12 @@ void _crBadTo;
 const _crBadOrg: CreateRelationshipInput = { caseId, fromPersonId: personId, toPersonId: otherPersonId, type: "spouse", organizationId };
 void _crBadOrg;
 
-// @ts-expect-error — metadata não pertence ao DTO de relação
 const _crBadMeta: CreateRelationshipInput = {
   caseId,
   fromPersonId: personId,
   toPersonId: otherPersonId,
   type: "spouse",
+  // @ts-expect-error — metadata não pertence ao DTO de relação
   metadata: { createdAt: "x", updatedAt: "x", version: 1 },
 };
 void _crBadMeta;
