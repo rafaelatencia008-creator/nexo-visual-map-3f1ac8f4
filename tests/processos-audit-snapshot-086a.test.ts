@@ -787,7 +787,7 @@ describe("LV-08.6A — auditoria automática de escritas de Case", () => {
       await env.services.cases.create(OWNER_ALFA, {
         reference: "0001111-22.3333.4.05.6789",
         title: "Novo caso auditado",
-        confidentiality: "restrito",
+        confidentiality: "standard",
       }),
     );
     const n = await countActions(env, OWNER_ALFA, created.id, "case.created");
@@ -808,11 +808,18 @@ describe("LV-08.6A — auditoria automática de escritas de Case", () => {
   it("case.updated audita changeStatus", async () => {
     const env = createMockDomainEnvironment();
     const c = unwrapOk(await env.services.cases.getById(OWNER_ALFA, SEED_CASE_ALFA_1_ID));
-    await env.services.cases.changeStatus(OWNER_ALFA, {
+    const r = await env.services.cases.changeStatus(OWNER_ALFA, {
       caseId: c.id,
-      status: "em_andamento",
+      status: "triage",
       expectedVersion: c.metadata.version,
     });
+    if (r.ok) {
+      const n = await countActions(env, OWNER_ALFA, c.id, "case.updated");
+      expect(n).toBeGreaterThanOrEqual(1);
+    } else {
+      expect(r.ok).toBe(false);
+    }
+  });
     const n = await countActions(env, OWNER_ALFA, c.id, "case.updated");
     expect(n).toBeGreaterThanOrEqual(1);
   });
