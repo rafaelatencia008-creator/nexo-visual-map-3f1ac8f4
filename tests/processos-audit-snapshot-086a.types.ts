@@ -3,6 +3,7 @@
  */
 
 import type {
+  AuditEvent,
   AuditAction,
   AuditTargetType,
   CaseSnapshot,
