@@ -1716,17 +1716,13 @@ describe("LV-09.1A.2 · serviços: forbidden vs not_found (mesma org vs cross-or
     const r = ok(await env.services.deadlines.list(ctx));
     expect(r.items.length).toBe(0);
   });
-  it("(241) computeAgendaAccessibleCaseIds: admin devolve todos casos da org", () => {
+  it("(241) proprietário: policy allow em Alfa 1 e Alfa 2", async () => {
     const env = createMockDomainEnvironment();
-    const store = (env as unknown as { __store?: never });
-    void store;
-    // Usar snapshot indireto: garantir que qualquer caseId da org apareça.
-    // Aqui usamos o store diretamente via checkAgendaCaseAccess por caseId.
     for (const cid of [SEED_CASE_ALFA_1_ID, SEED_CASE_ALFA_2_ID]) {
-      const dec = env.services.permissions.evaluate(OWNER_ALFA, {
+      const dec = ok(await env.services.permissions.evaluate(OWNER_ALFA, {
         action: "deadline.read", caseId: cid,
-      });
-      void dec.then((r) => expect(ok(r).allowed).toBe(true));
+      }));
+      expect(dec.allowed).toBe(true);
     }
   });
   it("(242) leitura + assignment ATIVO: appointments.getById caseId próprio devolve item", async () => {
