@@ -194,7 +194,10 @@ export function ProcessPlanDialog(props: ProcessPlanDialogProps) {
               <Label htmlFor="plan-priority">Prioridade</Label>
               <Select
                 value={values.priority}
-                onValueChange={(v) => setValues((s) => ({ ...s, priority: v as PlanItemFormValues["priority"] }))}
+                onValueChange={(v) => {
+                  if (!isCasePlanItemPriority(v)) return;
+                  setValues((s) => ({ ...s, priority: v }));
+                }}
                 disabled={submitting}
               >
                 <SelectTrigger id="plan-priority" aria-label="Prioridade">
