@@ -109,6 +109,7 @@ export const CASE_PLAN_ITEM_ALLOWED_KEYS: ReadonlySet<string> = new Set([
 
 export function isCasePlanItem(v: unknown): v is CasePlanItem {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (containsForbiddenKey(v)) return false;
   if (!hasOnlyAllowedKeys(v, CASE_PLAN_ITEM_ALLOWED_KEYS)) return false;
   const p = v as Record<string, unknown>;
   if (!isCasePlanItemId(p.id)) return false;
