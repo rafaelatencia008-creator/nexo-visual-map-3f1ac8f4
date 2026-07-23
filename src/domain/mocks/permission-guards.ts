@@ -250,19 +250,29 @@ export function guardCasePlanService(
 ): CasePlanService {
   return {
     getById: (ctx, cid, id) =>
-      enforce(store, ctx, "casePlanItem.read", () => s.getById(ctx, cid, id)),
+      enforceWithCase(store, ctx, "casePlanItem.read", cid, () =>
+        s.getById(ctx, cid, id),
+      ),
     listByCase: (ctx, cid, page) =>
-      enforce(store, ctx, "casePlanItem.list", () => s.listByCase(ctx, cid, page)),
+      enforceWithCase(store, ctx, "casePlanItem.list", cid, () =>
+        s.listByCase(ctx, cid, page),
+      ),
     create: (ctx, input) =>
-      enforce(store, ctx, "casePlanItem.create", () => s.create(ctx, input)),
+      enforceWithCase(store, ctx, "casePlanItem.create", input.caseId, () =>
+        s.create(ctx, input),
+      ),
     update: (ctx, cid, input) =>
-      enforce(store, ctx, "casePlanItem.update", () => s.update(ctx, cid, input)),
+      enforceWithCase(store, ctx, "casePlanItem.update", cid, () =>
+        s.update(ctx, cid, input),
+      ),
     changeStatus: (ctx, cid, input) =>
-      enforce(store, ctx, "casePlanItem.changeStatus", () =>
+      enforceWithCase(store, ctx, "casePlanItem.changeStatus", cid, () =>
         s.changeStatus(ctx, cid, input),
       ),
     remove: (ctx, cid, id, v) =>
-      enforce(store, ctx, "casePlanItem.remove", () => s.remove(ctx, cid, id, v)),
+      enforceWithCase(store, ctx, "casePlanItem.remove", cid, () =>
+        s.remove(ctx, cid, id, v),
+      ),
   };
 }
 
@@ -272,19 +282,23 @@ export function guardCaseTimelineService(
 ): CaseTimelineService {
   return {
     getById: (ctx, cid, id) =>
-      enforce(store, ctx, "caseTimelineEntry.read", () => s.getById(ctx, cid, id)),
+      enforceWithCase(store, ctx, "caseTimelineEntry.read", cid, () =>
+        s.getById(ctx, cid, id),
+      ),
     listByCase: (ctx, cid, page) =>
-      enforce(store, ctx, "caseTimelineEntry.list", () =>
+      enforceWithCase(store, ctx, "caseTimelineEntry.list", cid, () =>
         s.listByCase(ctx, cid, page),
       ),
     create: (ctx, input) =>
-      enforce(store, ctx, "caseTimelineEntry.create", () => s.create(ctx, input)),
+      enforceWithCase(store, ctx, "caseTimelineEntry.create", input.caseId, () =>
+        s.create(ctx, input),
+      ),
     update: (ctx, cid, input) =>
-      enforce(store, ctx, "caseTimelineEntry.update", () =>
+      enforceWithCase(store, ctx, "caseTimelineEntry.update", cid, () =>
         s.update(ctx, cid, input),
       ),
     remove: (ctx, cid, id, v) =>
-      enforce(store, ctx, "caseTimelineEntry.remove", () =>
+      enforceWithCase(store, ctx, "caseTimelineEntry.remove", cid, () =>
         s.remove(ctx, cid, id, v),
       ),
   };
