@@ -142,11 +142,7 @@ export function ProcessAuditSnapshots({
       const canReadSnapshots = permReadSnap.data.allowed === true;
       const canCreateSnapshot = permCreateSnap.data.allowed === true;
 
-      let events: readonly ProcessAuditSnapshotState extends { kind: "ready"; events: infer E }
-        ? E extends readonly (infer _)[] ? E : never
-        : never = [] as never;
-      // Simplificação: usar tipagem explícita
-      let evs: readonly import("@/domain/core/case-audit").AuditEvent[] = [];
+      let evs: readonly AuditEvent[] = [];
       let snaps: readonly CaseSnapshot[] = [];
 
       if (canReadAudit) {
