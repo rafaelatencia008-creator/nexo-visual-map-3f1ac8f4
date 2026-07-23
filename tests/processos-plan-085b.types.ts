@@ -147,22 +147,26 @@ void _bad3;
 // @ts-expect-error status inválido em ChangeStatus
 buildChangeCasePlanItemStatusInput(_item, "unknown_status");
 
-// @ts-expect-error prioridade inválida no form
 buildCreateCasePlanItemInput(_caseId, {
-  kind: "activity", title: "t", description: "", priority: "urgent",
+  kind: "activity", title: "t", description: "",
+  // @ts-expect-error prioridade inválida
+  priority: "urgent",
   dueOn: "", assignmentId: "",
 }, []);
 
-// @ts-expect-error tipo inválido no plano
 buildCreateCasePlanItemInput(_caseId, {
-  kind: "todo", title: "t", description: "", priority: "normal",
+  // @ts-expect-error tipo inválido no plano
+  kind: "todo",
+  title: "t", description: "", priority: "normal",
   dueOn: "", assignmentId: "",
 }, []);
 
-// @ts-expect-error tipo inválido na cronologia
 buildCreateCaseTimelineEntryInput(_tlCaseId, {
-  kind: "reminder", occurredOn: "2026-01-01", title: "t", description: "",
+  // @ts-expect-error tipo inválido na cronologia
+  kind: "reminder",
+  occurredOn: "2026-01-01", title: "t", description: "",
 });
+
 
 // ---- DTOs de update proíbem campos ilegais --------------------------------
 
