@@ -1170,5 +1170,49 @@ export function validateMockDomainSeed(
     }
   }
 
+  // Deadline / Appointment: coerência relacional (org, caso, assignment).
+  for (const d of seed.deadlines) {
+    if (!isDeadline(d)) {
+      issues.push({ entity: "deadline", id: d.id, reason: "invalid_shape" });
+      continue;
+    }
+    const c = caseByIdEarly.get(d.caseId);
+    if (!c) issues.push({ entity: "deadline", id: d.id, reason: "case_not_found" });
+    else if (c.organizationId !== d.organizationId)
+      issues.push({ entity: "deadline", id: d.id, reason: "case_org_mismatch" });
+    if (d.assignmentId !== undefined) {
+      const a = assignByIdEarly.get(d.assignmentId);
+      if (!a)
+        issues.push({ entity: "deadline", id: d.id, reason: "assignment_not_found" });
+      else {
+        if (a.caseId !== d.caseId)
+          issues.push({ entity: "deadline", id: d.id, reason: "assignment_case_mismatch" });
+        if (a.organizationId !== d.organizationId)
+          issues.push({ entity: "deadline", id: d.id, reason: "assignment_org_mismatch" });
+      }
+    }
+  }
+  for (const ap of seed.appointments) {
+    if (!isAppointment(ap)) {
+      issues.push({ entity: "appointment", id: ap.id, reason: "invalid_shape" });
+      continue;
+    }
+    const c = caseByIdEarly.get(ap.caseId);
+    if (!c) issues.push({ entity: "appointment", id: ap.id, reason: "case_not_found" });
+    else if (c.organizationId !== ap.organizationId)
+      issues.push({ entity: "appointment", id: ap.id, reason: "case_org_mismatch" });
+    if (ap.assignmentId !== undefined) {
+      const a = assignByIdEarly.get(ap.assignmentId);
+      if (!a)
+        issues.push({ entity: "appointment", id: ap.id, reason: "assignment_not_found" });
+      else {
+        if (a.caseId !== ap.caseId)
+          issues.push({ entity: "appointment", id: ap.id, reason: "assignment_case_mismatch" });
+        if (a.organizationId !== ap.organizationId)
+          issues.push({ entity: "appointment", id: ap.id, reason: "assignment_org_mismatch" });
+      }
+    }
+  }
+
   return issues;
 }
