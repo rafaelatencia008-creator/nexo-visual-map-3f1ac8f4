@@ -27,6 +27,8 @@ import type {
   RelationshipService,
 } from "../services/person-service";
 import type { AssignmentService } from "../services/assignment-service";
+import type { CasePlanService } from "../services/case-plan-service";
+import type { CaseTimelineService } from "../services/case-timeline-service";
 
 async function enforce<T>(
   store: MockStore,
@@ -225,6 +227,52 @@ export function guardAssignmentService(
     changeStatus: (ctx, cid, input) =>
       enforce(store, ctx, "assignment.changeStatus", () =>
         s.changeStatus(ctx, cid, input),
+      ),
+  };
+}
+
+export function guardCasePlanService(
+  store: MockStore,
+  s: CasePlanService,
+): CasePlanService {
+  return {
+    getById: (ctx, cid, id) =>
+      enforce(store, ctx, "casePlanItem.read", () => s.getById(ctx, cid, id)),
+    listByCase: (ctx, cid, page) =>
+      enforce(store, ctx, "casePlanItem.list", () => s.listByCase(ctx, cid, page)),
+    create: (ctx, input) =>
+      enforce(store, ctx, "casePlanItem.create", () => s.create(ctx, input)),
+    update: (ctx, cid, input) =>
+      enforce(store, ctx, "casePlanItem.update", () => s.update(ctx, cid, input)),
+    changeStatus: (ctx, cid, input) =>
+      enforce(store, ctx, "casePlanItem.changeStatus", () =>
+        s.changeStatus(ctx, cid, input),
+      ),
+    remove: (ctx, cid, id, v) =>
+      enforce(store, ctx, "casePlanItem.remove", () => s.remove(ctx, cid, id, v)),
+  };
+}
+
+export function guardCaseTimelineService(
+  store: MockStore,
+  s: CaseTimelineService,
+): CaseTimelineService {
+  return {
+    getById: (ctx, cid, id) =>
+      enforce(store, ctx, "caseTimelineEntry.read", () => s.getById(ctx, cid, id)),
+    listByCase: (ctx, cid, page) =>
+      enforce(store, ctx, "caseTimelineEntry.list", () =>
+        s.listByCase(ctx, cid, page),
+      ),
+    create: (ctx, input) =>
+      enforce(store, ctx, "caseTimelineEntry.create", () => s.create(ctx, input)),
+    update: (ctx, cid, input) =>
+      enforce(store, ctx, "caseTimelineEntry.update", () =>
+        s.update(ctx, cid, input),
+      ),
+    remove: (ctx, cid, id, v) =>
+      enforce(store, ctx, "caseTimelineEntry.remove", () =>
+        s.remove(ctx, cid, id, v),
       ),
   };
 }
