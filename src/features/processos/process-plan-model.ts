@@ -199,13 +199,14 @@ export function buildAssignmentOptionLabel(
 
 export function collectDistinctProfessionalProfileIds(
   assignments: readonly Assignment[],
-): readonly string[] {
+): readonly ProfessionalProfileId[] {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: ProfessionalProfileId[] = [];
   for (const a of assignments) {
-    if (!seen.has(a.professionalProfileId)) {
-      seen.add(a.professionalProfileId);
-      out.push(a.professionalProfileId);
+    const id = a.professionalProfileId;
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
     }
   }
   return out;
