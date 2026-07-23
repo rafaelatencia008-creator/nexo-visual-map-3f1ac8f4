@@ -159,9 +159,9 @@ describe("LV-08.6B — buildAuditFilter", () => {
     const r = buildAuditFilter(EMPTY_AUDIT_FILTER);
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error();
-    expect(r.actions).toBeUndefined();
-    expect(r.occurredFrom).toBeUndefined();
-    expect(r.occurredTo).toBeUndefined();
+    expect(r.options.actions).toBeUndefined();
+    expect(r.options.occurredFrom).toBeUndefined();
+    expect(r.options.occurredTo).toBeUndefined();
   });
 
   it("mapeia categoria pessoas em conjunto de ações", () => {
@@ -172,7 +172,7 @@ describe("LV-08.6B — buildAuditFilter", () => {
     });
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error();
-    expect(r.actions).toEqual(AUDIT_CATEGORY_TO_ACTIONS.pessoas);
+    expect(r.options.actions).toEqual(AUDIT_CATEGORY_TO_ACTIONS.pessoas);
   });
 
   it("aceita data inicial válida", () => {
@@ -183,8 +183,8 @@ describe("LV-08.6B — buildAuditFilter", () => {
     });
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error();
-    expect(r.occurredFrom).toBe("2025-01-01T00:00:00.000Z");
-    expect(r.occurredTo).toBeUndefined();
+    expect(r.options.occurredFrom).toBe("2025-01-01T00:00:00.000Z");
+    expect(r.options.occurredTo).toBeUndefined();
   });
 
   it("aceita data final válida", () => {
@@ -195,7 +195,7 @@ describe("LV-08.6B — buildAuditFilter", () => {
     });
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error();
-    expect(r.occurredTo).toBe("2025-01-31T23:59:59.999Z");
+    expect(r.options.occurredTo).toBe("2025-01-31T23:59:59.999Z");
   });
 
   it("rejeita data inicial inválida", () => {
@@ -606,8 +606,8 @@ describe("LV-08.6B — integração via serviços oficiais", () => {
       ownerContext(),
       SEED_CASE_ALFA_1_ID,
       {
-        occurredFrom: built.occurredFrom!,
-        occurredTo: built.occurredTo!,
+        occurredFrom: built.options.occurredFrom!,
+        occurredTo: built.options.occurredTo!,
       },
     );
     expect(res.ok).toBe(true);
