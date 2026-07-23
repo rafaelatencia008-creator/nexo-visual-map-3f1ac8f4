@@ -98,6 +98,7 @@ export const SEED_PLAN_BETA_2_ID = buildDomainId("casePlanItem", "seed_beta_2");
 // ---- CaseTimelineEntries ---------------------------------------------------
 export const SEED_TL_ALFA_1_ID = buildDomainId("caseTimelineEntry", "seed_alfa_1");
 export const SEED_TL_ALFA_2_ID = buildDomainId("caseTimelineEntry", "seed_alfa_2");
+export const SEED_TL_ALFA_3_ID = buildDomainId("caseTimelineEntry", "seed_alfa_3");
 export const SEED_TL_BETA_1_ID = buildDomainId("caseTimelineEntry", "seed_beta_1");
 
 // ---- Builder ---------------------------------------------------------------
