@@ -51,7 +51,6 @@ import type {
   CaseTimelineEntry,
 } from "@/domain/core/case-plan";
 import type { ProfessionalProfileId } from "@/domain/core/ids";
-import { isProfessionalProfileId } from "@/domain/core/ids";
 import type { ServiceError, ServiceResult } from "@/domain/services/result";
 import {
   ALL_PLAN_TIMELINE_ACTIONS,
