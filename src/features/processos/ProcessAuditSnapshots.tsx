@@ -78,7 +78,7 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
       const auditOptions = options ?? {};
       const [auditRes, snapRes, permAudit, permReadSnap, permCreateSnap] =
         await Promise.all([
-          environment.services.audit.listByCase(context, caseId, auditOptions),
+          environment.services.auditEvents.listByCase(context, caseId, auditOptions),
           environment.services.caseSnapshots.listByCase(context, caseId),
           environment.services.permissions.evaluate(context, {
             action: "auditEvent.read",
