@@ -51,7 +51,7 @@ import type {
   CaseTimelineEntry,
 } from "@/domain/core/case-plan";
 import type { ProfessionalProfileId } from "@/domain/core/ids";
-import type { ServiceError, ServiceResult } from "@/domain/services/result";
+import type { ServiceResult } from "@/domain/services/result";
 import {
   ALL_PLAN_TIMELINE_ACTIONS,
   ASSIGNMENT_ROLE_LABELS_PT,
