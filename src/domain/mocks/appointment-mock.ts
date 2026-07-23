@@ -54,6 +54,7 @@ import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems, stableStringify } from "./pagination-mock";
+import { computeAgendaAccessibleCaseIds } from "./agenda-case-access";
 
 function invalid<T>(msg: string): ServiceResult<T> {
   return { ok: false, error: { code: "validation_error", message: msg } };
@@ -252,9 +253,14 @@ export function createAppointmentServiceMock(
         const s = opts.search.trim();
         if (s.length > 0) searchNorm = normalizeSearch(s);
       }
-      const accessibleCaseIds = new Set<string>();
-      for (const c of store.cases.values()) {
-        if (c.organizationId === orgId) accessibleCaseIds.add(c.id);
+      const accessibleCaseIds = computeAgendaAccessibleCaseIds(store, v.data.context);
+      if (opts.caseId !== undefined) {
+        if (!accessibleCaseIds.has(opts.caseId)) {
+          return {
+            ok: false,
+            error: { code: "forbidden", message: "case_access_denied" },
+          };
+        }
       }
       let items = Array.from(store.appointments.values()).filter((a) => {
         if (a.organizationId !== orgId) return false;

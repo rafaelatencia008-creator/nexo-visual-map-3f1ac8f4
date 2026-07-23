@@ -39,18 +39,26 @@ export const APPOINTMENT_LOCATION_MAX = 300;
 export const DEADLINE_KINDS = ["procedural", "administrative", "internal"] as const;
 export type DeadlineKind = (typeof DEADLINE_KINDS)[number];
 
-export const AGENDA_DEADLINE_STATUSES = [
+/**
+ * Catálogo oficial de status de prazo da Agenda. Canonical: `DEADLINE_STATUSES`.
+ * Alias `AGENDA_DEADLINE_STATUSES` mantido para uso via barrel do domínio,
+ * onde evita colisão com o `DeadlineStatus` de `./case`.
+ */
+export const DEADLINE_STATUSES = [
   "pending",
   "completed",
   "cancelled",
 ] as const;
-export type DeadlineStatus = (typeof AGENDA_DEADLINE_STATUSES)[number];
+export type DeadlineStatus = (typeof DEADLINE_STATUSES)[number];
+// Alias retro-compatível.
+export const AGENDA_DEADLINE_STATUSES = DEADLINE_STATUSES;
+export type AgendaDeadlineStatus = DeadlineStatus;
 
 export const DEADLINE_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 export type DeadlinePriority = (typeof DEADLINE_PRIORITIES)[number];
 
 const DEADLINE_KIND_SET = new Set<string>(DEADLINE_KINDS);
-const DEADLINE_STATUS_SET = new Set<string>(AGENDA_DEADLINE_STATUSES);
+const DEADLINE_STATUS_SET = new Set<string>(DEADLINE_STATUSES);
 const DEADLINE_PRIORITY_SET = new Set<string>(DEADLINE_PRIORITIES);
 
 export const isDeadlineKind = (v: unknown): v is DeadlineKind =>
