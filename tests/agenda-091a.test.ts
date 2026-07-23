@@ -1475,8 +1475,24 @@ async function setupWorker(
 describe("LV-09.1A.2 · admins acessam qualquer caso da própria org", () => {
   for (const role of ADMIN_ROLES_LIST) {
     it(`(200-${role}) ${role}: policy allow em Alfa 1 sem profile nenhum`, async () => {
+  for (const role of ADMIN_ROLES_LIST) {
+    async function adminCtx(env: ReturnType<typeof createMockDomainEnvironment>): Promise<ServiceContext> {
+      if (role === "proprietario") return { ...OWNER_ALFA };
+      // Cria uma membership de administrador para SEED_USER_3.
+      const mem = ok(await env.services.memberships.create(OWNER_ALFA, {
+        userId: SEED_USER_3_ID as never,
+        role: "administrador",
+      }));
+      return {
+        organizationId: SEED_ORG_ALFA_ID,
+        userId: SEED_USER_3_ID as never,
+        membershipId: mem.id,
+        role: "administrador",
+      };
+    }
+    it(`(200-${role}) ${role}: policy allow em Alfa 1 sem profile nenhum`, async () => {
       const env = createMockDomainEnvironment();
-      const ctx: ServiceContext = { ...OWNER_ALFA, role };
+      const ctx = await adminCtx(env);
       const dec = ok(await env.services.permissions.evaluate(ctx, {
         action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
       }));
@@ -1484,7 +1500,7 @@ describe("LV-09.1A.2 · admins acessam qualquer caso da própria org", () => {
     });
     it(`(201-${role}) ${role}: policy denied cross-org com case_access_denied`, async () => {
       const env = createMockDomainEnvironment();
-      const ctx: ServiceContext = { ...OWNER_ALFA, role };
+      const ctx = await adminCtx(env);
       const dec = ok(await env.services.permissions.evaluate(ctx, {
         action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
       }));
