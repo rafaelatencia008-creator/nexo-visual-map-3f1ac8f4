@@ -359,7 +359,7 @@ describe("LV-09.1A · Deadline.create", () => {
     const env = createMockDomainEnvironment();
     const r = ok(
       await env.services.deadlines.create(OWNER_ALFA, {
-        caseId: SEED_CASE_ALFA_1_ID,
+        caseId: SEED_CASE_ALFA_2_ID,
         kind: "administrative",
         title: "T",
         dueAt: T_A,
@@ -568,7 +568,7 @@ describe("LV-09.1A · Deadline.update/changeStatus/remove", () => {
   it("(68) update pode limpar responsável com null", async () => {
     const env = createMockDomainEnvironment();
     const c = ok(await env.services.deadlines.create(OWNER_ALFA, {
-      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      caseId: SEED_CASE_ALFA_2_ID, kind: "administrative", title: "T",
       dueAt: T_A, priority: "normal", assignmentId: SEED_ASSIGN_ALFA_1_ID,
     }));
     const r = ok(await env.services.deadlines.update(OWNER_ALFA, {
