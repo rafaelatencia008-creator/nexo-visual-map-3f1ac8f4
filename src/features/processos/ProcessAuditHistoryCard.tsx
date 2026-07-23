@@ -29,6 +29,7 @@ import {
   getPublicAuthorLabel,
   isAuditCategory,
   isAuditFilterActive,
+  type AuditFilterBuildError,
   type AuditFilterFormValues,
 } from "@/features/processos/process-audit-snapshot-model";
 import type { AuditEventListOptions } from "@/domain/services/audit-service";
@@ -40,7 +41,9 @@ export type ProcessAuditHistoryCardProps = Readonly<{
   currentUserId: UserId;
   filter: AuditFilterFormValues;
   onFilterChange: (next: AuditFilterFormValues) => void;
-  onApplyFilter: (options: AuditEventListOptions | null) => void;
+  onApplyFilter: (options: AuditEventListOptions) => void;
+  onFilterValidationError: (reason: AuditFilterBuildError) => void;
+  onClearFilter: () => void;
   filterError: string | null;
   loading: boolean;
   filtered: boolean;
@@ -52,6 +55,8 @@ export function ProcessAuditHistoryCard({
   filter,
   onFilterChange,
   onApplyFilter,
+  onFilterValidationError,
+  onClearFilter,
   filterError,
   loading,
   filtered,
@@ -61,7 +66,7 @@ export function ProcessAuditHistoryCard({
   const submitFilter = () => {
     const built = buildAuditFilter(filter);
     if (!built.ok) {
-      onApplyFilter(null);
+      onFilterValidationError(built.reason);
       return;
     }
     onApplyFilter(built.options);
@@ -69,7 +74,7 @@ export function ProcessAuditHistoryCard({
 
   const clearFilter = () => {
     onFilterChange(EMPTY_AUDIT_FILTER);
-    onApplyFilter(null);
+    onClearFilter();
   };
 
   const emptyTitle = filtered
