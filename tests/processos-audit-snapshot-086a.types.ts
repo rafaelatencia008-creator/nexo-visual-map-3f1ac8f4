@@ -7,7 +7,6 @@ import type {
   AuditAction,
   AuditTargetType,
   CaseSnapshot,
-  CaseSnapshotPayload,
 } from "@/domain/core/case-audit";
 import type {
   AuditEventId,
