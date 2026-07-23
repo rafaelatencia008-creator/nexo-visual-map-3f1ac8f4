@@ -103,6 +103,19 @@ const PERMISSION_MATRIX = Object.freeze({
   "assignment.create": WRITE_ROLES,
   "assignment.update": WRITE_ROLES,
   "assignment.changeStatus": WRITE_ROLES,
+
+  "casePlanItem.read": ALL_ROLES,
+  "casePlanItem.list": ALL_ROLES,
+  "casePlanItem.create": WRITE_ROLES,
+  "casePlanItem.update": WRITE_ROLES,
+  "casePlanItem.changeStatus": WRITE_ROLES,
+  "casePlanItem.remove": WRITE_ROLES,
+
+  "caseTimelineEntry.read": ALL_ROLES,
+  "caseTimelineEntry.list": ALL_ROLES,
+  "caseTimelineEntry.create": WRITE_ROLES,
+  "caseTimelineEntry.update": WRITE_ROLES,
+  "caseTimelineEntry.remove": WRITE_ROLES,
 }) satisfies PermissionMatrix;
 
 // ---- Consulta pura (não expõe a matriz) -----------------------------------
