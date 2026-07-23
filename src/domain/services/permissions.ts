@@ -72,6 +72,10 @@ export const PERMISSION_ACTIONS = [
   "caseTimelineEntry.create",
   "caseTimelineEntry.update",
   "caseTimelineEntry.remove",
+
+  "auditEvent.read",
+  "caseSnapshot.read",
+  "caseSnapshot.create",
 ] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
