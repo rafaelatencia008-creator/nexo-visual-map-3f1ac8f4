@@ -368,3 +368,78 @@ export function guardCaseSnapshotService(
       ),
   };
 }
+
+// ---- LV-09.1A: Agenda (Deadline & Appointment) -----------------------------
+
+import type { DeadlineService } from "../services/deadline-service";
+import type { AppointmentService } from "../services/appointment-service";
+
+export function guardDeadlineService(
+  store: MockStore,
+  s: DeadlineService,
+): DeadlineService {
+  return {
+    getById: (ctx, cid, id) =>
+      enforceWithCase(store, ctx, "deadline.read", cid, () =>
+        s.getById(ctx, cid, id),
+      ),
+    list: (ctx, opts) => {
+      if (opts && typeof opts === "object" && "caseId" in opts && isCaseId((opts as { caseId?: unknown }).caseId)) {
+        const cid = (opts as { caseId: CaseId }).caseId;
+        return enforceWithCase(store, ctx, "deadline.list", cid, () => s.list(ctx, opts));
+      }
+      return enforce(store, ctx, "deadline.list", () => s.list(ctx, opts));
+    },
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "deadline.create", input, () =>
+        s.create(ctx, input),
+      ),
+    update: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "deadline.update", input, () =>
+        s.update(ctx, input),
+      ),
+    changeStatus: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "deadline.changeStatus", input, () =>
+        s.changeStatus(ctx, input),
+      ),
+    remove: (ctx, cid, id, v) =>
+      enforceWithCase(store, ctx, "deadline.remove", cid, () =>
+        s.remove(ctx, cid, id, v),
+      ),
+  };
+}
+
+export function guardAppointmentService(
+  store: MockStore,
+  s: AppointmentService,
+): AppointmentService {
+  return {
+    getById: (ctx, cid, id) =>
+      enforceWithCase(store, ctx, "appointment.read", cid, () =>
+        s.getById(ctx, cid, id),
+      ),
+    list: (ctx, opts) => {
+      if (opts && typeof opts === "object" && "caseId" in opts && isCaseId((opts as { caseId?: unknown }).caseId)) {
+        const cid = (opts as { caseId: CaseId }).caseId;
+        return enforceWithCase(store, ctx, "appointment.list", cid, () => s.list(ctx, opts));
+      }
+      return enforce(store, ctx, "appointment.list", () => s.list(ctx, opts));
+    },
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "appointment.create", input, () =>
+        s.create(ctx, input),
+      ),
+    update: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "appointment.update", input, () =>
+        s.update(ctx, input),
+      ),
+    changeStatus: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "appointment.changeStatus", input, () =>
+        s.changeStatus(ctx, input),
+      ),
+    remove: (ctx, cid, id, v) =>
+      enforceWithCase(store, ctx, "appointment.remove", cid, () =>
+        s.remove(ctx, cid, id, v),
+      ),
+  };
+}

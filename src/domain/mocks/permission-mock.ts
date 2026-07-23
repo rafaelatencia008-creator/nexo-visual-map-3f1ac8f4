@@ -48,6 +48,20 @@ const WRITE_ROLES: readonly Role[] = Object.freeze([
   "colaborador",
 ]);
 
+// Agenda (LV-09.1A): revisor e leitura são somente-leitura;
+// colaborador pode escrever mas não remover.
+const AGENDA_WRITE_ROLES: readonly Role[] = Object.freeze([
+  "proprietario",
+  "administrador",
+  "profissional",
+  "colaborador",
+]);
+const AGENDA_REMOVE_ROLES: readonly Role[] = Object.freeze([
+  "proprietario",
+  "administrador",
+  "profissional",
+]);
+
 // ---- Matriz privada -------------------------------------------------------
 // `satisfies` garante em compilação:
 //   - todas as ações de PERMISSION_ACTIONS estão presentes;
@@ -124,6 +138,20 @@ const PERMISSION_MATRIX = Object.freeze({
     "administrador",
     "profissional",
   ] as readonly Role[]),
+
+  // Agenda — LV-09.1A
+  "deadline.read": ALL_ROLES,
+  "deadline.list": ALL_ROLES,
+  "deadline.create": AGENDA_WRITE_ROLES,
+  "deadline.update": AGENDA_WRITE_ROLES,
+  "deadline.changeStatus": AGENDA_WRITE_ROLES,
+  "deadline.remove": AGENDA_REMOVE_ROLES,
+  "appointment.read": ALL_ROLES,
+  "appointment.list": ALL_ROLES,
+  "appointment.create": AGENDA_WRITE_ROLES,
+  "appointment.update": AGENDA_WRITE_ROLES,
+  "appointment.changeStatus": AGENDA_WRITE_ROLES,
+  "appointment.remove": AGENDA_REMOVE_ROLES,
 }) satisfies PermissionMatrix;
 
 // ---- Consulta pura (não expõe a matriz) -----------------------------------

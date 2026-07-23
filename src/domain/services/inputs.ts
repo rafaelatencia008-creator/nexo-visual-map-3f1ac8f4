@@ -8,12 +8,14 @@
  */
 
 import type {
+  AppointmentId,
   AssignmentId,
   CaseId,
   CasePersonId,
   CasePlanItemId,
   CaseTimelineEntryId,
   CredentialId,
+  DeadlineId,
   MembershipId,
   PersonId,
   ProfessionalProfileId,
@@ -39,7 +41,7 @@ import type {
 } from "../core/professional";
 import type { MembershipStatus } from "../core/access";
 import type { OrganizationStatus } from "../core/organization";
-import type { IsoDate } from "../core/common";
+import type { IsoDate, IsoDateTime } from "../core/common";
 import type { Perfil, Role, WorkMode } from "../shared/work-context";
 import type {
   CasePlanItemKind,
@@ -47,6 +49,14 @@ import type {
   CasePlanItemStatus,
   CaseTimelineEntryKind,
 } from "../core/case-plan";
+import type {
+  AppointmentKind,
+  AppointmentMode,
+  AppointmentStatus,
+  DeadlineKind,
+  DeadlinePriority,
+  DeadlineStatus as AgendaDeadlineStatus,
+} from "../core/agenda";
 
 // ---- Organization ----------------------------------------------------------
 
@@ -282,4 +292,70 @@ export type CreateCaseSnapshotInput = Readonly<{
   caseId: CaseId;
   label: string;
   reason?: string;
+}>;
+
+// ---- Agenda: Deadline (LV-09.1A) -------------------------------------------
+
+export type CreateDeadlineInput = Readonly<{
+  caseId: CaseId;
+  kind: DeadlineKind;
+  title: string;
+  description?: string;
+  dueAt: IsoDateTime;
+  priority: DeadlinePriority;
+  assignmentId?: AssignmentId;
+}>;
+
+export type UpdateDeadlineInput = Readonly<{
+  caseId: CaseId;
+  deadlineId: DeadlineId;
+  kind?: DeadlineKind;
+  title?: string;
+  description?: string | null;
+  dueAt?: IsoDateTime;
+  priority?: DeadlinePriority;
+  assignmentId?: AssignmentId | null;
+  expectedVersion: number;
+}>;
+
+export type ChangeDeadlineStatusInput = Readonly<{
+  caseId: CaseId;
+  deadlineId: DeadlineId;
+  status: AgendaDeadlineStatus;
+  expectedVersion: number;
+}>;
+
+// ---- Agenda: Appointment (LV-09.1A) ----------------------------------------
+
+export type CreateAppointmentInput = Readonly<{
+  caseId: CaseId;
+  kind: AppointmentKind;
+  title: string;
+  description?: string;
+  startsAt: IsoDateTime;
+  endsAt: IsoDateTime;
+  mode: AppointmentMode;
+  location?: string;
+  assignmentId?: AssignmentId;
+}>;
+
+export type UpdateAppointmentInput = Readonly<{
+  caseId: CaseId;
+  appointmentId: AppointmentId;
+  kind?: AppointmentKind;
+  title?: string;
+  description?: string | null;
+  startsAt?: IsoDateTime;
+  endsAt?: IsoDateTime;
+  mode?: AppointmentMode;
+  location?: string | null;
+  assignmentId?: AssignmentId | null;
+  expectedVersion: number;
+}>;
+
+export type ChangeAppointmentStatusInput = Readonly<{
+  caseId: CaseId;
+  appointmentId: AppointmentId;
+  status: AppointmentStatus;
+  expectedVersion: number;
 }>;

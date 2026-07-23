@@ -20,3 +20,5 @@ export * from "./case-plan-service";
 export * from "./case-timeline-service";
 export * from "./audit-service";
 export * from "./case-snapshot-service";
+export * from "./deadline-service";
+export * from "./appointment-service";
