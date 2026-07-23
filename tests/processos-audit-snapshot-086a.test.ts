@@ -1873,7 +1873,7 @@ describe("LV-08.6A.2 — incremento exato +1 por ação", () => {
     unwrapOk(
       await env.services.casePlan.changeStatus(OWNER_ALFA, SEED_CASE_ALFA_2_ID, {
         planItemId: item.id,
-        status: "done",
+        status: "completed",
         expectedVersion: item.metadata.version,
       }),
     );
