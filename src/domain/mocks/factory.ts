@@ -74,6 +74,7 @@ import type { Case } from "../core/case";
 import type { CasePerson, Relationship, Assignment } from "../core/assignment";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import type { AuditAction, AuditTargetType } from "../core/case-audit";
+import type { CaseId } from "../core/ids";
 
 function loadSeed(store: MockStore): void {
   const seed = buildSeedSnapshot();
