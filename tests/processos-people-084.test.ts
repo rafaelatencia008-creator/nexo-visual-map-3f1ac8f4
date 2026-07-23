@@ -1066,12 +1066,16 @@ describe("LV-08.4.2.2 · auditorias robustas da fonte de ProcessPeopleRelations"
     /const\s+handleRetryCreatedLink\s*=/,
     /const\s+handleLinkExisting\s*=/,
   );
+  const editPersonRegion = extractBetween(
     src,
-    /const\s+handleRetryCreatedLink\s*=/,
-    1200,
+    /const\s+handleEditPerson\s*=/,
+    /const\s+handleEditLink\s*=/,
   );
-  const editPersonRegion = extractRegion(src, /const\s+handleEditPerson\s*=/, 1400);
-  const editLinkRegion = extractRegion(src, /const\s+handleEditLink\s*=/, 1400);
+  const editLinkRegion = extractBetween(
+    src,
+    /const\s+handleEditLink\s*=/,
+    /const\s+handleRelationshipSubmit\s*=/,
+  );
   const rawDlg = readFileSync(
     resolve("src/features/processos/ProcessPersonDialog.tsx"),
     "utf8",
