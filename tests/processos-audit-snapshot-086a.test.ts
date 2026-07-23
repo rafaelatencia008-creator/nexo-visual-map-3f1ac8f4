@@ -1300,12 +1300,13 @@ describe("LV-08.6A.1 — trim de summary/label/reason", () => {
 });
 
 describe("LV-08.6A.1 — validação estrita das opções", () => {
-  it("audit.listByCase rejeita __proto__ em options", async () => {
+  it("audit.listByCase rejeita __proto__ como chave enumerável", async () => {
     const env = createMockDomainEnvironment();
+    const opts = JSON.parse('{"__proto__": {}}');
     const r = await env.services.auditEvents.listByCase(
       OWNER_ALFA,
       SEED_CASE_ALFA_2_ID,
-      { __proto__: {} } as never,
+      opts as never,
     );
     expect(r.ok).toBe(false);
   });
