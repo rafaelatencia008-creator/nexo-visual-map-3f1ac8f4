@@ -558,8 +558,12 @@ export function validateMockDomainSeed(
       const a = assignByIdEarly.get(p.assignmentId);
       if (!a)
         issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_not_found" });
-      else if (a.caseId !== p.caseId)
-        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
+      else {
+        if (a.caseId !== p.caseId)
+          issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
+        if (a.organizationId !== p.organizationId)
+          issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_org_mismatch" });
+      }
     }
   }
   for (const t of seed.caseTimelineEntries) {
