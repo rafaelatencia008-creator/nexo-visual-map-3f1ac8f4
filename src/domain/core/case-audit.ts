@@ -1,5 +1,5 @@
 /**
- * Auditoria e Snapshot do processo — LV-08.6A.
+ * Auditoria e Snapshot do processo — LV-08.6A / LV-08.6A.1.
  *
  * Entidades imutáveis. Nenhum acesso a storage, rede ou React.
  * Nenhum dado sigiloso completo aparece em summary/label/reason.
@@ -162,7 +162,8 @@ export function isAuditEvent(v: unknown): v is AuditEvent {
   if (!isAuditTargetType(e.targetType)) return false;
   if (typeof e.targetId !== "string" || e.targetId.length === 0) return false;
   if (typeof e.summary !== "string") return false;
-  if (e.summary.length < 1 || e.summary.length > AUDIT_SUMMARY_MAX) return false;
+  const summaryTrim = e.summary.trim();
+  if (summaryTrim.length < 1 || summaryTrim.length > AUDIT_SUMMARY_MAX) return false;
   if (!isIsoDateTime(e.occurredAt)) return false;
   if (!isEntityMetadata(e.metadata)) return false;
   return true;
@@ -196,6 +197,75 @@ function isReadonlyArrayOf<T>(v: unknown, guard: (x: unknown) => x is T): v is r
   return true;
 }
 
+/**
+ * Validação profunda de coerência do payload: todas as entidades
+ * pertencem à mesma organização e ao mesmo processo do `case`,
+ * pessoas vinculadas são únicas e referenciadas, relacionamentos
+ * usam apenas pessoas vinculadas, e itens do plano referenciam
+ * assignments existentes no próprio payload.
+ */
+export function isCaseSnapshotPayloadCoherent(p: CaseSnapshotPayload): boolean {
+  const orgId = p.case.organizationId;
+  const caseId = p.case.id;
+
+  const uniq = <T extends { id: string }>(arr: readonly T[]): Set<string> | null => {
+    const s = new Set<string>();
+    for (const it of arr) {
+      if (s.has(it.id)) return null;
+      s.add(it.id);
+    }
+    return s;
+  };
+  if (uniq(p.casePersons) === null) return false;
+  if (uniq(p.relationships) === null) return false;
+  const assignIds = uniq(p.assignments);
+  if (assignIds === null) return false;
+  if (uniq(p.casePlanItems) === null) return false;
+  if (uniq(p.caseTimelineEntries) === null) return false;
+
+  const linkedPersonIds = new Set<string>();
+  for (const cp of p.casePersons) {
+    if (cp.organizationId !== orgId) return false;
+    if (cp.caseId !== caseId) return false;
+    linkedPersonIds.add(cp.personId);
+  }
+
+  const personIds = new Set<string>();
+  for (const per of p.persons) {
+    if (per.organizationId !== orgId) return false;
+    if (!linkedPersonIds.has(per.id)) return false;
+    if (personIds.has(per.id)) return false;
+    personIds.add(per.id);
+  }
+  // Cada personId vinculado deve possuir exatamente uma Person correspondente.
+  for (const pid of linkedPersonIds) {
+    if (!personIds.has(pid)) return false;
+  }
+
+  for (const r of p.relationships) {
+    if (r.organizationId !== orgId) return false;
+    if (r.caseId !== caseId) return false;
+    if (!linkedPersonIds.has(r.fromPersonId)) return false;
+    if (!linkedPersonIds.has(r.toPersonId)) return false;
+  }
+  for (const a of p.assignments) {
+    if (a.organizationId !== orgId) return false;
+    if (a.caseId !== caseId) return false;
+  }
+  for (const item of p.casePlanItems) {
+    if (item.organizationId !== orgId) return false;
+    if (item.caseId !== caseId) return false;
+    if (item.assignmentId !== undefined) {
+      if (!assignIds.has(item.assignmentId)) return false;
+    }
+  }
+  for (const t of p.caseTimelineEntries) {
+    if (t.organizationId !== orgId) return false;
+    if (t.caseId !== caseId) return false;
+  }
+  return true;
+}
+
 export function isCaseSnapshotPayload(v: unknown): v is CaseSnapshotPayload {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   if (containsForbiddenKey(v)) return false;
@@ -208,7 +278,7 @@ export function isCaseSnapshotPayload(v: unknown): v is CaseSnapshotPayload {
   if (!isReadonlyArrayOf(p.assignments, isAssignment)) return false;
   if (!isReadonlyArrayOf(p.casePlanItems, isCasePlanItem)) return false;
   if (!isReadonlyArrayOf(p.caseTimelineEntries, isCaseTimelineEntry)) return false;
-  return true;
+  return isCaseSnapshotPayloadCoherent(p as unknown as CaseSnapshotPayload);
 }
 
 // ---- Entidade CaseSnapshot -------------------------------------------------
@@ -255,14 +325,15 @@ export function isCaseSnapshot(v: unknown): v is CaseSnapshot {
   if (!isIsoDateTime(s.createdAt)) return false;
   if (typeof s.label !== "string") return false;
   const labelTrim = s.label.trim();
-  if (labelTrim.length < 1 || s.label.length > CASE_SNAPSHOT_LABEL_MAX) return false;
+  if (labelTrim.length < 1 || labelTrim.length > CASE_SNAPSHOT_LABEL_MAX) return false;
   if (s.reason !== undefined) {
     if (typeof s.reason !== "string") return false;
-    if (s.reason.length < 1 || s.reason.length > CASE_SNAPSHOT_REASON_MAX) return false;
+    const reasonTrim = s.reason.trim();
+    if (reasonTrim.length < 1 || reasonTrim.length > CASE_SNAPSHOT_REASON_MAX) return false;
   }
   if (!isCaseSnapshotPayload(s.payload)) return false;
   if (!isEntityMetadata(s.metadata)) return false;
-  // Payload coerente com organização/processo do snapshot.
+  // Snapshot coerente com o payload.
   if (s.payload.case.organizationId !== s.organizationId) return false;
   if (s.payload.case.id !== s.caseId) return false;
   return true;

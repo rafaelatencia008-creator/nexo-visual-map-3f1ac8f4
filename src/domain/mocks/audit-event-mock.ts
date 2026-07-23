@@ -1,15 +1,13 @@
 /**
- * Mock interno do registrador de auditoria — LV-08.6A.
+ * Registrador interno de auditoria — LV-08.6A / LV-08.6A.1.
  *
- * Este módulo NÃO exporta `appendAuditEvent` pelo barrel público
- * (`src/domain/mocks/index.ts`). É consumido apenas pelo `factory.ts`
- * para embutir auditoria automática nas escritas bem-sucedidas.
+ * O appender agora expõe `prepare`, `commit` e `append` (que é o par
+ * atômico). IDs internos são estritamente branded.
  */
 
 import type { MockStore } from "./store";
 import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
-import type { ServiceContext } from "../services/context";
 import type { AuditEventService } from "../services/audit-service";
 import type {
   AuditEvent,
@@ -18,13 +16,19 @@ import type {
 } from "../core/case-audit";
 import { AUDIT_SUMMARY, isAuditEvent } from "../core/case-audit";
 import { isAuditAction, isAuditTargetType } from "../core/case-audit";
-import type { CaseId, OrganizationId } from "../core/ids";
+import type {
+  CaseId,
+  MembershipId,
+  OrganizationId,
+  UserId,
+} from "../core/ids";
 import { isCaseId } from "../core/ids";
 import { deepClone } from "./clone";
 import { requireContext } from "./context-validation";
 import { paginateItems } from "./pagination-mock";
 import { validatePageRequest, type PageRequest } from "../services/pagination";
 import { isIsoDateTime } from "../core/common";
+import { containsForbiddenKey, hasOnlyAllowedKeys } from "../core/common";
 import type { ServiceResult } from "../services/result";
 import type { PageResult } from "../services/pagination";
 
@@ -33,14 +37,19 @@ import type { PageResult } from "../services/pagination";
 export type AppendAuditEventArgs = Readonly<{
   organizationId: OrganizationId;
   caseId: CaseId;
-  actorUserId: string;
-  actorMembershipId: string;
+  actorUserId: UserId;
+  actorMembershipId: MembershipId;
   action: AuditAction;
   targetType: AuditTargetType;
   targetId: string;
 }>;
 
 export interface InternalAuditAppender {
+  /** Constrói o evento validado sem tocar no store. */
+  prepare(args: AppendAuditEventArgs): AuditEvent;
+  /** Persiste um evento previamente preparado. */
+  commit(event: AuditEvent): void;
+  /** Atalho: prepare + commit em um único passo. */
   append(args: AppendAuditEventArgs): AuditEvent;
 }
 
@@ -49,39 +58,50 @@ export function createAuditAppender(
   clock: MockClock,
   ids: MockIdGenerator,
 ): InternalAuditAppender {
+  const prepare = (args: AppendAuditEventArgs): AuditEvent => {
+    if (!isAuditAction(args.action)) {
+      throw new Error(`audit: invalid action ${String(args.action)}`);
+    }
+    if (!isAuditTargetType(args.targetType)) {
+      throw new Error(`audit: invalid targetType ${String(args.targetType)}`);
+    }
+    const id = ids.next("auditEvent");
+    const occurredAt = clock.next();
+    const summary = AUDIT_SUMMARY[args.action];
+    const evt: AuditEvent = {
+      id,
+      organizationId: args.organizationId,
+      caseId: args.caseId,
+      actorUserId: args.actorUserId,
+      actorMembershipId: args.actorMembershipId,
+      action: args.action,
+      targetType: args.targetType,
+      targetId: args.targetId,
+      summary,
+      occurredAt,
+      metadata: {
+        createdAt: occurredAt,
+        updatedAt: occurredAt,
+        version: 1,
+      },
+    };
+    if (!isAuditEvent(evt)) {
+      throw new Error("audit: constructed event failed shape guard");
+    }
+    return evt;
+  };
+  const commit = (event: AuditEvent): void => {
+    if (!isAuditEvent(event)) {
+      throw new Error("audit: commit of invalid event");
+    }
+    store.auditEvents.set(event.id, event);
+  };
   return {
+    prepare,
+    commit,
     append(args) {
-      if (!isAuditAction(args.action)) {
-        throw new Error(`audit: invalid action ${String(args.action)}`);
-      }
-      if (!isAuditTargetType(args.targetType)) {
-        throw new Error(`audit: invalid targetType ${String(args.targetType)}`);
-      }
-      const id = ids.next("auditEvent");
-      const occurredAt = clock.next();
-      const summary = AUDIT_SUMMARY[args.action];
-      const evt: AuditEvent = {
-        id,
-        organizationId: args.organizationId,
-        caseId: args.caseId,
-        actorUserId: args.actorUserId as AuditEvent["actorUserId"],
-        actorMembershipId:
-          args.actorMembershipId as AuditEvent["actorMembershipId"],
-        action: args.action,
-        targetType: args.targetType,
-        targetId: args.targetId,
-        summary,
-        occurredAt,
-        metadata: {
-          createdAt: occurredAt,
-          updatedAt: occurredAt,
-          version: 1,
-        },
-      };
-      if (!isAuditEvent(evt)) {
-        throw new Error("audit: constructed event failed shape guard");
-      }
-      store.auditEvents.set(id, evt);
+      const evt = prepare(args);
+      commit(evt);
       return deepClone(evt);
     },
   };
@@ -90,8 +110,7 @@ export function createAuditAppender(
 // ---- Semeador --------------------------------------------------------------
 
 /**
- * Insere um evento pré-fabricado (seed determinístico). Não usa clock/ids
- * dinâmicos — recebe todos os campos prontos e apenas armazena.
+ * Insere um evento pré-fabricado (seed determinístico).
  */
 export function seedAuditEvent(store: MockStore, evt: AuditEvent): void {
   if (!isAuditEvent(evt)) {
@@ -144,10 +163,10 @@ export function createAuditEventServiceMock(
       if (options !== undefined) {
         if (!isPlainObject(options))
           return invalid<PageResult<AuditEvent>>("invalid_options");
-        for (const k of Object.keys(options)) {
-          if (!OPT_ALLOWED.has(k))
-            return invalid<PageResult<AuditEvent>>("unknown_option");
-        }
+        if (containsForbiddenKey(options))
+          return invalid<PageResult<AuditEvent>>("forbidden_key");
+        if (!hasOnlyAllowedKeys(options, OPT_ALLOWED))
+          return invalid<PageResult<AuditEvent>>("unknown_option");
         if (options.page !== undefined) {
           const p = validatePageRequest(options.page);
           if (!p.ok) return { ok: false, error: p.error };
