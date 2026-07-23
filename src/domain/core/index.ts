@@ -10,6 +10,7 @@ export * from "./professional";
 export * from "./case";
 export * from "./person";
 export * from "./assignment";
+export * from "./case-plan";
 export * from "./validators";
 export * from "./labels";
 export * as fixtures from "./fixtures";
