@@ -1540,7 +1540,7 @@ describe("LV-09.1A.2 · não-admin exige ProfessionalProfile ATIVO", () => {
         assignStatus: "active",
       });
       // Depois de criar assignment, marcar profile como inativo.
-      const snap = env.snapshot().professionalProfiles.find((p) => p.userId === ctx.userId)!;
+      const snap = env.snapshot().professionalProfiles.find((p) => p.userId === ctx.userId && p.organizationId === SEED_ORG_ALFA_ID)!;
       ok(await env.services.professionalProfiles.update(OWNER_ALFA, snap.id, {
         status: "inactive",
         expectedVersion: snap.metadata.version,
