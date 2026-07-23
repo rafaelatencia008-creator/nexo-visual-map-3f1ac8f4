@@ -11,6 +11,7 @@ import type { ProfessionalProfile, Credential } from "../core/professional";
 import type { Case } from "../core/case";
 import type { Person } from "../core/person";
 import type { CasePerson, Relationship, Assignment } from "../core/assignment";
+import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 
 export type MockStore = {
   organizations: Map<string, Organization>;
@@ -23,6 +24,8 @@ export type MockStore = {
   casePersons: Map<string, CasePerson>;
   relationships: Map<string, Relationship>;
   assignments: Map<string, Assignment>;
+  casePlanItems: Map<string, CasePlanItem>;
+  caseTimelineEntries: Map<string, CaseTimelineEntry>;
 };
 
 export function createEmptyStore(): MockStore {
@@ -37,5 +40,7 @@ export function createEmptyStore(): MockStore {
     casePersons: new Map(),
     relationships: new Map(),
     assignments: new Map(),
+    casePlanItems: new Map(),
+    caseTimelineEntries: new Map(),
   };
 }
