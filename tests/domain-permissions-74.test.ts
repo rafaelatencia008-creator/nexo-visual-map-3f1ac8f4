@@ -99,6 +99,12 @@ const WRITE_ROLES: readonly Role[] = [
   "revisor",
   "colaborador",
 ];
+// LV-08.6A — caseSnapshot.create restrita a proprietário/administrador/profissional.
+const SNAPSHOT_CREATE_ROLES: readonly Role[] = [
+  "proprietario",
+  "administrador",
+  "profissional",
+];
 
 function isReadOrListAction(action: PermissionAction): boolean {
   return action.endsWith(".read") || action.endsWith(".list");
@@ -106,6 +112,7 @@ function isReadOrListAction(action: PermissionAction): boolean {
 
 function expectedRolesFor(action: PermissionAction): readonly Role[] {
   if (isReadOrListAction(action)) return ALL_ROLES;
+  if (action === "caseSnapshot.create") return SNAPSHOT_CREATE_ROLES;
   if (ADMIN_ACTIONS.includes(action)) return ADMIN_ROLES;
   return WRITE_ROLES;
 }
