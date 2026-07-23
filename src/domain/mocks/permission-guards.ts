@@ -317,13 +317,10 @@ export function guardCaseTimelineService(
       enforceWithCase(store, ctx, "caseTimelineEntry.list", cid, () =>
         s.listByCase(ctx, cid, page),
       ),
-    create: (ctx, input) => {
-      const cid = extractCaseId(input);
-      if (cid === null) return s.create(ctx, input);
-      return enforceWithCase(store, ctx, "caseTimelineEntry.create", cid, () =>
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "caseTimelineEntry.create", input, () =>
         s.create(ctx, input),
-      );
-    },
+      ),
     update: (ctx, cid, input) =>
       enforceWithCase(store, ctx, "caseTimelineEntry.update", cid, () =>
         s.update(ctx, cid, input),
