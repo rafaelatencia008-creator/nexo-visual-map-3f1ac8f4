@@ -26,6 +26,7 @@ import {
   SEED_REL_ALFA_1_ID,
   SEED_USER_1_ID,
   SEED_USER_2_ID,
+  SEED_USER_3_ID,
 } from "../src/domain/mocks/seed";
 import { AGE_CLASSIFICATIONS } from "../src/domain/core/person";
 import {
@@ -47,11 +48,15 @@ import {
   buildPersonUpdateInput,
   buildRelationshipUpdateInput,
   buildRelationshipViews,
+  collectDistinctLinkedPersonIds,
   emptyPeoplePermissions,
+  filterPersonsByDisplayLabel,
   isMinorAge,
   mapPeopleError,
   normalizePersonLabel,
 } from "../src/features/processos/process-people-model";
+import type { CasePerson } from "../src/domain/core/assignment";
+import type { Person } from "../src/domain/core/person";
 
 const ALFA_CTX: ServiceContext = {
   organizationId: SEED_ORG_ALFA_ID,
