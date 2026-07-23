@@ -682,13 +682,15 @@ export function validateMockDomainSeed(
   dup("caseSnapshot", seed.caseSnapshots);
 
   for (const e of seed.auditEvents) {
+    const eid = e.id;
     if (!isAuditEvent(e)) {
-      issues.push({ entity: "auditEvent", id: e.id, reason: "invalid_shape" });
+      issues.push({ entity: "auditEvent", id: eid, reason: "invalid_shape" });
     }
   }
   for (const s of seed.caseSnapshots) {
+    const sid = s.id;
     if (!isCaseSnapshot(s)) {
-      issues.push({ entity: "caseSnapshot", id: s.id, reason: "invalid_shape" });
+      issues.push({ entity: "caseSnapshot", id: sid, reason: "invalid_shape" });
     }
   }
 
