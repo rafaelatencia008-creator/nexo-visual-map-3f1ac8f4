@@ -18,8 +18,8 @@ import {
 import {
   AUDIT_SNAPSHOT_PAGE_LIMIT,
   EMPTY_AUDIT_FILTER,
-  buildAuditFilter,
   mapAuditSnapshotError,
+  type AuditFilterBuildError,
   type AuditFilterFormValues,
   type AuditSnapshotPublicError,
   type ProcessAuditSnapshotState,
@@ -200,24 +200,8 @@ export function ProcessAuditSnapshots({
     void loadAll(null, { filtered: false, isRefresh: false });
   }, [loadAll]);
 
-  const applyFilter = React.useCallback(
-    (opts: AuditEventListOptions | null) => {
-      if (opts === null) {
-        // Filter builder falhou: mostra erro local sem tocar no estado.
-        const built = buildAuditFilter(filter);
-        if (!built.ok) {
-          setFilterError(
-            built.reason === "range_inverted"
-              ? "A data inicial não pode ser maior que a data final."
-              : "Informe uma data válida no formato DD/MM/AAAA.",
-          );
-          return;
-        }
-        // built.ok true e opts null: significa "limpar" (nenhum filtro).
-        setFilterError(null);
-        void loadAll(null, { filtered: false, isRefresh: true });
-        return;
-      }
+  const handleApplyFilter = React.useCallback(
+    (opts: AuditEventListOptions) => {
       setFilterError(null);
       const isFiltered =
         opts.actions !== undefined ||
@@ -225,8 +209,25 @@ export function ProcessAuditSnapshots({
         opts.occurredTo !== undefined;
       void loadAll(opts, { filtered: isFiltered, isRefresh: true });
     },
-    [filter, loadAll],
+    [loadAll],
   );
+
+  const handleFilterValidationError = React.useCallback(
+    (reason: AuditFilterBuildError) => {
+      setFilterError(
+        reason === "range_inverted"
+          ? "A data inicial não pode ser maior que a data final."
+          : "Informe uma data válida.",
+      );
+    },
+    [],
+  );
+
+  const handleClearFilter = React.useCallback(() => {
+    setFilter(EMPTY_AUDIT_FILTER);
+    setFilterError(null);
+    void loadAll(null, { filtered: false, isRefresh: true });
+  }, [loadAll]);
 
   const refreshAfterCreate = React.useCallback(() => {
     void loadAll(null, { filtered: false, isRefresh: true });
@@ -370,11 +371,14 @@ export function ProcessAuditSnapshots({
           currentUserId={context.userId}
           filter={filter}
           onFilterChange={setFilter}
-          onApplyFilter={applyFilter}
+          onApplyFilter={handleApplyFilter}
+          onFilterValidationError={handleFilterValidationError}
+          onClearFilter={handleClearFilter}
           filterError={filterError}
           loading={state.refreshing}
           filtered={state.filtered}
         />
+
       ) : null}
       {state.permissions.canReadSnapshots ? (
         <ProcessSnapshotsCard

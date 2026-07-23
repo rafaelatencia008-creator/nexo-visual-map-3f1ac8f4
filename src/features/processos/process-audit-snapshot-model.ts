@@ -227,11 +227,16 @@ export const EMPTY_AUDIT_FILTER: AuditFilterFormValues = Object.freeze({
   dateTo: "",
 });
 
+export type AuditFilterBuildError =
+  | "invalid_from"
+  | "invalid_to"
+  | "range_inverted";
+
 export type AuditFilterBuildResult =
   | Readonly<{ ok: true; options: AuditEventListOptions }>
   | Readonly<{
       ok: false;
-      reason: "invalid_from" | "invalid_to" | "range_inverted";
+      reason: AuditFilterBuildError;
     }>;
 
 export function buildAuditFilter(
