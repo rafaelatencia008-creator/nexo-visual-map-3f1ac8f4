@@ -1159,10 +1159,10 @@ describe("LV-09.1A.1 · acesso contextual", () => {
     expect(d1.allowed).toBe(true);
     expect(d2.allowed).toBe(true);
   });
-  it("(136) checkAgendaCaseAccess sobre store vazio: kind=denied ou case_not_in_org", () => {
+  it("(136) checkAgendaCaseAccess sobre store vazio: kind=case_not_in_org", () => {
     const s = createEmptyStore();
     const r = checkAgendaCaseAccess(s, OWNER_ALFA, SEED_CASE_BETA_1_ID);
-    expect(["denied","case_not_in_org"]).toContain(r.kind);
+    expect(r.kind).toBe("case_not_in_org");
   });
   it("(137) hasAgendaCaseAccess sobre store vazio: sempre false", () => {
     const s = createEmptyStore();
