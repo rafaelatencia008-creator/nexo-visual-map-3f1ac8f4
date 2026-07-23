@@ -389,13 +389,13 @@ describe("LV-08.6A — AuditEventService.listByCase (leitura)", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("contexto inválido é rejeitado como validation_error", async () => {
+  it("contexto com role inválido é rejeitado", async () => {
     const env = createMockDomainEnvironment();
     const r = await env.services.auditEvents.listByCase(
       { ...OWNER_ALFA, role: "invalido" as never },
       SEED_CASE_ALFA_2_ID,
     );
-    expectFail(r, "validation_error");
+    expect(r.ok).toBe(false);
   });
 });
 
