@@ -820,9 +820,6 @@ describe("LV-08.6A — auditoria automática de escritas de Case", () => {
       expect(r.ok).toBe(false);
     }
   });
-    const n = await countActions(env, OWNER_ALFA, c.id, "case.updated");
-    expect(n).toBeGreaterThanOrEqual(1);
-  });
 
   it("update falho NÃO gera evento", async () => {
     const env = createMockDomainEnvironment();
