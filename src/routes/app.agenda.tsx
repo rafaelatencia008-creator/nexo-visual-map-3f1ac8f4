@@ -120,7 +120,7 @@ const MAX_PAGES = 20; // Teto de segurança: 2000 itens por tipo.
 
 async function loadAll<T>(
   fetchPage: (cursor: string | undefined) => Promise<
-    { ok: true; value: PageResult<T> } | { ok: false; error: { message: string } }
+    { ok: true; data: PageResult<T> } | { ok: false; error: { message: string } }
   >,
 ): Promise<readonly T[]> {
   const items: T[] = [];
@@ -130,9 +130,9 @@ async function loadAll<T>(
     if (!result.ok) {
       throw new Error(result.error.message);
     }
-    items.push(...result.value.items);
-    if (!result.value.nextCursor) return items;
-    cursor = result.value.nextCursor;
+    items.push(...result.data.items);
+    if (!result.data.nextCursor) return items;
+    cursor = result.data.nextCursor;
   }
   return items;
 }
