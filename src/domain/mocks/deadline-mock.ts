@@ -57,6 +57,7 @@ import type { MockClock } from "./clock";
 import type { MockIdGenerator } from "./id-generator";
 import { requireContext } from "./context-validation";
 import { paginateItems, stableStringify } from "./pagination-mock";
+import { computeAgendaAccessibleCaseIds, hasAgendaCaseAccess } from "./agenda-case-access";
 
 function invalid<T>(msg: string): ServiceResult<T> {
   return { ok: false, error: { code: "validation_error", message: msg } };
@@ -256,10 +257,14 @@ export function createDeadlineServiceMock(
         const s = opts.search.trim();
         if (s.length > 0) searchNorm = normalizeSearch(s);
       }
-      // Segregação org e caso.
-      const accessibleCaseIds = new Set<string>();
-      for (const c of store.cases.values()) {
-        if (c.organizationId === orgId) accessibleCaseIds.add(c.id);
+      // Segregação org e caso via acesso contextual da Agenda.
+      const accessibleCaseIds = computeAgendaAccessibleCaseIds(store, v.data.context);
+      if (opts.caseId !== undefined && !accessibleCaseIds.has(opts.caseId)) {
+        // Caso existe na org mas o contexto não tem acesso.
+        return {
+          ok: false,
+          error: { code: "forbidden", message: "case_access_denied" },
+        };
       }
       let items = Array.from(store.deadlines.values()).filter((d) => {
         if (d.organizationId !== orgId) return false;
