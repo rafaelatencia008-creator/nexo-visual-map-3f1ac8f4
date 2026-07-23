@@ -105,7 +105,10 @@ export function ProcessTimelineDialog(props: ProcessTimelineDialogProps) {
               <Label htmlFor="tl-kind">Tipo</Label>
               <Select
                 value={values.kind}
-                onValueChange={(v) => setValues((s) => ({ ...s, kind: v as CaseTimelineEntryKind }))}
+                onValueChange={(v) => {
+                  if (!isCaseTimelineEntryKind(v)) return;
+                  setValues((s) => ({ ...s, kind: v }));
+                }}
                 disabled={submitting}
               >
                 <SelectTrigger id="tl-kind" aria-label="Tipo do registro">
