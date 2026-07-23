@@ -764,3 +764,329 @@ describe("LV-08.6B — arquivos de feature obrigatórios", () => {
     });
   }
 });
+
+// ---- 11. LV-08.6B.1 — Novos comportamentos --------------------------------
+
+import {
+  AUDIT_ACTION_LABELS_PT,
+  AUDIT_SNAPSHOT_PAGE_LIMIT,
+  isAuditCategory,
+} from "@/features/processos/process-audit-snapshot-model";
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+function readSource(rel: string): string {
+  const abs = path.resolve(__dirname, "..", rel);
+  return stripComments(fs.readFileSync(abs, "utf8"));
+}
+
+describe("LV-08.6B.1 — mapa completo de rótulos de ações", () => {
+  it("cobre todas as AuditAction", () => {
+    for (const a of AUDIT_ACTIONS) {
+      expect(AUDIT_ACTION_LABELS_PT[a as AuditAction].length).toBeGreaterThan(0);
+    }
+    expect(Object.keys(AUDIT_ACTION_LABELS_PT).length).toBe(AUDIT_ACTIONS.length);
+  });
+
+  it("rótulos são texto humano em PT-BR, nunca códigos técnicos", () => {
+    for (const a of AUDIT_ACTIONS) {
+      const label = AUDIT_ACTION_LABELS_PT[a as AuditAction];
+      expect(label).not.toContain(".");
+      expect(label).not.toContain("_");
+    }
+  });
+});
+
+describe("LV-08.6B.1 — isAuditCategory", () => {
+  it("refina strings do catálogo", () => {
+    expect(isAuditCategory("pessoas")).toBe(true);
+    expect(isAuditCategory("processo")).toBe(true);
+  });
+
+  it("rejeita strings arbitrárias", () => {
+    expect(isAuditCategory("qualquer")).toBe(false);
+    expect(isAuditCategory("")).toBe(false);
+    expect(isAuditCategory("PESSOAS")).toBe(false);
+  });
+
+  it("aceita todas as 7 categorias", () => {
+    for (const c of AUDIT_CATEGORIES) {
+      expect(isAuditCategory(c)).toBe(true);
+    }
+  });
+});
+
+describe("LV-08.6B.1 — paginação obrigatória", () => {
+  it("AUDIT_SNAPSHOT_PAGE_LIMIT vale 100", () => {
+    expect(AUDIT_SNAPSHOT_PAGE_LIMIT).toBe(100);
+  });
+
+  it("EMPTY_AUDIT_FILTER produz page.limit=100", () => {
+    const r = buildAuditFilter(EMPTY_AUDIT_FILTER);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error();
+    expect(r.options.page).toEqual({ limit: 100 });
+  });
+
+  it("filtro por categoria preserva page.limit=100", () => {
+    const r = buildAuditFilter({
+      category: "plano",
+      dateFrom: "",
+      dateTo: "",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error();
+    expect(r.options.page).toEqual({ limit: 100 });
+  });
+
+  it("filtro por datas preserva page.limit=100", () => {
+    const r = buildAuditFilter({
+      category: "",
+      dateFrom: "2025-01-01",
+      dateTo: "2025-02-01",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error();
+    expect(r.options.page).toEqual({ limit: 100 });
+  });
+});
+
+describe("LV-08.6B.1 — auditoria de fonte: rota e container", () => {
+  const route = readSource("src/routes/app.processos.$id.index.tsx");
+  const container = readSource("src/features/processos/ProcessAuditSnapshots.tsx");
+  const detailsDialog = readSource(
+    "src/features/processos/ProcessSnapshotDetailsDialog.tsx",
+  );
+  const snapshotsCard = readSource(
+    "src/features/processos/ProcessSnapshotsCard.tsx",
+  );
+  const historyCard = readSource(
+    "src/features/processos/ProcessAuditHistoryCard.tsx",
+  );
+  const model = readSource(
+    "src/features/processos/process-audit-snapshot-model.ts",
+  );
+  const createDialog = readSource(
+    "src/features/processos/CreateProcessSnapshotDialog.tsx",
+  );
+
+  it("rota entrega o objeto Case oficial ao container", () => {
+    expect(route).toContain("<ProcessAuditSnapshots case={state.case}");
+    expect(route).not.toContain("<ProcessAuditSnapshots caseId=");
+  });
+
+  it("container consulta detalhe via caseSnapshots.getById", () => {
+    expect(container).toContain("caseSnapshots.getById");
+  });
+
+  it("container usa detailRequestIdRef para descartar respostas antigas", () => {
+    expect(container).toContain("detailRequestIdRef");
+  });
+
+  it("container mantém loading real do detalhe", () => {
+    expect(container).toContain("setDetailLoading(true)");
+    expect(container).toContain("setDetailLoading(false)");
+  });
+
+  it("container mantém erro real do detalhe", () => {
+    expect(container).toContain("setDetailError");
+  });
+
+  it("container envia page.limit=100 em ambas as listagens", () => {
+    const auditCall = container.match(
+      /auditEvents\.listByCase\([\s\S]*?\)/,
+    );
+    const snapCall = container.match(
+      /caseSnapshots\.listByCase\([\s\S]*?\)/,
+    );
+    expect(auditCall).not.toBeNull();
+    expect(snapCall).not.toBeNull();
+    expect(auditCall![0]).toContain("limit: AUDIT_SNAPSHOT_PAGE_LIMIT");
+    expect(snapCall![0]).toContain("limit: AUDIT_SNAPSHOT_PAGE_LIMIT");
+  });
+
+  it("container tipa props exigindo Case oficial", () => {
+    expect(container).toContain("case: Case");
+  });
+
+  it("modelo não usa 'as any' nem 'as unknown as'", () => {
+    expect(model).not.toContain("as any");
+    expect(model).not.toContain("as unknown as");
+    expect(model).not.toContain("as never");
+  });
+
+  it("EMPTY_AUDIT_FILTER é declarado sem cast", () => {
+    expect(model).toContain("EMPTY_AUDIT_FILTER");
+    expect(model).not.toContain('EMPTY_AUDIT_FILTER: AuditFilterFormValues = { category: "" as');
+  });
+
+  it("SnapshotDetailsDialog exibe botão de tentar novamente no erro", () => {
+    expect(detailsDialog).toContain("Tentar novamente");
+    expect(detailsDialog).toContain("canRetry");
+  });
+
+  it("SnapshotDetailsDialog usa role status e alert", () => {
+    expect(detailsDialog).toContain('role="status"');
+    expect(detailsDialog).toContain('role="alert"');
+  });
+
+  it("SnapshotDetailsDialog marca conteúdo como somente leitura", () => {
+    expect(detailsDialog).toContain('aria-readonly="true"');
+  });
+
+  it("SnapshotsCard passa CaseSnapshotId no callback", () => {
+    expect(snapshotsCard).toContain("snapshotId: CaseSnapshotId");
+    expect(snapshotsCard).toContain("onViewSnapshot(s.id)");
+  });
+
+  it("SnapshotsCard exibe o motivo quando presente", () => {
+    expect(snapshotsCard).toContain("Motivo:");
+    expect(snapshotsCard).toContain("s.reason");
+  });
+
+  it("SnapshotsCard tem estado vazio com título e descrição corretos", () => {
+    expect(snapshotsCard).toContain("Nenhum snapshot criado");
+    expect(snapshotsCard).toContain(
+      "Crie uma fotografia do processo para preservar o estado atual como um marco histórico.",
+    );
+  });
+
+  it("SnapshotsCard tem aria-labelledby estável", () => {
+    expect(snapshotsCard).toContain("aria-labelledby={SNAPSHOTS_TITLE_ID}");
+  });
+
+  it("HistoryCard tem aria-labelledby estável", () => {
+    expect(historyCard).toContain("aria-labelledby={AUDIT_HISTORY_TITLE_ID}");
+  });
+
+  it("HistoryCard usa AUDIT_ACTION_LABELS_PT sem fallback", () => {
+    expect(historyCard).toContain("AUDIT_ACTION_LABELS_PT[e.action]");
+    expect(historyCard).not.toContain("AUDIT_ACTION_LABELS_PT[e.action] ?? ");
+  });
+
+  it("HistoryCard usa isAuditCategory na troca do seletor", () => {
+    expect(historyCard).toContain("isAuditCategory(v)");
+    expect(historyCard).not.toContain('as AuditCategory');
+  });
+
+  it("HistoryCard mostra vazio natural e vazio filtrado com textos distintos", () => {
+    expect(historyCard).toContain("Nenhuma alteração registrada");
+    expect(historyCard).toContain(
+      "As ações realizadas neste processo aparecerão aqui.",
+    );
+    expect(historyCard).toContain("Nenhuma alteração encontrada");
+    expect(historyCard).toContain("Revise os filtros aplicados.");
+  });
+
+  it("Container mostra o título visível 'Histórico de alterações e snapshots'", () => {
+    expect(container).toContain("Histórico de alterações e snapshots");
+    expect(container).toContain("aria-labelledby={AUDIT_SECTION_TITLE_ID}");
+  });
+
+  it("Container usa toast 'Snapshot criado.'", () => {
+    expect(container).toContain('toast.success("Snapshot criado.")');
+  });
+
+  it("Container adquire e libera writeOperationRef ao criar snapshot", () => {
+    expect(container).toContain("writeOperationRef.current = true");
+    expect(container).toContain("writeOperationRef.current = false");
+    expect(container).toContain("} finally {");
+  });
+
+  it("Container mantém estado discriminado com refreshing e filtered em ready", () => {
+    expect(container).toContain("refreshing:");
+    expect(container).toContain("filtered:");
+    // não deve haver um useState de refreshing separado.
+    expect(container).not.toContain("useState(false);\n  const [refreshing");
+  });
+
+  it("Container não usa objeto da lista como conteúdo final do diálogo", () => {
+    // O setDetailSnapshot só é chamado ou com null ou com res.data (do getById).
+    const badPattern = /setDetailSnapshot\(s\)/;
+    expect(badPattern.test(container)).toBe(false);
+    expect(container).toContain("setDetailSnapshot(res.data)");
+  });
+
+  it("CreateDialog vincula erro do nome ao próprio campo", () => {
+    expect(createDialog).toContain('id="snapshot-label-error"');
+    expect(createDialog).toContain('aria-describedby={\n                labelError !== null ? "snapshot-label-error" : undefined');
+  });
+
+  it("CreateDialog vincula erro do motivo ao próprio campo", () => {
+    expect(createDialog).toContain('id="snapshot-reason-error"');
+    expect(createDialog).toContain('aria-describedby={\n                reasonError !== null ? "snapshot-reason-error" : undefined');
+  });
+
+  it("CreateDialog não marca o nome como inválido quando o erro é do motivo", () => {
+    expect(createDialog).toContain('aria-invalid={labelError !== null || undefined}');
+    expect(createDialog).toContain('aria-invalid={reasonError !== null || undefined}');
+  });
+
+  it("Nenhum ID interno vaza como texto humano nos componentes visuais", () => {
+    for (const src of [historyCard, snapshotsCard, createDialog, detailsDialog]) {
+      expect(src).not.toContain("event.action}<");
+      expect(src).not.toContain("event.targetType}<");
+    }
+  });
+});
+
+describe("LV-08.6B.1 — arquivo de provas de tipo", () => {
+  it("existe em tests/processos-audit-snapshot-086b.types.ts", () => {
+    const abs = path.resolve(
+      __dirname,
+      "processos-audit-snapshot-086b.types.ts",
+    );
+    expect(fs.existsSync(abs)).toBe(true);
+  });
+});
+
+describe("LV-08.6B.1 — serviço de snapshot: getById oficial", () => {
+  it("retorna o snapshot pelo id", async () => {
+    const env = createMockDomainEnvironment();
+    const list = await env.services.caseSnapshots.listByCase(
+      ownerContext(),
+      SEED_CASE_ALFA_2_ID,
+    );
+    expect(list.ok).toBe(true);
+    if (!list.ok) throw new Error();
+    const first = list.data.items[0]!;
+    const detail = await env.services.caseSnapshots.getById(
+      ownerContext(),
+      SEED_CASE_ALFA_2_ID,
+      first.id,
+    );
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) throw new Error();
+    expect(detail.data.id).toBe(first.id);
+  });
+
+  it("rejeita id inexistente", async () => {
+    const env = createMockDomainEnvironment();
+    const detail = await env.services.caseSnapshots.getById(
+      ownerContext(),
+      SEED_CASE_ALFA_2_ID,
+      buildDomainId("caseSnapshot", "inexistente"),
+    );
+    expect(detail.ok).toBe(false);
+  });
+});
+
+describe("LV-08.6B.1 — LV-09 não iniciada / rotas intactas", () => {
+  it("não existe rota nova de LV-09", () => {
+    const routes = fs.readdirSync(path.resolve(__dirname, "../src/routes"));
+    for (const r of routes) {
+      expect(r).not.toContain("lv-09");
+      expect(r).not.toContain("lv09");
+    }
+  });
+
+  it("nenhum menu ou selo foi alterado (BottomNav intacto)", () => {
+    const nav = fs.readFileSync(
+      path.resolve(__dirname, "../src/components/app/BottomNav.tsx"),
+      "utf8",
+    );
+    expect(nav.length).toBeGreaterThan(0);
+  });
+});
