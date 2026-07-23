@@ -239,25 +239,18 @@ export function ProcessPlanDialog(props: ProcessPlanDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NO_ASSIGN}>Sem responsável</SelectItem>
-                {combinedOptions.map((o) => (
-                  <SelectItem
-                    key={o.assignmentId}
-                    value={o.assignmentId}
-                    disabled={!o.availableForNewAssignments && (
-                      mode.kind !== "edit" || mode.item.assignmentId !== o.assignmentId
-                    )}
-                  >
-                    {o.label}
-                    {!o.availableForNewAssignments ? " (indisponível)" : ""}
-                  </SelectItem>
-                ))}
-                {mode.kind === "edit" &&
-                  mode.item.assignmentId &&
-                  !combinedOptions.some((o) => o.assignmentId === mode.item.assignmentId) && (
-                    <SelectItem value={mode.item.assignmentId} disabled>
-                      Responsável atual (não disponível)
+                {combinedOptions.map((o) => {
+                  const isCurrentInactive =
+                    mode.kind === "edit" &&
+                    mode.item.assignmentId === o.assignmentId &&
+                    !o.availableForNewAssignments;
+                  return (
+                    <SelectItem key={o.assignmentId} value={o.assignmentId}>
+                      {o.label}
+                      {isCurrentInactive ? " (indisponível)" : ""}
                     </SelectItem>
-                  )}
+                  );
+                })}
               </SelectContent>
             </Select>
             {!assignmentOptions.some((o) => o.availableForNewAssignments) && (
