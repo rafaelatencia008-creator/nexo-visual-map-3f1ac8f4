@@ -53,6 +53,8 @@ export type ProcessSnapshotDetailsDialogProps = Readonly<{
   error: AuditSnapshotPublicError | null;
   snapshot: CaseSnapshot | null;
   currentUserId: UserId;
+  canRetry: boolean;
+  onRetry: () => void;
 }>;
 
 export function ProcessSnapshotDetailsDialog({
@@ -62,6 +64,8 @@ export function ProcessSnapshotDetailsDialog({
   error,
   snapshot,
   currentUserId,
+  canRetry,
+  onRetry,
 }: ProcessSnapshotDetailsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,9 +88,16 @@ export function ProcessSnapshotDetailsDialog({
             </p>
           </div>
         ) : error !== null ? (
-          <p role="alert" className="py-4 text-sm text-destructive">
-            {error.message}
-          </p>
+          <div className="space-y-3 py-4">
+            <p role="alert" className="text-sm text-destructive">
+              {error.message}
+            </p>
+            {canRetry ? (
+              <Button type="button" variant="outline" onClick={onRetry}>
+                Tentar novamente
+              </Button>
+            ) : null}
+          </div>
         ) : snapshot !== null ? (
           <SnapshotBody snapshot={snapshot} currentUserId={currentUserId} />
         ) : null}
