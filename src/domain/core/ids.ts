@@ -173,3 +173,13 @@ export function buildDomainId(kind: IdKind, suffix: string): string {
   }
   return `${ID_PREFIX[kind]}${suffix}`;
 }
+
+// ---- Fábricas nomeadas (LV-08.5A) -----------------------------------------
+
+export function createCasePlanItemId(suffix: string): CasePlanItemId {
+  return buildDomainId("casePlanItem", suffix);
+}
+
+export function createCaseTimelineEntryId(suffix: string): CaseTimelineEntryId {
+  return buildDomainId("caseTimelineEntry", suffix);
+}
