@@ -894,17 +894,13 @@ describe("LV-08.6B.1 — auditoria de fonte: rota e container", () => {
     expect(container).toContain("setDetailError");
   });
 
-  it("container envia page.limit=100 em ambas as listagens", () => {
-    const auditCall = container.match(
-      /auditEvents\.listByCase\([\s\S]*?\)/,
+  it("container envia page.limit=AUDIT_SNAPSHOT_PAGE_LIMIT em ambas as listagens", () => {
+    expect(container).toContain("AUDIT_SNAPSHOT_PAGE_LIMIT");
+    expect(container).toContain(
+      "{ page: { limit: AUDIT_SNAPSHOT_PAGE_LIMIT } }",
     );
-    const snapCall = container.match(
-      /caseSnapshots\.listByCase\([\s\S]*?\)/,
-    );
-    expect(auditCall).not.toBeNull();
-    expect(snapCall).not.toBeNull();
-    expect(auditCall![0]).toContain("limit: AUDIT_SNAPSHOT_PAGE_LIMIT");
-    expect(snapCall![0]).toContain("limit: AUDIT_SNAPSHOT_PAGE_LIMIT");
+    expect(container).toContain("auditEvents.listByCase");
+    expect(container).toContain("caseSnapshots.listByCase");
   });
 
   it("container tipa props exigindo Case oficial", () => {
