@@ -150,6 +150,10 @@ export const isRelationshipId = (v: unknown): v is RelationshipId =>
   hasExpectedPrefix(v, "relationship");
 export const isAssignmentId = (v: unknown): v is AssignmentId =>
   hasExpectedPrefix(v, "assignment");
+export const isCasePlanItemId = (v: unknown): v is CasePlanItemId =>
+  hasExpectedPrefix(v, "casePlanItem");
+export const isCaseTimelineEntryId = (v: unknown): v is CaseTimelineEntryId =>
+  hasExpectedPrefix(v, "caseTimelineEntry");
 
 // ---- Builders determinísticos ---------------------------------------------
 
