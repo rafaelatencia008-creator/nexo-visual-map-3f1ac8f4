@@ -1475,14 +1475,13 @@ describe("LV-09.1A.2 · admins acessam qualquer caso da própria org", () => {
   for (const role of ADMIN_ROLES_LIST) {
     async function adminCtx(env: ReturnType<typeof createMockDomainEnvironment>): Promise<ServiceContext> {
       if (role === "proprietario") return { ...OWNER_ALFA };
-      // Cria uma membership de administrador para SEED_USER_3.
       const mem = ok(await env.services.memberships.create(OWNER_ALFA, {
-        userId: SEED_USER_3_ID as never,
+        userId: SEED_USER_3_ID,
         role: "administrador",
       }));
       return {
         organizationId: SEED_ORG_ALFA_ID,
-        userId: SEED_USER_3_ID as never,
+        userId: SEED_USER_3_ID,
         membershipId: mem.id,
         role: "administrador",
       };
