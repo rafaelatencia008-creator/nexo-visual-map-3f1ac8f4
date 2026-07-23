@@ -14,6 +14,8 @@ import type { Person } from "../core/person";
 import type { CasePerson, Relationship, Assignment } from "../core/assignment";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import { isCasePlanItem, isCaseTimelineEntry } from "../core/case-plan";
+import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
+import { AUDIT_SUMMARY, isAuditEvent, isCaseSnapshot } from "../core/case-audit";
 import {
   validateOrganization,
   validateUser,
