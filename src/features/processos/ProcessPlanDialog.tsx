@@ -27,6 +27,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { CasePlanItem, CasePlanItemKind } from "@/domain/core/case-plan";
 import {
   CASE_PLAN_ITEM_PRIORITIES,
+  isCasePlanItemKind,
+  isCasePlanItemPriority,
 } from "@/domain/core/case-plan";
 import {
   CASE_PLAN_ITEM_KIND_LABELS_PT,
