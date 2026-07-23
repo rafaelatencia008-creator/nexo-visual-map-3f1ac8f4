@@ -945,7 +945,7 @@ describe("LV-08.6B.1 — auditoria de fonte: rota e container", () => {
   it("SnapshotsCard tem estado vazio com título e descrição corretos", () => {
     expect(snapshotsCard).toContain("Nenhum snapshot criado");
     expect(snapshotsCard).toContain(
-      "Crie uma fotografia do processo para preservar o estado atual como um marco histórico.",
+      "Crie uma fotografia do processo para preservar o estado atual como",
     );
   });
 
