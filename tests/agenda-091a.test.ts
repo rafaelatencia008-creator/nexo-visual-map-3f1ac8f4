@@ -11,7 +11,7 @@ import {
   SEED_ORG_ALFA_ID,
   SEED_ORG_BETA_ID,
   SEED_USER_1_ID,
-  SEED_USER_3_ID,
+  SEED_USER_2_ID,
   SEED_MEM_ALFA_OWNER_ID,
   SEED_MEM_BETA_OWNER_ID,
   SEED_CASE_ALFA_1_ID,
@@ -65,7 +65,7 @@ const OWNER_ALFA: ServiceContext = Object.freeze({
 });
 const OWNER_BETA: ServiceContext = Object.freeze({
   organizationId: SEED_ORG_BETA_ID,
-  userId: SEED_USER_3_ID,
+  userId: SEED_USER_2_ID,
   membershipId: SEED_MEM_BETA_OWNER_ID,
   role: "proprietario",
 });
