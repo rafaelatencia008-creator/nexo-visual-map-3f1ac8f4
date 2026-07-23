@@ -197,6 +197,17 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
     [availablePersons, search],
   );
 
+  // Se a seleção não faz mais parte do resultado visível, invalida-a
+  // antes que possa ser enviada. Protege o envio local, sem consultar
+  // serviço nem alterar o catálogo original.
+  React.useEffect(() => {
+    if (mode.kind !== "link-existing") return;
+    if (personId === "") return;
+    if (!filteredPersons.some((p) => p.id === personId)) {
+      setPersonId("");
+    }
+  }, [filteredPersons, personId, mode.kind]);
+
   const canSubmit = (() => {
     if (submitting) return false;
     if (isConflict) return false;
@@ -204,7 +215,11 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       return normalizePersonLabel(displayLabel).length > 0;
     }
     if (mode.kind === "link-existing") {
-      return catalog.kind === "ready" && personId !== "";
+      return (
+        catalog.kind === "ready" &&
+        personId !== "" &&
+        filteredPersons.some((p) => p.id === personId)
+      );
     }
     if (mode.kind === "retry-created-link") {
       return true;
