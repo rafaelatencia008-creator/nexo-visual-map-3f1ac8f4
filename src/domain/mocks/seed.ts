@@ -678,6 +678,19 @@ export function validateMockDomainSeed(
   dup("assignment", seed.assignments);
   dup("casePlanItem", seed.casePlanItems);
   dup("caseTimelineEntry", seed.caseTimelineEntries);
+  dup("auditEvent", seed.auditEvents);
+  dup("caseSnapshot", seed.caseSnapshots);
+
+  for (const e of seed.auditEvents) {
+    if (!isAuditEvent(e)) {
+      issues.push({ entity: "auditEvent", id: e.id, reason: "invalid_shape" });
+    }
+  }
+  for (const s of seed.caseSnapshots) {
+    if (!isCaseSnapshot(s)) {
+      issues.push({ entity: "caseSnapshot", id: s.id, reason: "invalid_shape" });
+    }
+  }
 
   const caseByIdEarly = new Map(seed.cases.map((c) => [c.id, c]));
   const assignByIdEarly = new Map(seed.assignments.map((a) => [a.id, a]));
