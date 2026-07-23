@@ -481,7 +481,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
                 />
               )}
               {mode.kind === "retry-created-link"
-                ? "Concluir vínculo"
+                ? "Tentar vincular novamente"
                 : "Salvar"}
             </Button>
           )}
