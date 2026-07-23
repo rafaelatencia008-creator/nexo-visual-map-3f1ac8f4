@@ -1,8 +1,8 @@
 /**
- * LV-08.5A.1 — provas de tipo estritas para Plano e Cronologia.
+ * LV-08.5A.1 + LV-08.5A.2 — provas de tipo estritas para Plano e Cronologia.
  *
- * Sem casts (`as unknown`, `as any`). Todas as rejeições esperadas usam
- * `@ts-expect-error` seguido de uma linha que violaria o contrato.
+ * Sem casts (`as unknown`, `as any`, `as never`). Todas as rejeições esperadas
+ * usam `@ts-expect-error` seguido de uma linha que violaria o contrato.
  */
 
 import type {
@@ -28,13 +28,21 @@ import type {
   OrganizationId,
 } from "@/domain/core/ids";
 import type { IsoDate, EntityMetadata } from "@/domain/core/common";
+import type { CasePlanService } from "@/domain/services/case-plan-service";
+import type { CaseTimelineService } from "@/domain/services/case-timeline-service";
+import type { MockDomainServices } from "@/domain/mocks";
+import type { ServiceContext } from "@/domain/services/context";
+import type { ServiceResult } from "@/domain/services/result";
+import type { PageRequest, PageResult } from "@/domain/services/pagination";
 
 declare const caseId: CaseId;
 declare const orgId: OrganizationId;
+declare const organizationId: OrganizationId;
 declare const planItemId: CasePlanItemId;
 declare const timelineEntryId: CaseTimelineEntryId;
 declare const assignmentId: AssignmentId;
 declare const iso: IsoDate;
+declare const regularDateString: string;
 declare const meta: EntityMetadata;
 
 // ---------------------------------------------------------------------------
@@ -126,6 +134,18 @@ void _cp_no_prio;
 const _cp_bad_prio: CreateCasePlanItemInput = { caseId, kind: "activity", title: "T", priority: "urgente" };
 void _cp_bad_prio;
 
+// @ts-expect-error CaseTimelineEntryId não é CaseId
+const createPlanBadCase: CreateCasePlanItemInput = { caseId: timelineEntryId, kind: "activity", title: "T", priority: "normal" };
+void createPlanBadCase;
+
+// @ts-expect-error CasePlanItemId não é AssignmentId
+const createPlanBadAssignment: CreateCasePlanItemInput = { caseId, kind: "activity", title: "T", priority: "normal", assignmentId: planItemId };
+void createPlanBadAssignment;
+
+// @ts-expect-error kind fora do catálogo (event).
+const createPlanBadKindEvent: CreateCasePlanItemInput = { caseId, kind: "event", title: "T", priority: "normal" };
+void createPlanBadKindEvent;
+
 // ---------------------------------------------------------------------------
 // Provas negativas — UpdateCasePlanItemInput.
 // ---------------------------------------------------------------------------
@@ -151,6 +171,12 @@ void _up_no_ver;
 // @ts-expect-error planItemId obrigatório.
 const _up_no_id: UpdateCasePlanItemInput = { expectedVersion: 1 };
 void _up_no_id;
+// @ts-expect-error kind fora do catálogo (event).
+const _up_bad_kind_event: UpdateCasePlanItemInput = { planItemId, expectedVersion: 1, kind: "event" };
+void _up_bad_kind_event;
+// @ts-expect-error priority fora do catálogo (urgent).
+const _up_bad_prio_urgent: UpdateCasePlanItemInput = { planItemId, expectedVersion: 1, priority: "urgent" };
+void _up_bad_prio_urgent;
 
 // ---------------------------------------------------------------------------
 // Provas negativas — ChangeCasePlanItemStatusInput.
@@ -165,6 +191,18 @@ void _cs_meta;
 // @ts-expect-error expectedVersion obrigatório.
 const _cs_no_ver: ChangeCasePlanItemStatusInput = { planItemId, status: "planned" };
 void _cs_no_ver;
+// @ts-expect-error caseId proibido em changeStatus.
+const _cs_case: ChangeCasePlanItemStatusInput = { planItemId, status: "planned", expectedVersion: 1, caseId };
+void _cs_case;
+// @ts-expect-error organizationId proibido em changeStatus.
+const _cs_org: ChangeCasePlanItemStatusInput = { planItemId, status: "planned", expectedVersion: 1, organizationId };
+void _cs_org;
+// @ts-expect-error planItemId obrigatório.
+const _cs_no_id: ChangeCasePlanItemStatusInput = { status: "planned", expectedVersion: 1 };
+void _cs_no_id;
+// @ts-expect-error status fora do catálogo (done).
+const _cs_bad_status: ChangeCasePlanItemStatusInput = { planItemId, status: "done", expectedVersion: 1 };
+void _cs_bad_status;
 
 // ---------------------------------------------------------------------------
 // Provas negativas — CreateCaseTimelineEntryInput.
@@ -185,6 +223,12 @@ void _ct_no_date;
 // @ts-expect-error kind inválido.
 const _ct_bad_kind: CreateCaseTimelineEntryInput = { caseId, kind: "custom", occurredOn: iso, title: "T" };
 void _ct_bad_kind;
+// @ts-expect-error CasePlanItemId não é CaseId.
+const _ct_bad_case: CreateCaseTimelineEntryInput = { caseId: planItemId, kind: "note", occurredOn: iso, title: "T" };
+void _ct_bad_case;
+// @ts-expect-error string comum não é IsoDate.
+const _ct_bad_date: CreateCaseTimelineEntryInput = { caseId, kind: "note", occurredOn: regularDateString, title: "T" };
+void _ct_bad_date;
 
 // ---------------------------------------------------------------------------
 // Provas negativas — UpdateCaseTimelineEntryInput.
@@ -205,6 +249,12 @@ void _ut_no_ver;
 // @ts-expect-error timelineEntryId obrigatório.
 const _ut_no_id: UpdateCaseTimelineEntryInput = { expectedVersion: 1 };
 void _ut_no_id;
+// @ts-expect-error organizationId proibido em update.
+const _ut_org: UpdateCaseTimelineEntryInput = { timelineEntryId, expectedVersion: 1, organizationId };
+void _ut_org;
+// @ts-expect-error kind fora do catálogo (event).
+const _ut_bad_kind: UpdateCaseTimelineEntryInput = { timelineEntryId, expectedVersion: 1, kind: "event" };
+void _ut_bad_kind;
 
 // ---------------------------------------------------------------------------
 // IDs branded não são intercambiáveis.
@@ -219,6 +269,22 @@ void _mixB;
 // @ts-expect-error caseId não pode virar CasePlanItemId.
 const _mixC: CasePlanItemId = caseId;
 void _mixC;
+
+// @ts-expect-error AssignmentId não é CasePlanItemId
+const invalidPlanFromAssignment: CasePlanItemId = assignmentId;
+void invalidPlanFromAssignment;
+
+// @ts-expect-error OrganizationId não é CasePlanItemId
+const invalidPlanFromOrganization: CasePlanItemId = organizationId;
+void invalidPlanFromOrganization;
+
+// @ts-expect-error OrganizationId não é CaseTimelineEntryId
+const invalidTimelineFromOrganization: CaseTimelineEntryId = organizationId;
+void invalidTimelineFromOrganization;
+
+// @ts-expect-error CasePlanItemId não é AssignmentId
+const invalidAssignmentFromPlan: AssignmentId = planItemId;
+void invalidAssignmentFromPlan;
 
 // ---------------------------------------------------------------------------
 // Catálogos oficiais como uniões literais.
@@ -258,3 +324,79 @@ const _planMeta: EntityMetadata = planItem.metadata;
 const _tlMeta: EntityMetadata = timelineEntry.metadata;
 void _planMeta;
 void _tlMeta;
+
+// ---------------------------------------------------------------------------
+// LV-08.5A.2 — contratos oficiais dos serviços.
+// ---------------------------------------------------------------------------
+
+declare const services: MockDomainServices;
+
+const planServiceContract: CasePlanService = services.casePlan;
+const timelineServiceContract: CaseTimelineService = services.caseTimeline;
+void planServiceContract;
+void timelineServiceContract;
+
+declare const ctx: ServiceContext;
+declare const page: PageRequest;
+
+// Retornos dos métodos principais (sem chamar código).
+type PlanGet = ReturnType<CasePlanService["getById"]>;
+type PlanList = ReturnType<CasePlanService["listByCase"]>;
+type PlanCreate = ReturnType<CasePlanService["create"]>;
+type PlanUpdate = ReturnType<CasePlanService["update"]>;
+type PlanStatus = ReturnType<CasePlanService["changeStatus"]>;
+type PlanRemove = ReturnType<CasePlanService["remove"]>;
+
+const _planGet: PlanGet = services.casePlan.getById(ctx, caseId, planItemId);
+const _planList: PlanList = services.casePlan.listByCase(ctx, caseId, page);
+const _planCreate: PlanCreate = services.casePlan.create(ctx, _createPlanMinimal);
+const _planUpdate: PlanUpdate = services.casePlan.update(ctx, caseId, _updatePlanMinimal);
+const _planStatus: PlanStatus = services.casePlan.changeStatus(ctx, caseId, _changeStatusOk);
+const _planRemove: PlanRemove = services.casePlan.remove(ctx, caseId, planItemId, 1);
+void _planGet;
+void _planList;
+void _planCreate;
+void _planUpdate;
+void _planStatus;
+void _planRemove;
+
+const _planGetShape: Promise<ServiceResult<CasePlanItem>> = _planGet;
+const _planListShape: Promise<ServiceResult<PageResult<CasePlanItem>>> = _planList;
+const _planCreateShape: Promise<ServiceResult<CasePlanItem>> = _planCreate;
+const _planUpdateShape: Promise<ServiceResult<CasePlanItem>> = _planUpdate;
+const _planStatusShape: Promise<ServiceResult<CasePlanItem>> = _planStatus;
+const _planRemoveShape: Promise<ServiceResult<void>> = _planRemove;
+void _planGetShape;
+void _planListShape;
+void _planCreateShape;
+void _planUpdateShape;
+void _planStatusShape;
+void _planRemoveShape;
+
+type TimelineGet = ReturnType<CaseTimelineService["getById"]>;
+type TimelineList = ReturnType<CaseTimelineService["listByCase"]>;
+type TimelineCreate = ReturnType<CaseTimelineService["create"]>;
+type TimelineUpdate = ReturnType<CaseTimelineService["update"]>;
+type TimelineRemove = ReturnType<CaseTimelineService["remove"]>;
+
+const _tlGet: TimelineGet = services.caseTimeline.getById(ctx, caseId, timelineEntryId);
+const _tlList: TimelineList = services.caseTimeline.listByCase(ctx, caseId, page);
+const _tlCreate: TimelineCreate = services.caseTimeline.create(ctx, _createTimelineOk);
+const _tlUpdate: TimelineUpdate = services.caseTimeline.update(ctx, caseId, _updateTimelineNull);
+const _tlRemove: TimelineRemove = services.caseTimeline.remove(ctx, caseId, timelineEntryId, 1);
+void _tlGet;
+void _tlList;
+void _tlCreate;
+void _tlUpdate;
+void _tlRemove;
+
+const _tlGetShape: Promise<ServiceResult<CaseTimelineEntry>> = _tlGet;
+const _tlListShape: Promise<ServiceResult<PageResult<CaseTimelineEntry>>> = _tlList;
+const _tlCreateShape: Promise<ServiceResult<CaseTimelineEntry>> = _tlCreate;
+const _tlUpdateShape: Promise<ServiceResult<CaseTimelineEntry>> = _tlUpdate;
+const _tlRemoveShape: Promise<ServiceResult<void>> = _tlRemove;
+void _tlGetShape;
+void _tlListShape;
+void _tlCreateShape;
+void _tlUpdateShape;
+void _tlRemoveShape;

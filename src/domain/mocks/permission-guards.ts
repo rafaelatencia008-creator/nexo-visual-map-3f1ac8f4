@@ -29,6 +29,7 @@ import type {
 import type { AssignmentService } from "../services/assignment-service";
 import type { CasePlanService } from "../services/case-plan-service";
 import type { CaseTimelineService } from "../services/case-timeline-service";
+import { isCaseId, type CaseId } from "../core/ids";
 
 async function enforce<T>(
   store: MockStore,
@@ -41,19 +42,22 @@ async function enforce<T>(
   if (!r.ok) return { ok: false, error: r.error };
   return delegate();
 }
-function extractCaseId(input: unknown): import("../core/ids").CaseId | null {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
-  const cid = (input as Record<string, unknown>).caseId;
-  return (typeof cid === "string" && cid.startsWith("case_"))
-    ? (cid as import("../core/ids").CaseId)
-    : null;
+
+function extractCaseId(input: unknown): CaseId | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return null;
+  }
+
+  const caseId = (input as Record<string, unknown>).caseId;
+
+  return isCaseId(caseId) ? caseId : null;
 }
 
 async function enforceWithCase<T>(
   store: MockStore,
   context: ServiceContext,
   action: PermissionAction,
-  caseId: import("../core/ids").CaseId,
+  caseId: CaseId,
   delegate: () => Promise<ServiceResult<T>>,
 ): Promise<ServiceResult<T>> {
   const req: PermissionRequest = { action, caseId };
@@ -61,6 +65,23 @@ async function enforceWithCase<T>(
   if (!r.ok) return { ok: false, error: r.error };
   return delegate();
 }
+
+async function enforceFromInputCase<T>(
+  store: MockStore,
+  context: ServiceContext,
+  action: PermissionAction,
+  input: unknown,
+  delegate: () => Promise<ServiceResult<T>>,
+): Promise<ServiceResult<T>> {
+  const caseId = extractCaseId(input);
+
+  if (caseId !== null) {
+    return enforceWithCase(store, context, action, caseId, delegate);
+  }
+
+  return enforce(store, context, action, delegate);
+}
+
 
 export function guardOrganizationService(
   store: MockStore,
@@ -264,13 +285,10 @@ export function guardCasePlanService(
       enforceWithCase(store, ctx, "casePlanItem.list", cid, () =>
         s.listByCase(ctx, cid, page),
       ),
-    create: (ctx, input) => {
-      const cid = extractCaseId(input);
-      if (cid === null) return s.create(ctx, input);
-      return enforceWithCase(store, ctx, "casePlanItem.create", cid, () =>
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "casePlanItem.create", input, () =>
         s.create(ctx, input),
-      );
-    },
+      ),
     update: (ctx, cid, input) =>
       enforceWithCase(store, ctx, "casePlanItem.update", cid, () =>
         s.update(ctx, cid, input),
@@ -299,13 +317,10 @@ export function guardCaseTimelineService(
       enforceWithCase(store, ctx, "caseTimelineEntry.list", cid, () =>
         s.listByCase(ctx, cid, page),
       ),
-    create: (ctx, input) => {
-      const cid = extractCaseId(input);
-      if (cid === null) return s.create(ctx, input);
-      return enforceWithCase(store, ctx, "caseTimelineEntry.create", cid, () =>
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "caseTimelineEntry.create", input, () =>
         s.create(ctx, input),
-      );
-    },
+      ),
     update: (ctx, cid, input) =>
       enforceWithCase(store, ctx, "caseTimelineEntry.update", cid, () =>
         s.update(ctx, cid, input),
