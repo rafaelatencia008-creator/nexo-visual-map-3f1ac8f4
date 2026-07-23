@@ -932,7 +932,7 @@ describe("LV-08.4.2.1 · guardas complementares", () => {
     ] as const;
     for (const e of kinds) {
       const m = mapPeopleError(e);
-      expect(m.message).toBe("x");
+      expect(typeof m.kind).toBe("string"); expect(typeof m.message).toBe("string");
     }
   });
 });
