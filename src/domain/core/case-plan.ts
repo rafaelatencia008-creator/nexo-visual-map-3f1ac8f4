@@ -163,6 +163,7 @@ export const CASE_TIMELINE_ENTRY_ALLOWED_KEYS: ReadonlySet<string> = new Set([
 
 export function isCaseTimelineEntry(v: unknown): v is CaseTimelineEntry {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  if (containsForbiddenKey(v)) return false;
   if (!hasOnlyAllowedKeys(v, CASE_TIMELINE_ENTRY_ALLOWED_KEYS)) return false;
   const t = v as Record<string, unknown>;
   if (!isCaseTimelineEntryId(t.id)) return false;
