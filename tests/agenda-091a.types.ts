@@ -53,7 +53,7 @@ declare const dl: Deadline;
 // @ts-expect-error Deadline é readonly
 dl.title = "x";
 // @ts-expect-error Deadline.metadata é readonly
-dl.metadata = { createdAt: "" as never, updatedAt: "" as never, version: 1 };
+dl.metadata = dl.metadata;
 
 declare const ap: Appointment;
 // @ts-expect-error Appointment é readonly
@@ -123,3 +123,54 @@ declare const sa2: ChangeAppointmentStatusInput;
 const _saStatus: AppointmentStatus = sa2.status; void _saStatus;
 
 export {};
+
+// ============================================================================
+// LV-09.1A.3 — Provas de tipo adicionais (sem casts)
+// ============================================================================
+
+import type { DeadlineService } from "../src/domain/services/deadline-service";
+import type { AppointmentService } from "../src/domain/services/appointment-service";
+
+// Service key sets são exatamente os métodos oficiais.
+type DeadlineKeys = keyof DeadlineService;
+type AppointmentKeys = keyof AppointmentService;
+type ExpectedKeys = "create" | "getById" | "list" | "update" | "changeStatus" | "remove";
+type _DK = Expect<Equals<DeadlineKeys, ExpectedKeys>>;
+type _AK = Expect<Equals<AppointmentKeys, ExpectedKeys>>;
+
+// Entidades: metadata é readonly-record com campos concretos.
+type _DM = Expect<Equals<Deadline["metadata"]["version"], number>>;
+type _AM = Expect<Equals<Appointment["metadata"]["version"], number>>;
+
+// Entidades: campos de tempo são IsoDateTime brandado.
+declare const dl2: Deadline;
+declare const ap3: Appointment;
+const _dlDue: Deadline["dueAt"] = dl2.dueAt;
+const _apStart: Appointment["startsAt"] = ap3.startsAt;
+const _apEnd: Appointment["endsAt"] = ap3.endsAt;
+void _dlDue; void _apStart; void _apEnd;
+
+// Inputs de update exigem expectedVersion tipado como number.
+type _UDV = Expect<Equals<UpdateDeadlineInput["expectedVersion"], number>>;
+type _UAV = Expect<Equals<UpdateAppointmentInput["expectedVersion"], number>>;
+
+// Inputs de create NÃO possuem chaves version/id.
+declare const cd2: CreateDeadlineInput;
+// @ts-expect-error CreateDeadlineInput não expõe id
+cd2.id = undefined;
+// @ts-expect-error CreateDeadlineInput não expõe expectedVersion
+cd2.expectedVersion = 1;
+
+declare const ca2: CreateAppointmentInput;
+// @ts-expect-error CreateAppointmentInput não expõe id
+ca2.id = undefined;
+// @ts-expect-error CreateAppointmentInput não expõe expectedVersion
+ca2.expectedVersion = 1;
+
+// ChangeStatus inputs não expõem outros campos mutáveis.
+declare const sd2: ChangeDeadlineStatusInput;
+// @ts-expect-error ChangeDeadlineStatusInput não altera título
+sd2.title = "x";
+declare const sa3: ChangeAppointmentStatusInput;
+// @ts-expect-error ChangeAppointmentStatusInput não altera título
+sa3.title = "x";
