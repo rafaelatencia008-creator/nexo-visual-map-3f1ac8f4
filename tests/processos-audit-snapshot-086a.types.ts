@@ -113,11 +113,7 @@ void _snap_createdAt;
 const _snap_cbUser: CreateCaseSnapshotInput = { caseId, label: "L", createdByUserId: userId };
 void _snap_cbUser;
 // @ts-expect-error createdByMembershipId proibido.
-const _snap_cbMem: CreateCaseSnapshotInput = {
-  caseId,
-  label: "L",
-  createdByMembershipId: membershipId,
-};
+const _snap_cbMem: CreateCaseSnapshotInput = { caseId, label: "L", createdByMembershipId: membershipId };
 void _snap_cbMem;
 // @ts-expect-error caseId obrigatório.
 const _snap_no_case: CreateCaseSnapshotInput = { label: "L" };
