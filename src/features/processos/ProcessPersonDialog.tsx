@@ -336,28 +336,45 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
                 </div>
               )}
               {catalog.kind === "ready" &&
-                (catalog.persons.length === 0 ? (
+                (availablePersons.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Não há pessoas disponíveis para vincular.
                   </p>
                 ) : (
-                  <Select
-                    value={personId}
-                    onValueChange={(v) => setPersonId(v as PersonId)}
-                    disabled={submitting}
-                  >
-                    <SelectTrigger id="personId">
-                      <SelectValue placeholder="Selecione uma pessoa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {catalog.persons.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.displayLabel} —{" "}
-                          {AGE_CLASSIFICATION_LABELS_PT[p.ageClassification]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Input
+                      id="personSearch"
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Buscar por identificação"
+                      aria-label="Buscar pessoa"
+                      disabled={submitting}
+                    />
+                    {filteredPersons.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma pessoa encontrada.
+                      </p>
+                    ) : (
+                      <Select
+                        value={personId}
+                        onValueChange={(v) => setPersonId(v as PersonId)}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger id="personId">
+                          <SelectValue placeholder="Selecione uma pessoa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredPersons.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.displayLabel} —{" "}
+                              {AGE_CLASSIFICATION_LABELS_PT[p.ageClassification]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </>
                 ))}
             </div>
           )}
