@@ -1432,7 +1432,7 @@ async function setupWorker(
   },
 ) {
   const env = createMockDomainEnvironment();
-  const userId = buildDomainId("user", `seed_worker_${role}_${Math.random().toString(36).slice(2,8)}`) as never;
+  const userId = SEED_USER_3_ID as never;
   const mem = ok(await env.services.memberships.create(OWNER_ALFA, { userId, role }));
   const ctx: ServiceContext = {
     organizationId: SEED_ORG_ALFA_ID,
