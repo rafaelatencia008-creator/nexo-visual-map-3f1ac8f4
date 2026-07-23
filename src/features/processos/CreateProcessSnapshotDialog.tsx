@@ -1,5 +1,5 @@
 /**
- * LV-08.6B — diálogo de criação de snapshot.
+ * LV-08.6B / LV-08.6B.1 — diálogo de criação de snapshot.
  */
 
 import * as React from "react";
@@ -20,6 +20,7 @@ import {
   SNAPSHOT_REASON_MAX,
   buildCreateCaseSnapshotInput,
   type AuditSnapshotPublicError,
+  type SnapshotBuildError,
   type SnapshotFormValues,
 } from "@/features/processos/process-audit-snapshot-model";
 import type { CaseId } from "@/domain/core/ids";
@@ -34,6 +35,27 @@ export type CreateProcessSnapshotDialogProps = Readonly<{
   onSubmit: (input: CreateCaseSnapshotInput) => void;
 }>;
 
+type FieldError =
+  | { field: "label"; message: string }
+  | { field: "reason"; message: string };
+
+function toFieldError(reason: SnapshotBuildError): FieldError {
+  switch (reason) {
+    case "label_required":
+      return { field: "label", message: "Informe um nome para o snapshot." };
+    case "label_too_long":
+      return {
+        field: "label",
+        message: `O nome deve ter no máximo ${SNAPSHOT_LABEL_MAX} caracteres.`,
+      };
+    case "reason_too_long":
+      return {
+        field: "reason",
+        message: `O motivo deve ter no máximo ${SNAPSHOT_REASON_MAX} caracteres.`,
+      };
+  }
+}
+
 export function CreateProcessSnapshotDialog({
   open,
   onOpenChange,
@@ -46,12 +68,12 @@ export function CreateProcessSnapshotDialog({
     label: "",
     reason: "",
   });
-  const [localError, setLocalError] = React.useState<string | null>(null);
+  const [fieldError, setFieldError] = React.useState<FieldError | null>(null);
 
   React.useEffect(() => {
     if (!open) {
       setValues({ label: "", reason: "" });
-      setLocalError(null);
+      setFieldError(null);
     }
   }, [open]);
 
@@ -59,23 +81,22 @@ export function CreateProcessSnapshotDialog({
     e.preventDefault();
     const built = buildCreateCaseSnapshotInput(caseId, values);
     if (!built.ok) {
-      const msg =
-        built.reason === "label_required"
-          ? "Informe um nome para o snapshot."
-          : built.reason === "label_too_long"
-            ? `O nome deve ter no máximo ${SNAPSHOT_LABEL_MAX} caracteres.`
-            : `O motivo deve ter no máximo ${SNAPSHOT_REASON_MAX} caracteres.`;
-      setLocalError(msg);
+      setFieldError(toFieldError(built.reason));
       return;
     }
-    setLocalError(null);
+    setFieldError(null);
     onSubmit(built.input);
   };
+
+  const labelError =
+    fieldError !== null && fieldError.field === "label" ? fieldError : null;
+  const reasonError =
+    fieldError !== null && fieldError.field === "reason" ? fieldError : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-busy={submitting || undefined}>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <DialogHeader>
             <DialogTitle>Criar snapshot do processo</DialogTitle>
             <DialogDescription>
@@ -93,11 +114,20 @@ export function CreateProcessSnapshotDialog({
                 setValues((v) => ({ ...v, label: e.target.value }))
               }
               aria-describedby={
-                localError ? "snapshot-label-error" : undefined
+                labelError !== null ? "snapshot-label-error" : undefined
               }
-              aria-invalid={localError !== null || undefined}
+              aria-invalid={labelError !== null || undefined}
               disabled={submitting}
             />
+            {labelError !== null ? (
+              <p
+                id="snapshot-label-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
+                {labelError.message}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="snapshot-reason">Motivo (opcional)</Label>
@@ -109,18 +139,22 @@ export function CreateProcessSnapshotDialog({
               onChange={(e) =>
                 setValues((v) => ({ ...v, reason: e.target.value }))
               }
+              aria-describedby={
+                reasonError !== null ? "snapshot-reason-error" : undefined
+              }
+              aria-invalid={reasonError !== null || undefined}
               disabled={submitting}
             />
+            {reasonError !== null ? (
+              <p
+                id="snapshot-reason-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
+                {reasonError.message}
+              </p>
+            ) : null}
           </div>
-          {localError !== null ? (
-            <p
-              id="snapshot-label-error"
-              role="alert"
-              className="text-sm text-destructive"
-            >
-              {localError}
-            </p>
-          ) : null}
           {error !== null ? (
             <p role="alert" className="text-sm text-destructive">
               {error.message}
