@@ -186,10 +186,10 @@ describe("LV-08.6A — prefixos oficiais dos novos IDs", () => {
 // ===========================================================================
 
 describe("LV-08.6A — seed determinístico de auditoria e snapshot", () => {
-  it("carrega os 11 eventos do caso Alfa 002 + 1 do Beta 001", async () => {
+  it("carrega os eventos oficiais do seed (3 Alfa 1 + 11 Alfa 2 + 1 Beta)", async () => {
     const env = createMockDomainEnvironment();
     const snap = env.snapshot();
-    expect(snap.auditEvents.length).toBe(12);
+    expect(snap.auditEvents.length).toBe(15);
     expect(snap.caseSnapshots.length).toBe(2);
   });
 
