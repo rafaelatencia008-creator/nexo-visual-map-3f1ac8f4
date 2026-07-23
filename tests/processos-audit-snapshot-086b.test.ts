@@ -1086,3 +1086,170 @@ describe("LV-08.6B.1 — LV-09 não iniciada / rotas intactas", () => {
     expect(nav.length).toBeGreaterThan(0);
   });
 });
+
+// ---- LV-08.6B.2 ----------------------------------------------------------
+
+describe("LV-08.6B.2 — fluxo Limpar filtros e prova de permissões", () => {
+  const cardPath = "src/features/processos/ProcessAuditHistoryCard.tsx";
+  const containerPath = "src/features/processos/ProcessAuditSnapshots.tsx";
+  const modelPath = "src/features/processos/process-audit-snapshot-model.ts";
+  const typesPath = "tests/processos-audit-snapshot-086b.types.ts";
+
+  it("card não contém onApplyFilter(null)", () => {
+    const src = readSource(cardPath);
+    expect(src).not.toContain("onApplyFilter(null)");
+  });
+
+  it("card não passa null para onApplyFilter em nenhum ramo", () => {
+    const src = readSource(cardPath);
+    expect(src).not.toMatch(/onApplyFilter\s*\(\s*null\s*\)/);
+  });
+
+  it("props do card declaram onApplyFilter tipado sem null", () => {
+    const src = readSource(cardPath);
+    expect(src).toMatch(
+      /onApplyFilter:\s*\(options:\s*AuditEventListOptions\)\s*=>\s*void/,
+    );
+    expect(src).not.toMatch(/onApplyFilter:[^;]*AuditEventListOptions\s*\|\s*null/);
+  });
+
+  it("props do card declaram onFilterValidationError", () => {
+    const src = readSource(cardPath);
+    expect(src).toMatch(
+      /onFilterValidationError:\s*\(reason:\s*AuditFilterBuildError\)\s*=>\s*void/,
+    );
+  });
+
+  it("props do card declaram onClearFilter", () => {
+    const src = readSource(cardPath);
+    expect(src).toMatch(/onClearFilter:\s*\(\)\s*=>\s*void/);
+  });
+
+  it("submitFilter chama onFilterValidationError e não onApplyFilter quando inválido", () => {
+    const src = readSource(cardPath);
+    expect(src).toContain("onFilterValidationError(built.reason)");
+  });
+
+  it("clearFilter do card chama somente onClearFilter, sem revalidar", () => {
+    const src = readSource(cardPath);
+    const clearBlock = src.match(/const clearFilter\s*=\s*\(\)\s*=>\s*{[^}]*}/);
+    expect(clearBlock).not.toBeNull();
+    expect(clearBlock![0]).toContain("onClearFilter()");
+    expect(clearBlock![0]).not.toContain("buildAuditFilter");
+    expect(clearBlock![0]).not.toContain("onApplyFilter");
+  });
+
+  it("container implementa handleClearFilter que sempre recarrega com filtered false", () => {
+    const src = readSource(containerPath);
+    expect(src).toMatch(/handleClearFilter\s*=\s*React\.useCallback/);
+    const block = src.match(/handleClearFilter[\s\S]*?\},\s*\[loadAll\]\)/);
+    expect(block).not.toBeNull();
+    expect(block![0]).toContain("setFilter(EMPTY_AUDIT_FILTER)");
+    expect(block![0]).toContain("setFilterError(null)");
+    expect(block![0]).toContain("filtered: false");
+    expect(block![0]).toContain("isRefresh: true");
+  });
+
+  it("container não usa onApplyFilter(null) nem applyFilter ambíguo", () => {
+    const src = readSource(containerPath);
+    expect(src).not.toContain("onApplyFilter(null)");
+    expect(src).not.toMatch(/applyFilter\s*=\s*React\.useCallback/);
+  });
+
+  it("container passa três callbacks separados ao card", () => {
+    const src = readSource(containerPath);
+    expect(src).toContain("onApplyFilter={handleApplyFilter}");
+    expect(src).toContain("onFilterValidationError={handleFilterValidationError}");
+    expect(src).toContain("onClearFilter={handleClearFilter}");
+  });
+
+  it("handleApplyFilter preserva page.limit 100 via loadAll padrão", () => {
+    const src = readSource(containerPath);
+    expect(src).toContain("AUDIT_SNAPSHOT_PAGE_LIMIT");
+    // O listOptions default usa AUDIT_SNAPSHOT_PAGE_LIMIT em loadAll.
+    expect(src).toMatch(/page:\s*{\s*limit:\s*AUDIT_SNAPSHOT_PAGE_LIMIT\s*}/);
+  });
+
+  it("modelo exporta AuditFilterBuildError", () => {
+    const src = readSource(modelPath);
+    expect(src).toMatch(/export type AuditFilterBuildError/);
+  });
+
+  it("buildAuditFilter continua produzindo options válidas com limit 100", () => {
+    const r = buildAuditFilter({
+      category: "processo",
+      dateFrom: "2020-01-01",
+      dateTo: "2030-01-01",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error();
+    expect(r.options.page?.limit).toBe(100);
+  });
+
+  it("buildAuditFilter retorna reason range_inverted quando datas estão invertidas", () => {
+    const r = buildAuditFilter({
+      category: "",
+      dateFrom: "2030-01-01",
+      dateTo: "2020-01-01",
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error();
+    expect(r.reason).toBe("range_inverted");
+  });
+
+  it("buildAuditFilter retorna reason invalid_from para data inicial inválida", () => {
+    const r = buildAuditFilter({
+      category: "",
+      dateFrom: "31/13/2020",
+      dateTo: "",
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error();
+    expect(r.reason).toBe("invalid_from");
+  });
+
+  it("buildAuditFilter retorna reason invalid_to para data final inválida", () => {
+    const r = buildAuditFilter({
+      category: "",
+      dateFrom: "",
+      dateTo: "xxxx",
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error();
+    expect(r.reason).toBe("invalid_to");
+  });
+
+  it("arquivo de provas de tipo contém a união exata das três permissões", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "..", typesPath), "utf8");
+    expect(src).toContain("AUDIT_SNAPSHOT_ACTIONS");
+    expect(src).toContain("AuditSnapshotAction");
+    expect(src).toContain('"auditEvent.read"');
+    expect(src).toContain('"caseSnapshot.read"');
+    expect(src).toContain('"caseSnapshot.create"');
+    expect(src).toContain("AuditSnapshotAction extends ExpectedAuditSnapshotAction");
+    expect(src).toContain("ExpectedAuditSnapshotAction extends AuditSnapshotAction");
+  });
+
+  it("arquivo de provas de tipo contém provas negativas com @ts-expect-error", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "..", typesPath), "utf8");
+    expect(src).toContain("@ts-expect-error");
+    expect(src).toContain('"case.update"');
+    expect(src).toContain('"caseSnapshot.remove"');
+    expect(src).toContain('"auditEvent.create"');
+  });
+
+  it("AUDIT_SNAPSHOT_ACTIONS contém exatamente as três permissões da seção", () => {
+    expect(AUDIT_SNAPSHOT_ACTIONS.length).toBe(3);
+    expect(AUDIT_SNAPSHOT_ACTIONS).toContain("auditEvent.read");
+    expect(AUDIT_SNAPSHOT_ACTIONS).toContain("caseSnapshot.read");
+    expect(AUDIT_SNAPSHOT_ACTIONS).toContain("caseSnapshot.create");
+  });
+
+  it("LV-09 continua não iniciada (nenhuma rota nova)", () => {
+    const routes = fs.readdirSync(path.resolve(__dirname, "../src/routes"));
+    for (const r of routes) {
+      expect(r).not.toContain("lv-09");
+      expect(r).not.toContain("lv09");
+    }
+  });
+});
