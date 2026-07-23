@@ -1111,7 +1111,6 @@ describe("LV-08.5A.1 · arquitetura preservada", () => {
     // LV-08.5B: os arquivos abaixo passaram a usar oficialmente casePlan/caseTimeline.
     const lv085bAllowed = new Set([
       "src/features/processos/ProcessPlanTimeline.tsx",
-      "src/features/processos/process-plan-model.ts",
     ]);
     for (const f of files) {
       const rel = f.replace(/^\.\//, "");
