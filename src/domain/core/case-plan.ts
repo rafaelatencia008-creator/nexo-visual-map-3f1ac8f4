@@ -17,6 +17,7 @@ import {
   type OrganizationId,
 } from "./ids";
 import {
+  containsForbiddenKey,
   hasOnlyAllowedKeys,
   isEntityMetadata,
   isIsoDate,
