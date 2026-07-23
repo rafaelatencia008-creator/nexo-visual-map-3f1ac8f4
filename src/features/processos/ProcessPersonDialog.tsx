@@ -34,6 +34,7 @@ import type { PersonId } from "@/domain/core/ids";
 import {
   AGE_CLASSIFICATION_LABELS_PT,
   CASE_PERSON_ROLE_LABELS_PT,
+  filterPersonsByDisplayLabel,
   isMinorAge,
   normalizePersonLabel,
   type PeoplePublicError,
