@@ -225,12 +225,12 @@ void _ccpBadPerson;
 const _ccpBadOrg: CreateCasePersonInput = { caseId, personId, role: "applicant", restrictedByDefault: false, organizationId };
 void _ccpBadOrg;
 
-// @ts-expect-error — metadata não pertence ao DTO de vínculo
 const _ccpBadMeta: CreateCasePersonInput = {
   caseId,
   personId,
   role: "applicant",
   restrictedByDefault: false,
+  // @ts-expect-error — metadata não pertence ao DTO de vínculo
   metadata: { createdAt: "x", updatedAt: "x", version: 1 },
 };
 void _ccpBadMeta;
