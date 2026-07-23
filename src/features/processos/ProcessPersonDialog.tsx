@@ -151,6 +151,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
     setRole(initialRole);
     setRestricted(initialRestricted);
     setPersonId(initialPersonId);
+    setSearch("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, modeKind]);
 
