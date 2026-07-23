@@ -24,6 +24,8 @@ export const ID_PREFIX = {
   casePerson: "caseperson_",
   relationship: "rel_",
   assignment: "assign_",
+  casePlanItem: "planItem_",
+  caseTimelineEntry: "timelineEntry_",
 
   // Entidades reservadas — apenas catalogadas nesta microetapa.
   deadline: "deadline_",
