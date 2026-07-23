@@ -135,31 +135,15 @@ const _cp_bad_prio: CreateCasePlanItemInput = { caseId, kind: "activity", title:
 void _cp_bad_prio;
 
 // @ts-expect-error CaseTimelineEntryId não é CaseId
-const createPlanBadCase: CreateCasePlanItemInput = {
-  caseId: timelineEntryId,
-  kind: "activity",
-  title: "T",
-  priority: "normal",
-};
+const createPlanBadCase: CreateCasePlanItemInput = { caseId: timelineEntryId, kind: "activity", title: "T", priority: "normal" };
 void createPlanBadCase;
 
 // @ts-expect-error CasePlanItemId não é AssignmentId
-const createPlanBadAssignment: CreateCasePlanItemInput = {
-  caseId,
-  kind: "activity",
-  title: "T",
-  priority: "normal",
-  assignmentId: planItemId,
-};
+const createPlanBadAssignment: CreateCasePlanItemInput = { caseId, kind: "activity", title: "T", priority: "normal", assignmentId: planItemId };
 void createPlanBadAssignment;
 
 // @ts-expect-error kind fora do catálogo (event).
-const createPlanBadKindEvent: CreateCasePlanItemInput = {
-  caseId,
-  kind: "event",
-  title: "T",
-  priority: "normal",
-};
+const createPlanBadKindEvent: CreateCasePlanItemInput = { caseId, kind: "event", title: "T", priority: "normal" };
 void createPlanBadKindEvent;
 
 // ---------------------------------------------------------------------------
