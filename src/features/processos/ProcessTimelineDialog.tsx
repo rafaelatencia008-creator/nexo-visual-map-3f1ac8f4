@@ -24,9 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import type {
-  CaseTimelineEntry,
-  CaseTimelineEntryKind,
+import {
+  isCaseTimelineEntryKind,
+  type CaseTimelineEntry,
+  type CaseTimelineEntryKind,
 } from "@/domain/core/case-plan";
 import {
   CASE_TIMELINE_ENTRY_KIND_LABELS_PT,
