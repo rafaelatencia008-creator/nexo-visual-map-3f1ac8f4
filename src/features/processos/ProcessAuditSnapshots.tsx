@@ -1,7 +1,6 @@
 /**
- * LV-08.6B — container "Histórico de alterações e Snapshots" da ficha
- * do processo. Utiliza exclusivamente contratos oficiais e trava
- * síncrona `writeOperationRef` durante a criação de snapshots.
+ * LV-08.6B / LV-08.6B.1 — container "Histórico de alterações e Snapshots"
+ * da ficha do processo. Utiliza exclusivamente contratos oficiais.
  */
 
 import * as React from "react";
@@ -17,50 +16,58 @@ import {
   RefreshingBanner,
 } from "@/features/processos/ProcessAuditSnapshotState";
 import {
+  AUDIT_SNAPSHOT_PAGE_LIMIT,
   EMPTY_AUDIT_FILTER,
   buildAuditFilter,
   mapAuditSnapshotError,
   type AuditFilterFormValues,
-  type AuditSnapshotPermissions,
   type AuditSnapshotPublicError,
+  type ProcessAuditSnapshotState,
 } from "@/features/processos/process-audit-snapshot-model";
 import type { AuditEventListOptions } from "@/domain/services/audit-service";
-import type { AuditEvent, CaseSnapshot } from "@/domain/core/case-audit";
-import type { CaseId } from "@/domain/core/ids";
+import type { CaseSnapshot } from "@/domain/core/case-audit";
+import type { Case } from "@/domain/core/case";
+import type { CaseSnapshotId } from "@/domain/core/ids";
 import type { ServiceError } from "@/domain/services/result";
 import type { CreateCaseSnapshotInput } from "@/domain/services/inputs";
 
-export type ProcessAuditSnapshotsProps = Readonly<{ caseId: CaseId }>;
+export const AUDIT_SECTION_TITLE_ID = "audit-section-title";
 
-type State =
-  | { kind: "loading" }
-  | { kind: "error"; error: AuditSnapshotPublicError }
-  | {
-      kind: "ready";
-      events: readonly AuditEvent[];
-      snapshots: readonly CaseSnapshot[];
-      permissions: AuditSnapshotPermissions;
-    };
+export type ProcessAuditSnapshotsProps = Readonly<{ case: Case }>;
 
-export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
+export function ProcessAuditSnapshots({
+  case: caseEntity,
+}: ProcessAuditSnapshotsProps) {
+  const caseId = caseEntity.id;
   const { environment, context } = useMockDomain();
-  const [state, setState] = React.useState<State>({ kind: "loading" });
-  const [refreshing, setRefreshing] = React.useState(false);
+
+  const [state, setState] = React.useState<ProcessAuditSnapshotState>({
+    kind: "loading",
+  });
   const [filter, setFilter] = React.useState<AuditFilterFormValues>(
     EMPTY_AUDIT_FILTER,
   );
   const [filterError, setFilterError] = React.useState<string | null>(null);
+
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
   const [createError, setCreateError] =
     React.useState<AuditSnapshotPublicError | null>(null);
+
   const [detailOpen, setDetailOpen] = React.useState(false);
+  const [detailSnapshotId, setDetailSnapshotId] =
+    React.useState<CaseSnapshotId | null>(null);
   const [detailSnapshot, setDetailSnapshot] =
     React.useState<CaseSnapshot | null>(null);
+  const [detailError, setDetailError] =
+    React.useState<AuditSnapshotPublicError | null>(null);
+  const [detailLoading, setDetailLoading] = React.useState(false);
 
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
+  const detailRequestIdRef = React.useRef(0);
   const writeOperationRef = React.useRef(false);
-  const [submitting, setSubmitting] = React.useState(false);
+  const viewTriggerRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -70,16 +77,30 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
   }, []);
 
   const loadAll = React.useCallback(
-    async (options: AuditEventListOptions | null = null) => {
+    async (
+      auditOptions: AuditEventListOptions | null,
+      opts: { readonly filtered: boolean; readonly isRefresh: boolean },
+    ) => {
       const reqId = ++requestIdRef.current;
-      const isInitial = state.kind !== "ready";
-      if (isInitial) setState({ kind: "loading" });
-      else setRefreshing(true);
-      const auditOptions = options ?? {};
+      if (opts.isRefresh) {
+        setState((prev) =>
+          prev.kind === "ready" ? { ...prev, refreshing: true } : prev,
+        );
+      } else {
+        setState({ kind: "loading" });
+      }
+      const listOptions: AuditEventListOptions =
+        auditOptions ?? { page: { limit: AUDIT_SNAPSHOT_PAGE_LIMIT } };
       const [auditRes, snapRes, permAudit, permReadSnap, permCreateSnap] =
         await Promise.all([
-          environment.services.auditEvents.listByCase(context, caseId, auditOptions),
-          environment.services.caseSnapshots.listByCase(context, caseId),
+          environment.services.auditEvents.listByCase(
+            context,
+            caseId,
+            listOptions,
+          ),
+          environment.services.caseSnapshots.listByCase(context, caseId, {
+            page: { limit: AUDIT_SNAPSHOT_PAGE_LIMIT },
+          }),
           environment.services.permissions.evaluate(context, {
             action: "auditEvent.read",
             caseId,
@@ -94,49 +115,101 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
           }),
         ]);
       if (!mountedRef.current || reqId !== requestIdRef.current) return;
-      const errored = [auditRes, snapRes, permAudit, permReadSnap, permCreateSnap]
-        .find((r) => !r.ok);
-      if (errored && !errored.ok) {
+
+      if (!permAudit.ok) {
         setState({
           kind: "error",
-          error: mapAuditSnapshotError(errored.error as ServiceError),
+          error: mapAuditSnapshotError(permAudit.error as ServiceError),
         });
-        setRefreshing(false);
         return;
       }
-      if (
-        !auditRes.ok ||
-        !snapRes.ok ||
-        !permAudit.ok ||
-        !permReadSnap.ok ||
-        !permCreateSnap.ok
-      ) {
-        setRefreshing(false);
+      if (!permReadSnap.ok) {
+        setState({
+          kind: "error",
+          error: mapAuditSnapshotError(permReadSnap.error as ServiceError),
+        });
         return;
       }
+      if (!permCreateSnap.ok) {
+        setState({
+          kind: "error",
+          error: mapAuditSnapshotError(permCreateSnap.error as ServiceError),
+        });
+        return;
+      }
+
+      const canReadAudit = permAudit.data.allowed === true;
+      const canReadSnapshots = permReadSnap.data.allowed === true;
+      const canCreateSnapshot = permCreateSnap.data.allowed === true;
+
+      let events: readonly ProcessAuditSnapshotState extends { kind: "ready"; events: infer E }
+        ? E extends readonly (infer _)[] ? E : never
+        : never = [] as never;
+      // Simplificação: usar tipagem explícita
+      let evs: readonly import("@/domain/core/case-audit").AuditEvent[] = [];
+      let snaps: readonly CaseSnapshot[] = [];
+
+      if (canReadAudit) {
+        if (!auditRes.ok) {
+          setState({
+            kind: "error",
+            error: mapAuditSnapshotError(auditRes.error as ServiceError),
+          });
+          return;
+        }
+        evs = auditRes.data.items;
+      } else if (!auditRes.ok && auditRes.error.code !== "forbidden") {
+        setState({
+          kind: "error",
+          error: mapAuditSnapshotError(auditRes.error as ServiceError),
+        });
+        return;
+      }
+
+      if (canReadSnapshots) {
+        if (!snapRes.ok) {
+          setState({
+            kind: "error",
+            error: mapAuditSnapshotError(snapRes.error as ServiceError),
+          });
+          return;
+        }
+        snaps = snapRes.data.items;
+      } else if (!snapRes.ok && snapRes.error.code !== "forbidden") {
+        setState({
+          kind: "error",
+          error: mapAuditSnapshotError(snapRes.error as ServiceError),
+        });
+        return;
+      }
+
+      // eliminar aviso não usado
+      void events;
+
       setState({
         kind: "ready",
-        events: auditRes.data.items,
-        snapshots: snapRes.data.items,
+        events: evs,
+        snapshots: snaps,
         permissions: {
-          canReadAudit: permAudit.data.allowed === true,
-          canReadSnapshots: permReadSnap.data.allowed === true,
-          canCreateSnapshot: permCreateSnap.data.allowed === true,
+          canReadAudit,
+          canReadSnapshots,
+          canCreateSnapshot,
         },
+        refreshing: false,
+        filtered: opts.filtered,
       });
-      setRefreshing(false);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [environment, context, caseId],
   );
 
   React.useEffect(() => {
-    void loadAll(null);
+    void loadAll(null, { filtered: false, isRefresh: false });
   }, [loadAll]);
 
   const applyFilter = React.useCallback(
     (opts: AuditEventListOptions | null) => {
       if (opts === null) {
+        // Filter builder falhou: mostra erro local sem tocar no estado.
         const built = buildAuditFilter(filter);
         if (!built.ok) {
           setFilterError(
@@ -146,12 +219,26 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
           );
           return;
         }
+        // built.ok true e opts null: significa "limpar" (nenhum filtro).
+        setFilterError(null);
+        void loadAll(null, { filtered: false, isRefresh: true });
+        return;
       }
       setFilterError(null);
-      void loadAll(opts);
+      const isFiltered =
+        opts.actions !== undefined ||
+        opts.occurredFrom !== undefined ||
+        opts.occurredTo !== undefined;
+      void loadAll(opts, { filtered: isFiltered, isRefresh: true });
     },
     [filter, loadAll],
   );
+
+  const refreshAfterCreate = React.useCallback(() => {
+    void loadAll(null, { filtered: false, isRefresh: true });
+    setFilter(EMPTY_AUDIT_FILTER);
+    setFilterError(null);
+  }, [loadAll]);
 
   const handleCreate = React.useCallback(
     async (input: CreateCaseSnapshotInput) => {
@@ -170,19 +257,71 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
           return;
         }
         setCreateOpen(false);
-        toast.success("Snapshot criado com sucesso.");
-        await loadAll(null);
+        toast.success("Snapshot criado.");
+        refreshAfterCreate();
       } finally {
         writeOperationRef.current = false;
         if (mountedRef.current) setSubmitting(false);
       }
     },
-    [environment, context, loadAll],
+    [environment, context, refreshAfterCreate],
   );
 
-  const handleViewSnapshot = React.useCallback((s: CaseSnapshot) => {
-    setDetailSnapshot(s);
-    setDetailOpen(true);
+  const loadDetail = React.useCallback(
+    async (snapshotId: CaseSnapshotId) => {
+      const reqId = ++detailRequestIdRef.current;
+      setDetailLoading(true);
+      setDetailError(null);
+      setDetailSnapshot(null);
+      const res = await environment.services.caseSnapshots.getById(
+        context,
+        caseId,
+        snapshotId,
+      );
+      if (!mountedRef.current || reqId !== detailRequestIdRef.current) return;
+      if (!res.ok) {
+        setDetailError(mapAuditSnapshotError(res.error as ServiceError));
+        setDetailLoading(false);
+        return;
+      }
+      setDetailSnapshot(res.data);
+      setDetailLoading(false);
+    },
+    [environment, context, caseId],
+  );
+
+  const handleViewSnapshot = React.useCallback(
+    (snapshotId: CaseSnapshotId) => {
+      // Preserva o gatilho para devolver o foco ao fechar o diálogo.
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) viewTriggerRef.current = active;
+      setDetailSnapshotId(snapshotId);
+      setDetailOpen(true);
+      setDetailSnapshot(null);
+      setDetailError(null);
+      void loadDetail(snapshotId);
+    },
+    [loadDetail],
+  );
+
+  const handleDetailRetry = React.useCallback(() => {
+    if (detailSnapshotId === null) return;
+    void loadDetail(detailSnapshotId);
+  }, [detailSnapshotId, loadDetail]);
+
+  const handleDetailOpenChange = React.useCallback((next: boolean) => {
+    setDetailOpen(next);
+    if (!next) {
+      // Descarta respostas pendentes e devolve o foco.
+      detailRequestIdRef.current += 1;
+      setDetailLoading(false);
+      const trigger = viewTriggerRef.current;
+      if (trigger !== null) {
+        window.setTimeout(() => {
+          trigger.focus();
+        }, 0);
+      }
+    }
   }, []);
 
   if (state.kind === "loading") return <ProcessAuditSnapshotLoading />;
@@ -190,7 +329,9 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
     return (
       <ProcessAuditSnapshotError
         message={state.error.message}
-        onRetry={() => void loadAll(null)}
+        onRetry={() =>
+          void loadAll(null, { filtered: false, isRefresh: false })
+        }
       />
     );
   }
@@ -200,31 +341,45 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
   if (!canSeeSection) {
     return (
       <section
-        aria-label="Histórico de alterações e snapshots"
-        className="rounded-md border bg-muted/20 p-4 text-sm text-muted-foreground"
+        aria-labelledby={AUDIT_SECTION_TITLE_ID}
+        className="space-y-2 rounded-md border bg-muted/20 p-4"
       >
-        Você não tem permissão para visualizar o histórico e os snapshots
-        deste processo.
+        <h2
+          id={AUDIT_SECTION_TITLE_ID}
+          className="text-base font-semibold text-foreground"
+        >
+          Histórico de alterações e snapshots
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Você não tem permissão para visualizar o histórico e os snapshots
+          deste processo.
+        </p>
       </section>
     );
   }
 
   return (
     <section
-      aria-label="Histórico de alterações e snapshots"
+      aria-labelledby={AUDIT_SECTION_TITLE_ID}
       className="space-y-4"
     >
-      {refreshing ? <RefreshingBanner /> : null}
+      <h2
+        id={AUDIT_SECTION_TITLE_ID}
+        className="text-base font-semibold text-foreground"
+      >
+        Histórico de alterações e snapshots
+      </h2>
+      {state.refreshing ? <RefreshingBanner /> : null}
       {state.permissions.canReadAudit ? (
         <ProcessAuditHistoryCard
-          caseId={caseId}
           events={state.events}
           currentUserId={context.userId}
           filter={filter}
           onFilterChange={setFilter}
           onApplyFilter={applyFilter}
           filterError={filterError}
-          loading={refreshing}
+          loading={state.refreshing}
+          filtered={state.filtered}
         />
       ) : null}
       {state.permissions.canReadSnapshots ? (
@@ -251,11 +406,13 @@ export function ProcessAuditSnapshots({ caseId }: ProcessAuditSnapshotsProps) {
       />
       <ProcessSnapshotDetailsDialog
         open={detailOpen}
-        onOpenChange={setDetailOpen}
-        loading={false}
-        error={null}
+        onOpenChange={handleDetailOpenChange}
+        loading={detailLoading}
+        error={detailError}
         snapshot={detailSnapshot}
         currentUserId={context.userId}
+        canRetry={detailSnapshotId !== null}
+        onRetry={handleDetailRetry}
       />
     </section>
   );
