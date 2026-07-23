@@ -104,6 +104,11 @@ export const SEED_TL_ALFA_3_ID = buildDomainId("caseTimelineEntry", "seed_alfa_3
 export const SEED_TL_BETA_1_ID = buildDomainId("caseTimelineEntry", "seed_beta_1");
 
 // ---- AuditEvents (LV-08.6A) -----------------------------------------------
+// Caso Alfa 1 — trilha própria (LV-08.6A.1).
+export const SEED_AUDIT_ALFA_C1_1_ID = buildDomainId("auditEvent", "seed_alfa_c1_1");
+export const SEED_AUDIT_ALFA_C1_2_ID = buildDomainId("auditEvent", "seed_alfa_c1_2");
+export const SEED_AUDIT_ALFA_C1_3_ID = buildDomainId("auditEvent", "seed_alfa_c1_3");
+// Caso Alfa 2 — 11 eventos originais.
 export const SEED_AUDIT_ALFA_1_ID = buildDomainId("auditEvent", "seed_alfa_1");
 export const SEED_AUDIT_ALFA_2_ID = buildDomainId("auditEvent", "seed_alfa_2");
 export const SEED_AUDIT_ALFA_3_ID = buildDomainId("auditEvent", "seed_alfa_3");
