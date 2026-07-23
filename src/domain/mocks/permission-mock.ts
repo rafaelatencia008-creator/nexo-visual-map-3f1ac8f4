@@ -182,7 +182,7 @@ export function isActionAllowedForRole(
 
 // ---- Fábrica pública ------------------------------------------------------
 
-import { hasAgendaCaseAccess, isAgendaAction } from "./agenda-case-access";
+import { checkAgendaCaseAccess, isAgendaAction } from "./agenda-case-access";
 
 export function createPermissionPolicyMock(store: MockStore): PermissionPolicy {
   return {
@@ -208,12 +208,12 @@ export function createPermissionPolicyMock(store: MockStore): PermissionPolicy {
       if (!allowed) {
         return { ok: true, data: { allowed: false, reason: "role_not_allowed" } };
       }
-      // Acesso contextual da Agenda: quando a ação é de Agenda e há caseId,
-      // verifica se o contexto tem acesso ao caso.
       if (isAgendaAction(request.action) && request.caseId !== undefined) {
-        if (!hasAgendaCaseAccess(store, ctx.data.context, request.caseId)) {
+        const access = checkAgendaCaseAccess(store, ctx.data.context, request.caseId);
+        if (access.kind === "denied") {
           return { ok: true, data: { allowed: false, reason: "case_access_denied" } };
         }
+        // case_not_in_org: policy permite; serviço subsequente devolverá not_found.
       }
       return { ok: true, data: { allowed: true } };
     },

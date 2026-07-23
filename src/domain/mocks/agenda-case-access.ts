@@ -23,34 +23,47 @@ export function isAgendaAdminRole(role: Role): boolean {
   return ADMIN_ROLES.has(role);
 }
 
-/**
- * Retorna `true` se o contexto tem acesso ao caso para fins de Agenda.
- * O caso precisa existir na organização informada — se não existir,
- * devolve `false` (o serviço externo devolverá `not_found` no lugar).
- */
-export function hasAgendaCaseAccess(
+export type AgendaAccess =
+  | { kind: "allowed" }
+  | { kind: "case_not_in_org" }
+  | { kind: "denied" };
+
+export function checkAgendaCaseAccess(
   store: MockStore,
   context: ServiceContext,
   caseId: CaseId,
-): boolean {
+): AgendaAccess {
   const c = store.cases.get(caseId);
-  if (!c || c.organizationId !== context.organizationId) return false;
-  if (isAgendaAdminRole(context.role)) return true;
-  // Descobre os professional profiles do usuário na org.
+  if (!c || c.organizationId !== context.organizationId) {
+    return { kind: "case_not_in_org" };
+  }
+  if (isAgendaAdminRole(context.role)) return { kind: "allowed" };
   const profIds = new Set<string>();
   for (const p of store.professionalProfiles.values()) {
     if (p.organizationId === context.organizationId && p.userId === context.userId) {
       profIds.add(p.id);
     }
   }
-  if (profIds.size === 0) return false;
+  if (profIds.size === 0) return { kind: "denied" };
   for (const a of store.assignments.values()) {
     if (a.organizationId !== context.organizationId) continue;
     if (a.caseId !== caseId) continue;
     if (a.status !== "active") continue;
-    if (profIds.has(a.professionalProfileId)) return true;
+    if (profIds.has(a.professionalProfileId)) return { kind: "allowed" };
   }
-  return false;
+  return { kind: "denied" };
+}
+
+/**
+ * Retorna `true` quando o contexto tem acesso ao caso — inclui a checagem
+ * de existência do caso na organização.
+ */
+export function hasAgendaCaseAccess(
+  store: MockStore,
+  context: ServiceContext,
+  caseId: CaseId,
+): boolean {
+  return checkAgendaCaseAccess(store, context, caseId).kind === "allowed";
 }
 
 /**

@@ -12,7 +12,7 @@ import type { ServiceResult } from "../services/result";
 import type { MockStore } from "./store";
 import { requireContext, type ValidatedContext } from "./context-validation";
 import { isActionAllowedForRole } from "./permission-mock";
-import { hasAgendaCaseAccess, isAgendaAction } from "./agenda-case-access";
+import { checkAgendaCaseAccess, isAgendaAction } from "./agenda-case-access";
 
 export function requirePermission(
   store: MockStore,
@@ -37,7 +37,9 @@ export function requirePermission(
     };
   }
   if (isAgendaAction(request.action) && request.caseId !== undefined) {
-    if (!hasAgendaCaseAccess(store, ctx.data.context, request.caseId)) {
+    const access = checkAgendaCaseAccess(store, ctx.data.context, request.caseId);
+    // Caso não pertence à org: NÃO barra aqui; o serviço devolverá not_found.
+    if (access.kind === "denied") {
       return {
         ok: false,
         error: { code: "forbidden", message: "case_access_denied" },
