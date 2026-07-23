@@ -8,6 +8,7 @@ import {
 } from "@/features/processos/ProcessDetailState";
 import { ProcessDetailSummary } from "@/features/processos/ProcessDetailSummary";
 import { ProcessPeopleRelations } from "@/features/processos/ProcessPeopleRelations";
+import { ProcessPlanTimeline } from "@/features/processos/ProcessPlanTimeline";
 import {
   ProcessReadinessChecklist,
   type ChecklistSaveResult,
@@ -232,6 +233,7 @@ function ProcessoDetalhePage() {
         onReloadAll={retryLoad}
       />
       <ProcessPeopleRelations case={state.case} />
+      <ProcessPlanTimeline case={state.case} />
     </div>
   );
 }

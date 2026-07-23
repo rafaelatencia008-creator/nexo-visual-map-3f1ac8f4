@@ -1108,7 +1108,14 @@ describe("LV-08.5A.1 · arquitetura preservada", () => {
       return out;
     }
     const files = [...walk("src/components"), ...walk("src/features")];
+    // LV-08.5B: os arquivos abaixo passaram a usar oficialmente casePlan/caseTimeline.
+    const lv085bAllowed = new Set([
+      "src/features/processos/ProcessPlanTimeline.tsx",
+      "src/features/processos/process-plan-model.ts",
+    ]);
     for (const f of files) {
+      const rel = f.replace(/^\.\//, "");
+      if (lv085bAllowed.has(rel)) continue;
       const src = fs.readFileSync(f, "utf8");
       expect(src.includes("casePlan.")).toBe(false);
       expect(src.includes("caseTimeline.")).toBe(false);
