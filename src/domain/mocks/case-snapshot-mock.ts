@@ -1,8 +1,11 @@
 /**
- * CaseSnapshotService — implementação em memória (LV-08.6A).
+ * CaseSnapshotService — implementação em memória (LV-08.6A / LV-08.6A.1).
  *
  * Snapshots são imutáveis e completamente isolados do estado corrente
- * do processo. Cada leitura devolve cópia profunda.
+ * do processo. Cada leitura devolve cópia profunda. A criação de
+ * snapshot é atômica: snapshot e evento de auditoria são preparados
+ * antes de qualquer efetivação; falha na efetivação do evento reverte
+ * o snapshot antes de retornar erro.
  */
 
 import type { MockStore } from "./store";
@@ -22,7 +25,7 @@ import {
   CASE_SNAPSHOT_REASON_MAX,
   isCaseSnapshot,
 } from "../core/case-audit";
-import type { CaseId, CaseSnapshotId } from "../core/ids";
+import type { CaseSnapshotId } from "../core/ids";
 import { isCaseId, isCaseSnapshotId } from "../core/ids";
 import {
   containsForbiddenKey,
@@ -77,14 +80,14 @@ export function createCaseSnapshotServiceMock(
       if (typeof raw.label !== "string")
         return invalid<CaseSnapshot>("invalid_label");
       const labelTrim = raw.label.trim();
-      if (labelTrim.length < 1 || raw.label.length > CASE_SNAPSHOT_LABEL_MAX)
+      if (labelTrim.length < 1 || labelTrim.length > CASE_SNAPSHOT_LABEL_MAX)
         return invalid<CaseSnapshot>("invalid_label");
       let reason: string | undefined;
       if (raw.reason !== undefined) {
         if (typeof raw.reason !== "string")
           return invalid<CaseSnapshot>("invalid_reason");
         const rt = raw.reason.trim();
-        if (rt.length < 1 || raw.reason.length > CASE_SNAPSHOT_REASON_MAX)
+        if (rt.length < 1 || rt.length > CASE_SNAPSHOT_REASON_MAX)
           return invalid<CaseSnapshot>("invalid_reason");
         reason = rt;
       }
@@ -101,7 +104,6 @@ export function createCaseSnapshotServiceMock(
       const persons = Array.from(store.persons.values()).filter(
         (p) => p.organizationId === orgId && linkedPersonIds.has(p.id),
       );
-      // Confirma que todas as pessoas vinculadas existem.
       if (persons.length !== linkedPersonIds.size) {
         return internal<CaseSnapshot>("linked_person_missing");
       }
@@ -151,16 +153,32 @@ export function createCaseSnapshotServiceMock(
       if (!isCaseSnapshot(snapshot)) {
         return internal<CaseSnapshot>("invalid_snapshot_shape");
       }
+
+      // Fase 1: preparar evento sem tocar no store.
+      let preparedEvent;
+      try {
+        preparedEvent = audit.prepare({
+          organizationId: orgId,
+          caseId: raw.caseId,
+          actorUserId: v.data.context.userId,
+          actorMembershipId: v.data.context.membershipId,
+          action: "caseSnapshot.created",
+          targetType: "caseSnapshot",
+          targetId: id,
+        });
+      } catch {
+        return internal<CaseSnapshot>("audit_prepare_failed");
+      }
+
+      // Fase 2: efetivar snapshot + evento atomicamente.
       store.caseSnapshots.set(id, snapshot);
-      audit.append({
-        organizationId: orgId,
-        caseId: raw.caseId,
-        actorUserId: v.data.context.userId,
-        actorMembershipId: v.data.context.membershipId,
-        action: "caseSnapshot.created",
-        targetType: "caseSnapshot",
-        targetId: id,
-      });
+      try {
+        audit.commit(preparedEvent);
+      } catch {
+        // Rollback: remove snapshot para nunca deixar snapshot sem evento.
+        store.caseSnapshots.delete(id);
+        return internal<CaseSnapshot>("audit_commit_failed");
+      }
       return { ok: true, data: deepClone(snapshot) };
     },
 
@@ -183,7 +201,7 @@ export function createCaseSnapshotServiceMock(
 
     async listByCase(
       context: ServiceContext,
-      caseId: CaseId,
+      caseId,
       options,
     ): Promise<ServiceResult<PageResult<CaseSnapshot>>> {
       const v = requireContext(store, context);
@@ -198,10 +216,10 @@ export function createCaseSnapshotServiceMock(
       if (options !== undefined) {
         if (!isPlainObject(options))
           return invalid<PageResult<CaseSnapshot>>("invalid_options");
-        for (const k of Object.keys(options)) {
-          if (!LIST_OPT_ALLOWED.has(k))
-            return invalid<PageResult<CaseSnapshot>>("unknown_option");
-        }
+        if (containsForbiddenKey(options))
+          return invalid<PageResult<CaseSnapshot>>("forbidden_key");
+        if (!hasOnlyAllowedKeys(options, LIST_OPT_ALLOWED))
+          return invalid<PageResult<CaseSnapshot>>("unknown_option");
         if (options.page !== undefined) {
           const p = validatePageRequest(options.page);
           if (!p.ok) return { ok: false, error: p.error };
