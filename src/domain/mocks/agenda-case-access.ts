@@ -82,7 +82,10 @@ export function computeAgendaAccessibleCaseIds(
   if (isAgendaAdminRole(context.role)) return new Set<string>(orgCases);
   const profIds = new Set<string>();
   for (const p of store.professionalProfiles.values()) {
-    if (p.organizationId === orgId && p.userId === context.userId) profIds.add(p.id);
+    if (p.organizationId !== orgId) continue;
+    if (p.userId !== context.userId) continue;
+    if (p.status !== "active") continue;
+    profIds.add(p.id);
   }
   const accessible = new Set<string>();
   if (profIds.size === 0) return accessible;
