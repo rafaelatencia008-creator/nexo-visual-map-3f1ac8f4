@@ -1135,3 +1135,173 @@ describe("LV-08.5A.1 · arquitetura preservada", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// LV-08.5A.2 — extração segura de caseId, enforce por input e auditoria fonte.
+// ---------------------------------------------------------------------------
+
+describe("LV-08.5A.2 · guardas contextualizadas de Plano e Cronologia", () => {
+  it("permission-guards.ts usa isCaseId oficialmente", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(/from\s+["']\.\.\/core\/ids["']/.test(stripped)).toBe(true);
+    expect(/\bisCaseId\s*\(/.test(stripped)).toBe(true);
+    expect(/type\s+CaseId/.test(stripped)).toBe(true);
+  });
+
+  it("permission-guards.ts não valida caseId apenas por startsWith", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(/startsWith\(\s*["']case_["']\s*\)/.test(stripped)).toBe(false);
+    expect(/\bas\s+CaseId\b/.test(stripped)).toBe(false);
+  });
+
+  it("casePlan.create usa enforceFromInputCase e não retorna direto ao serviço", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(
+      /enforceFromInputCase\(\s*store\s*,\s*ctx\s*,\s*["']casePlanItem\.create["']/.test(
+        stripped,
+      ),
+    ).toBe(true);
+    expect(/if\s*\(\s*cid\s*===\s*null\s*\)\s*return\s+s\.create/.test(stripped)).toBe(
+      false,
+    );
+  });
+
+  it("caseTimeline.create usa enforceFromInputCase e não retorna direto ao serviço", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(
+      /enforceFromInputCase\(\s*store\s*,\s*ctx\s*,\s*["']caseTimelineEntry\.create["']/.test(
+        stripped,
+      ),
+    ).toBe(true);
+  });
+
+  it("perfil leitura com input válido é bloqueado por forbidden em casePlan.create", async () => {
+    const { env, ctx } = await createLeituraContext();
+    const r = await env.services.casePlan.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "activity",
+      title: "T",
+      priority: "normal",
+    });
+    expectFail(r, "forbidden");
+  });
+
+  it("perfil leitura com input malformado também recebe forbidden (não pula guarda)", async () => {
+    const { env, ctx } = await createLeituraContext();
+    const badInput = {
+      kind: "activity",
+      title: "T",
+      priority: "normal",
+    } as unknown as Parameters<typeof env.services.casePlan.create>[1];
+    const r = await env.services.casePlan.create(ctx, badInput);
+    expectFail(r, "forbidden");
+  });
+
+  it("perfil leitura com input malformado em caseTimeline.create também é forbidden", async () => {
+    const { env, ctx } = await createLeituraContext();
+    const badInput = {
+      kind: "note",
+      title: "T",
+    } as unknown as Parameters<typeof env.services.caseTimeline.create>[1];
+    const r = await env.services.caseTimeline.create(ctx, badInput);
+    expectFail(r, "forbidden");
+  });
+
+  it("proprietário com input malformado recebe validation_error do serviço", async () => {
+    const env = createMockDomainEnvironment();
+    const badInput = {
+      kind: "activity",
+      title: "T",
+      priority: "normal",
+    } as unknown as Parameters<typeof env.services.casePlan.create>[1];
+    const r = await env.services.casePlan.create(OWNER_ALFA, badInput);
+    expectFail(r, "validation_error");
+  });
+
+  it("proprietário com caseId de outra organização recebe forbidden pela guarda contextual", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.casePlan.create(OWNER_ALFA, {
+      caseId: SEED_CASE_BETA_2_ID,
+      kind: "activity",
+      title: "T",
+      priority: "normal",
+    });
+    expectFail(r, "forbidden");
+  });
+
+  it("métodos de leitura de casePlan/caseTimeline usam enforceWithCase", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(
+      /enforceWithCase\([\s\S]*?["']casePlanItem\.read["']/.test(stripped),
+    ).toBe(true);
+    expect(
+      /enforceWithCase\([\s\S]*?["']casePlanItem\.list["']/.test(stripped),
+    ).toBe(true);
+    expect(
+      /enforceWithCase\([\s\S]*?["']caseTimelineEntry\.read["']/.test(stripped),
+    ).toBe(true);
+    expect(
+      /enforceWithCase\([\s\S]*?["']caseTimelineEntry\.list["']/.test(stripped),
+    ).toBe(true);
+  });
+
+  it("update, changeStatus e remove de casePlan/caseTimeline usam enforceWithCase", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/domain/mocks/permission-guards.ts",
+      "utf8",
+    );
+    const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    for (const action of [
+      "casePlanItem.update",
+      "casePlanItem.changeStatus",
+      "casePlanItem.remove",
+      "caseTimelineEntry.update",
+      "caseTimelineEntry.remove",
+    ]) {
+      const re = new RegExp(
+        `enforceWithCase\\([\\s\\S]*?["']${action.replace(".", "\\.")}["']`,
+      );
+      expect(re.test(stripped)).toBe(true);
+    }
+  });
+
+  it("proprietário válido continua conseguindo criar plano após as guardas", async () => {
+    const env = createMockDomainEnvironment();
+    const r = await env.services.casePlan.create(OWNER_ALFA, {
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "activity",
+      title: "Novo item",
+      priority: "normal",
+    });
+    const item = unwrapOk(r);
+    expect(isCasePlanItem(item)).toBe(true);
+    expect(item.caseId).toBe(SEED_CASE_ALFA_1_ID);
+  });
+});
+
