@@ -275,3 +275,11 @@ export type UpdateCaseTimelineEntryInput = Readonly<{
   description?: string | null;
   expectedVersion: number;
 }>;
+
+// ---- CaseSnapshot (LV-08.6A) -----------------------------------------------
+
+export type CreateCaseSnapshotInput = Readonly<{
+  caseId: CaseId;
+  label: string;
+  reason?: string;
+}>;

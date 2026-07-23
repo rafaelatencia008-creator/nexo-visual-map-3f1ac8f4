@@ -99,6 +99,12 @@ const WRITE_ROLES: readonly Role[] = [
   "revisor",
   "colaborador",
 ];
+// LV-08.6A — caseSnapshot.create restrita a proprietário/administrador/profissional.
+const SNAPSHOT_CREATE_ROLES: readonly Role[] = [
+  "proprietario",
+  "administrador",
+  "profissional",
+];
 
 function isReadOrListAction(action: PermissionAction): boolean {
   return action.endsWith(".read") || action.endsWith(".list");
@@ -106,6 +112,7 @@ function isReadOrListAction(action: PermissionAction): boolean {
 
 function expectedRolesFor(action: PermissionAction): readonly Role[] {
   if (isReadOrListAction(action)) return ALL_ROLES;
+  if (action === "caseSnapshot.create") return SNAPSHOT_CREATE_ROLES;
   if (ADMIN_ACTIONS.includes(action)) return ADMIN_ROLES;
   return WRITE_ROLES;
 }
@@ -138,17 +145,17 @@ function snapshotEqual(a: MockDomainSnapshot, b: MockDomainSnapshot): boolean {
 }
 
 // ============================================================================
-// (1) Matriz completa: 51 ações × 6 papéis = 306 decisões
+// (1) Matriz completa: 54 ações × 6 papéis = 324 decisões
 // ============================================================================
 
-describe("LV-07.4 — matriz completa (51 ações × 6 papéis)", () => {
+describe("LV-07.4 — matriz completa (54 ações × 6 papéis)", () => {
   const contexts = new Map<Role, RoleSetup>();
 
   beforeAll(async () => {
     for (const role of ROLES) {
       contexts.set(role, await setupRoleEnv(role));
     }
-    expect(PERMISSION_ACTIONS.length).toBe(51);
+    expect(PERMISSION_ACTIONS.length).toBe(54);
     expect(ROLES.length).toBe(6);
   });
 
