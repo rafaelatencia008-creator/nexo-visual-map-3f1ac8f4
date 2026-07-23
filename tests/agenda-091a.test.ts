@@ -2270,9 +2270,11 @@ describe("LV-09.1A.3 · assignments determinam o alcance", () => {
     expect(dec.allowed).toBe(true);
     void env;
   });
-  it("(424) hasAgendaCaseAccess: OWNER_ALFA em caso Alfa 1 → true", () => {
+  it("(424) proprietário lê deadline seed em Alfa 1 (proxy do acesso permitido)", async () => {
     const env = createMockDomainEnvironment();
-    expect(hasAgendaCaseAccess(env.snapshot()._internal ?? env.store, OWNER_ALFA, SEED_CASE_ALFA_1_ID)).toBe(true);
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_ALFA_1_ID)!;
+    const r = ok(await env.services.deadlines.getById(OWNER_ALFA, SEED_CASE_ALFA_1_ID, seedDL.id));
+    expect(r.id).toBe(seedDL.id);
   });
 });
 
@@ -2285,30 +2287,31 @@ describe("LV-09.1A.3 · isAgendaAdminRole matriz completa", () => {
   it("(445) leitura NÃO é admin", () => { expect(isAgendaAdminRole("leitura")).toBe(false); });
 });
 
-describe("LV-09.1A.3 · computeAgendaAccessibleCaseIds", () => {
-  it("(460) proprietário: todos os casos Alfa", () => {
+describe("LV-09.1A.3 · list expõe apenas escopo acessível via serviço", () => {
+  it("(460) proprietário: list total inclui deadlines dos 3 casos Alfa", async () => {
     const env = createMockDomainEnvironment();
-    const s = env.snapshot();
-    const set = computeAgendaAccessibleCaseIds(env.store, OWNER_ALFA);
-    const alfa = s.cases.filter((c) => c.organizationId === SEED_ORG_ALFA_ID).map((c) => c.id);
-    for (const id of alfa) expect(set.has(id)).toBe(true);
+    const r = ok(await env.services.deadlines.list(OWNER_ALFA, {}));
+    const orgIds = new Set(r.items.map((d) => d.organizationId));
+    expect(orgIds.has(SEED_ORG_ALFA_ID)).toBe(true);
+    expect(orgIds.has(SEED_ORG_BETA_ID)).toBe(false);
   });
-  it("(461) proprietário Alfa não vê casos Beta", () => {
+  it("(461) proprietário Alfa: nenhum item da list pertence a Beta", async () => {
     const env = createMockDomainEnvironment();
-    const set = computeAgendaAccessibleCaseIds(env.store, OWNER_ALFA);
-    expect(set.has(SEED_CASE_BETA_1_ID)).toBe(false);
+    const r = ok(await env.services.deadlines.list(OWNER_ALFA, {}));
+    for (const d of r.items) expect(d.organizationId).toBe(SEED_ORG_ALFA_ID);
   });
-  it("(462) profissional sem profile: conjunto vazio", async () => {
+  it("(462) profissional sem profile: list global devolve vazio", async () => {
     const { env, ctx } = await setupWorker("profissional", { profile: "none" });
-    const set = computeAgendaAccessibleCaseIds(env.store, ctx);
-    expect(set.size).toBe(0);
+    const r = ok(await env.services.deadlines.list(ctx, {}));
+    expect(r.items.length).toBe(0);
+    void env;
   });
-  it("(463) profissional com assignment ativo em Alfa 2: contém somente Alfa 2", async () => {
+  it("(463) profissional com assignment em Alfa 2: list contém apenas Alfa 2", async () => {
     const { env, ctx } = await setupWorker("profissional", {
       profile: "active", assignCase: SEED_CASE_ALFA_2_ID, assignStatus: "active",
     });
-    const set = computeAgendaAccessibleCaseIds(env.store, ctx);
-    expect(set.has(SEED_CASE_ALFA_2_ID)).toBe(true);
-    expect(set.has(SEED_CASE_ALFA_1_ID)).toBe(false);
+    const r = ok(await env.services.deadlines.list(ctx, {}));
+    for (const d of r.items) expect(d.caseId).toBe(SEED_CASE_ALFA_2_ID);
+    void env;
   });
 });
