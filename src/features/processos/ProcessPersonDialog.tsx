@@ -169,11 +169,11 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
 
   // Ao selecionar pessoa existente, força restrito se for menor.
   React.useEffect(() => {
-    if (mode.kind !== "link-existing" || catalog.kind !== "ready") return;
+    if (mode.kind !== "link-existing") return;
     if (personId === "") return;
-    const p = catalog.persons.find((x) => x.id === personId);
+    const p = mode.availablePersons.find((x) => x.id === personId);
     if (p && isMinorAge(p.ageClassification)) setRestricted(true);
-  }, [personId, catalog, mode]);
+  }, [personId, mode]);
 
   const title =
     mode.kind === "create-and-link"
@@ -187,6 +187,15 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       : "Editar vínculo com o processo";
 
   const isConflict = error?.kind === "conflict";
+
+  // Lista disponível para vincular (já sem pessoas atualmente vinculadas ao processo).
+  const availablePersons: readonly Person[] =
+    mode.kind === "link-existing" ? mode.availablePersons : [];
+  // Resultado local da pesquisa por displayLabel (preserva ordem recebida).
+  const filteredPersons: readonly Person[] = React.useMemo(
+    () => filterPersonsByDisplayLabel(availablePersons, search),
+    [availablePersons, search],
+  );
 
   const canSubmit = (() => {
     if (submitting) return false;
@@ -218,8 +227,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       return;
     }
     if (mode.kind === "link-existing") {
-      if (catalog.kind !== "ready") return;
-      const chosen = catalog.persons.find((p) => p.id === personId);
+      const chosen = mode.availablePersons.find((p) => p.id === personId);
       if (!chosen) return;
       onLinkExisting({
         personId: chosen.id,
@@ -262,12 +270,12 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
     (showPersonFields && isMinorAge(age)) ||
     (mode.kind === "edit-link" && isMinorAge(mode.person.ageClassification)) ||
     (mode.kind === "link-existing" &&
-      catalog.kind === "ready" &&
       personId !== "" &&
       isMinorAge(
-        catalog.persons.find((p) => p.id === personId)?.ageClassification ??
+        availablePersons.find((p) => p.id === personId)?.ageClassification ??
           "adult",
       ));
+
 
   return (
     <Dialog
