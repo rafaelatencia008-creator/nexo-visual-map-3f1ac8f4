@@ -233,6 +233,7 @@ function ProcessoDetalhePage() {
         onReloadAll={retryLoad}
       />
       <ProcessPeopleRelations case={state.case} />
+      <ProcessPlanTimeline case={state.case} />
     </div>
   );
 }
