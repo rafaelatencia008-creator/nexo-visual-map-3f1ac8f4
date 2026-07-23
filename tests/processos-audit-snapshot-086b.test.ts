@@ -58,7 +58,7 @@ function ownerContext(): ServiceContext {
     organizationId: SEED_ORG_ALFA_ID,
     userId: SEED_USER_1_ID,
     membershipId: SEED_MEM_ALFA_OWNER_ID,
-    role: "administrator",
+    role: "proprietario",
   };
 }
 
