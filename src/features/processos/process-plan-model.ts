@@ -28,7 +28,7 @@ import {
 } from "@/domain/core/assignment";
 import type { ProfessionalProfile } from "@/domain/core/professional";
 import { PERFIS, type Perfil } from "@/domain/shared/work-context";
-import type { AssignmentId } from "@/domain/core/ids";
+import type { AssignmentId, ProfessionalProfileId } from "@/domain/core/ids";
 import { isAssignmentId } from "@/domain/core/ids";
 import { isIsoDate, type IsoDate } from "@/domain/core/common";
 import type {
