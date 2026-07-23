@@ -46,6 +46,7 @@ export type {
   AppointmentMode,
   AppointmentStatus,
   Appointment,
+  AgendaDeadlineStatus,
 } from "./agenda";
 export * from "./validators";
 export * from "./labels";
