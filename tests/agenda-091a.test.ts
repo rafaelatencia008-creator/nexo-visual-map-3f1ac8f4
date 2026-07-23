@@ -2090,18 +2090,16 @@ describe("LV-09.1A.3 · paginação respeita filtro de acesso", () => {
     expect(r.items.length).toBe(0);
     void env;
   });
-  it("(344) admin list total >= list do profissional restrito", async () => {
-    const env = createMockDomainEnvironment();
-    const admin = ok(await env.services.deadlines.list(OWNER_ALFA, {}));
-    const { ctx } = await setupWorker("profissional", {
+  it("(344) admin list total >= list do profissional restrito (mesmo env)", async () => {
+    const { env, ctx } = await setupWorker("profissional", {
       profile: "active", assignCase: SEED_CASE_ALFA_2_ID, assignStatus: "active",
     });
+    const admin = ok(await env.services.deadlines.list(OWNER_ALFA, {}));
     const w = ok(await env.services.deadlines.list(ctx, {}));
     expect(admin.items.length).toBeGreaterThanOrEqual(w.items.length);
   });
-  it("(345) list com pageSize=1 e cursor navega sem retornar itens fora do escopo", async () => {
+  it("(345) list com limit=1 devolve exatamente 1 item do escopo pedido", async () => {
     const env = createMockDomainEnvironment();
-    // cria vários deadlines no caso Alfa 1
     for (let i = 0; i < 3; i += 1) {
       ok(await env.services.deadlines.create(OWNER_ALFA, {
         caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: `T${i}`,
@@ -2109,7 +2107,7 @@ describe("LV-09.1A.3 · paginação respeita filtro de acesso", () => {
       }));
     }
     const p1 = ok(await env.services.deadlines.list(OWNER_ALFA, {
-      caseId: SEED_CASE_ALFA_1_ID, page: { pageSize: 1 },
+      caseId: SEED_CASE_ALFA_1_ID, page: { limit: 1 },
     }));
     expect(p1.items.length).toBe(1);
     expect(p1.items[0]!.caseId).toBe(SEED_CASE_ALFA_1_ID);
