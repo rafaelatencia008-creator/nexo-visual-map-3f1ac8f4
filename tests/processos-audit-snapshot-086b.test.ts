@@ -735,8 +735,8 @@ describe("LV-08.6B — integração no arquivo de rota", () => {
     );
   });
 
-  it("renderiza <ProcessAuditSnapshots caseId={state.case.id} />", () => {
-    expect(source).toContain("<ProcessAuditSnapshots caseId={state.case.id}");
+  it("renderiza <ProcessAuditSnapshots case={state.case} />", () => {
+    expect(source).toContain("<ProcessAuditSnapshots case={state.case}");
   });
 
   it("ProcessAuditSnapshots aparece após ProcessPlanTimeline", () => {
