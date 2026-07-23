@@ -1741,7 +1741,6 @@ describe("LV-09.1A.2 · serviços: forbidden vs not_found (mesma org vs cross-or
 describe("LV-09.1A.2 · computeAgendaAccessibleCaseIds — matriz por papel", () => {
   it("(250) proprietario: enumera todos os casos da org", async () => {
     const env = createMockDomainEnvironment();
-    const store = env.__debugStore?.() as unknown; void store;
     // Testamos indiretamente através das permissões — ambos casos Alfa devem allow.
     const d1 = ok(await env.services.permissions.evaluate(OWNER_ALFA, { action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID }));
     const d2 = ok(await env.services.permissions.evaluate(OWNER_ALFA, { action: "deadline.read", caseId: SEED_CASE_ALFA_2_ID }));
