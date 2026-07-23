@@ -1220,12 +1220,13 @@ describe("LV-09.1A.1 · acesso contextual", () => {
       expect(d.reason).toBeUndefined();
     });
   });
-  it("(145) policy admin cross-org: policy allow (serviço abaixo é quem devolve not_found)", async () => {
+  it("(145) policy admin cross-org: denied com case_access_denied (LV-09.1A.2)", async () => {
     const env = createMockDomainEnvironment();
     const dec = ok(await env.services.permissions.evaluate(OWNER_ALFA, {
       action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
     }));
-    expect(dec.allowed).toBe(true);
+    expect(dec.allowed).toBe(false);
+    expect(dec.reason).toBe("case_access_denied");
   });
   it("(146) hasAgendaCaseAccess retorna false para caso inexistente", () => {
     const s = createEmptyStore();
