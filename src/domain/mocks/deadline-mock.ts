@@ -257,14 +257,15 @@ export function createDeadlineServiceMock(
         const s = opts.search.trim();
         if (s.length > 0) searchNorm = normalizeSearch(s);
       }
-      // Segregação org e caso via acesso contextual da Agenda.
       const accessibleCaseIds = computeAgendaAccessibleCaseIds(store, v.data.context);
-      if (opts.caseId !== undefined && !accessibleCaseIds.has(opts.caseId)) {
-        // Caso existe na org mas o contexto não tem acesso.
-        return {
-          ok: false,
-          error: { code: "forbidden", message: "case_access_denied" },
-        };
+      if (opts.caseId !== undefined) {
+        // Caso não pertence à org já retornou not_found antes.
+        if (!accessibleCaseIds.has(opts.caseId)) {
+          return {
+            ok: false,
+            error: { code: "forbidden", message: "case_access_denied" },
+          };
+        }
       }
       let items = Array.from(store.deadlines.values()).filter((d) => {
         if (d.organizationId !== orgId) return false;

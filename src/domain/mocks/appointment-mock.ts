@@ -254,11 +254,13 @@ export function createAppointmentServiceMock(
         if (s.length > 0) searchNorm = normalizeSearch(s);
       }
       const accessibleCaseIds = computeAgendaAccessibleCaseIds(store, v.data.context);
-      if (opts.caseId !== undefined && !accessibleCaseIds.has(opts.caseId)) {
-        return {
-          ok: false,
-          error: { code: "forbidden", message: "case_access_denied" },
-        };
+      if (opts.caseId !== undefined) {
+        if (!accessibleCaseIds.has(opts.caseId)) {
+          return {
+            ok: false,
+            error: { code: "forbidden", message: "case_access_denied" },
+          };
+        }
       }
       let items = Array.from(store.appointments.values()).filter((a) => {
         if (a.organizationId !== orgId) return false;
