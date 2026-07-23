@@ -1,9 +1,9 @@
 /**
- * Fábrica pública dos mocks de domínio — LV-07.3.
+ * Fábrica pública dos mocks de domínio — LV-07.3 + LV-08.6A.
  *
  * Cada chamada devolve um ambiente totalmente isolado. Nenhuma instância
- * global é criada aqui. O store, o relógio e o gerador de IDs ficam
- * fechados por closure e não são acessíveis do lado de fora.
+ * global é criada aqui. O store, o relógio, o gerador de IDs e o
+ * appender de auditoria ficam fechados por closure.
  */
 
 import {
@@ -32,6 +32,12 @@ import { createCasePlanServiceMock } from "./case-plan-mock";
 import { createCaseTimelineServiceMock } from "./case-timeline-mock";
 import { createPermissionPolicyMock } from "./permission-mock";
 import {
+  createAuditAppender,
+  createAuditEventServiceMock,
+  type InternalAuditAppender,
+} from "./audit-event-mock";
+import { createCaseSnapshotServiceMock } from "./case-snapshot-mock";
+import {
   guardOrganizationService,
   guardMembershipService,
   guardProfessionalProfileService,
@@ -43,6 +49,8 @@ import {
   guardAssignmentService,
   guardCasePlanService,
   guardCaseTimelineService,
+  guardAuditEventService,
+  guardCaseSnapshotService,
 } from "./permission-guards";
 import {
   MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS,
@@ -52,6 +60,20 @@ import {
   type MockDomainSnapshot,
 } from "./types";
 import { hasOnlyAllowedKeys, containsForbiddenKey } from "../core/common";
+import type { ServiceContext } from "../services/context";
+import type { ServiceResult } from "../services/result";
+import type { CaseService } from "../services/case-service";
+import type {
+  CasePersonService,
+  RelationshipService,
+} from "../services/person-service";
+import type { AssignmentService } from "../services/assignment-service";
+import type { CasePlanService } from "../services/case-plan-service";
+import type { CaseTimelineService } from "../services/case-timeline-service";
+import type { Case } from "../core/case";
+import type { CasePerson, Relationship, Assignment } from "../core/assignment";
+import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
+import type { AuditAction, AuditTargetType } from "../core/case-audit";
 
 function loadSeed(store: MockStore): void {
   const seed = buildSeedSnapshot();
@@ -75,6 +97,8 @@ function loadSeed(store: MockStore): void {
   for (const p of seed.casePlanItems) store.casePlanItems.set(p.id, deepClone(p));
   for (const t of seed.caseTimelineEntries)
     store.caseTimelineEntries.set(t.id, deepClone(t));
+  for (const e of seed.auditEvents) store.auditEvents.set(e.id, deepClone(e));
+  for (const s of seed.caseSnapshots) store.caseSnapshots.set(s.id, deepClone(s));
 }
 
 function snapshot(store: MockStore): MockDomainSnapshot {
@@ -91,8 +115,238 @@ function snapshot(store: MockStore): MockDomainSnapshot {
     assignments: Array.from(store.assignments.values()).map(deepClone),
     casePlanItems: Array.from(store.casePlanItems.values()).map(deepClone),
     caseTimelineEntries: Array.from(store.caseTimelineEntries.values()).map(deepClone),
-  }) as MockDomainSnapshot;
+    auditEvents: Array.from(store.auditEvents.values()).map(deepClone),
+    caseSnapshots: Array.from(store.caseSnapshots.values()).map(deepClone),
+  });
 }
+
+// ---- Auditing decorators ---------------------------------------------------
+
+function emit(
+  audit: InternalAuditAppender,
+  ctx: ServiceContext,
+  action: AuditAction,
+  targetType: AuditTargetType,
+  targetId: string,
+  caseId: string,
+): void {
+  audit.append({
+    organizationId: ctx.organizationId,
+    caseId: caseId as never,
+    actorUserId: ctx.userId,
+    actorMembershipId: ctx.membershipId,
+    action,
+    targetType,
+    targetId,
+  });
+}
+
+function wrapCaseService(s: CaseService, audit: InternalAuditAppender): CaseService {
+  return {
+    getById: s.getById.bind(s),
+    list: s.list.bind(s),
+    getReadiness: s.getReadiness.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) emit(audit, ctx, "case.created", "case", r.data.id, r.data.id);
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) emit(audit, ctx, "case.updated", "case", r.data.id, r.data.id);
+      return r;
+    },
+    changeStatus: async (ctx, input) => {
+      const r = await s.changeStatus(ctx, input);
+      if (r.ok) emit(audit, ctx, "case.updated", "case", r.data.id, r.data.id);
+      return r;
+    },
+    archive: async (ctx, cid, ev) => {
+      const r = await s.archive(ctx, cid, ev);
+      if (r.ok) emit(audit, ctx, "case.updated", "case", r.data.id, r.data.id);
+      return r;
+    },
+  };
+}
+
+function wrapCasePersonService(
+  s: CasePersonService,
+  audit: InternalAuditAppender,
+): CasePersonService {
+  return {
+    getById: s.getById.bind(s),
+    listByCase: s.listByCase.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) {
+        const cp: CasePerson = r.data;
+        emit(audit, ctx, "casePerson.created", "casePerson", cp.id, cp.caseId);
+      }
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) {
+        const cp: CasePerson = r.data;
+        emit(audit, ctx, "casePerson.updated", "casePerson", cp.id, cp.caseId);
+      }
+      return r;
+    },
+    remove: async (ctx, cid, cpid, ev) => {
+      const r = await s.remove(ctx, cid, cpid, ev);
+      if (r.ok) {
+        const cp: CasePerson = r.data;
+        emit(audit, ctx, "casePerson.removed", "casePerson", cp.id, cp.caseId);
+      }
+      return r;
+    },
+  };
+}
+
+function wrapRelationshipService(
+  s: RelationshipService,
+  audit: InternalAuditAppender,
+): RelationshipService {
+  return {
+    getById: s.getById.bind(s),
+    listByCase: s.listByCase.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) {
+        const rel: Relationship = r.data;
+        emit(audit, ctx, "relationship.created", "relationship", rel.id, rel.caseId);
+      }
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) {
+        const rel: Relationship = r.data;
+        emit(audit, ctx, "relationship.updated", "relationship", rel.id, rel.caseId);
+      }
+      return r;
+    },
+    remove: async (ctx, cid, rid, ev) => {
+      const r = await s.remove(ctx, cid, rid, ev);
+      if (r.ok) {
+        const rel: Relationship = r.data;
+        emit(audit, ctx, "relationship.removed", "relationship", rel.id, rel.caseId);
+      }
+      return r;
+    },
+  };
+}
+
+function wrapAssignmentService(
+  s: AssignmentService,
+  audit: InternalAuditAppender,
+): AssignmentService {
+  return {
+    getById: s.getById.bind(s),
+    listByCase: s.listByCase.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) {
+        const a: Assignment = r.data;
+        emit(audit, ctx, "assignment.created", "assignment", a.id, a.caseId);
+      }
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) {
+        const a: Assignment = r.data;
+        emit(audit, ctx, "assignment.updated", "assignment", a.id, a.caseId);
+      }
+      return r;
+    },
+    changeStatus: async (ctx, cid, input) => {
+      const r = await s.changeStatus(ctx, cid, input);
+      if (r.ok) {
+        const a: Assignment = r.data;
+        emit(audit, ctx, "assignment.updated", "assignment", a.id, a.caseId);
+      }
+      return r;
+    },
+  };
+}
+
+function wrapCasePlanService(
+  s: CasePlanService,
+  audit: InternalAuditAppender,
+): CasePlanService {
+  return {
+    getById: s.getById.bind(s),
+    listByCase: s.listByCase.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) {
+        const p: CasePlanItem = r.data;
+        emit(audit, ctx, "casePlanItem.created", "casePlanItem", p.id, p.caseId);
+      }
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) {
+        const p: CasePlanItem = r.data;
+        emit(audit, ctx, "casePlanItem.updated", "casePlanItem", p.id, p.caseId);
+      }
+      return r;
+    },
+    changeStatus: async (ctx, cid, input) => {
+      const r = await s.changeStatus(ctx, cid, input);
+      if (r.ok) {
+        const p: CasePlanItem = r.data;
+        emit(audit, ctx, "casePlanItem.statusChanged", "casePlanItem", p.id, p.caseId);
+      }
+      return r;
+    },
+    remove: async (ctx, cid, pid, ev): Promise<ServiceResult<void>> => {
+      const r = await s.remove(ctx, cid, pid, ev);
+      if (r.ok) {
+        emit(audit, ctx, "casePlanItem.removed", "casePlanItem", pid, cid);
+      }
+      return r;
+    },
+  };
+}
+
+function wrapCaseTimelineService(
+  s: CaseTimelineService,
+  audit: InternalAuditAppender,
+): CaseTimelineService {
+  return {
+    getById: s.getById.bind(s),
+    listByCase: s.listByCase.bind(s),
+    create: async (ctx, input) => {
+      const r = await s.create(ctx, input);
+      if (r.ok) {
+        const t: CaseTimelineEntry = r.data;
+        emit(audit, ctx, "caseTimelineEntry.created", "caseTimelineEntry", t.id, t.caseId);
+      }
+      return r;
+    },
+    update: async (ctx, cid, input) => {
+      const r = await s.update(ctx, cid, input);
+      if (r.ok) {
+        const t: CaseTimelineEntry = r.data;
+        emit(audit, ctx, "caseTimelineEntry.updated", "caseTimelineEntry", t.id, t.caseId);
+      }
+      return r;
+    },
+    remove: async (ctx, cid, tid, ev): Promise<ServiceResult<void>> => {
+      const r = await s.remove(ctx, cid, tid, ev);
+      if (r.ok) {
+        emit(audit, ctx, "caseTimelineEntry.removed", "caseTimelineEntry", tid, cid);
+      }
+      return r;
+    },
+  };
+}
+
+// Suppress unused import warning; Case referenced only as type in future.
+type _KeepCase = Case;
 
 export function createMockDomainEnvironment(
   options?: MockDomainOptions,
@@ -134,6 +388,8 @@ export function createMockDomainEnvironment(
   const ids = createMockIdGenerator();
   loadSeed(store);
 
+  const audit = createAuditAppender(store, clock, ids);
+
   const services: MockDomainServices = Object.freeze({
     organization: guardOrganizationService(
       store,
@@ -152,32 +408,58 @@ export function createMockDomainEnvironment(
       store,
       createCredentialServiceMock(store, clock, ids),
     ),
-    cases: guardCaseService(store, createCaseServiceMock(store, clock, ids)),
+    cases: guardCaseService(
+      store,
+      wrapCaseService(createCaseServiceMock(store, clock, ids), audit),
+    ),
     persons: guardPersonService(
       store,
       createPersonServiceMock(store, clock, ids),
     ),
     casePersons: guardCasePersonService(
       store,
-      createCasePersonServiceMock(store, clock, ids),
+      wrapCasePersonService(
+        createCasePersonServiceMock(store, clock, ids),
+        audit,
+      ),
     ),
     relationships: guardRelationshipService(
       store,
-      createRelationshipServiceMock(store, clock, ids),
+      wrapRelationshipService(
+        createRelationshipServiceMock(store, clock, ids),
+        audit,
+      ),
     ),
     assignments: guardAssignmentService(
       store,
-      createAssignmentServiceMock(store, clock, ids),
+      wrapAssignmentService(
+        createAssignmentServiceMock(store, clock, ids),
+        audit,
+      ),
     ),
     casePlan: guardCasePlanService(
       store,
-      createCasePlanServiceMock(store, clock, ids),
+      wrapCasePlanService(
+        createCasePlanServiceMock(store, clock, ids),
+        audit,
+      ),
     ),
     caseTimeline: guardCaseTimelineService(
       store,
-      createCaseTimelineServiceMock(store, clock, ids),
+      wrapCaseTimelineService(
+        createCaseTimelineServiceMock(store, clock, ids),
+        audit,
+      ),
     ),
     permissions: createPermissionPolicyMock(store),
+    auditEvents: guardAuditEventService(
+      store,
+      createAuditEventServiceMock(store),
+    ),
+    caseSnapshots: guardCaseSnapshotService(
+      store,
+      createCaseSnapshotServiceMock(store, clock, ids, audit),
+    ),
   });
 
   return Object.freeze({
