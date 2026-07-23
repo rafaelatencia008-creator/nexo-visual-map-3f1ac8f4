@@ -420,7 +420,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
             <div className="rounded-md border border-border p-3 text-sm">
               <p>
                 A pessoa <strong>{mode.person.displayLabel}</strong> já foi
-                cadastrada. Confirme para concluir o vínculo com o processo.
+                cadastrada. Tente vincular novamente ao processo.
               </p>
             </div>
           )}
