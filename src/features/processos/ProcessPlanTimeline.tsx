@@ -732,14 +732,9 @@ type PlanBodyProps = Readonly<{
 function PlanBody({
   items, options, permissions, refreshing, onEdit, onChangeStatus, onRemove,
 }: PlanBodyProps) {
-  if (items.length === 0) {
-    return (
-      <ProcessPlanTimelineEmpty
-        title="Nenhum item no plano de trabalho"
-        description="Adicione uma atividade ou pendência para organizar os próximos passos do processo."
-      />
-    );
-  }
+  // LV-08.5B.1 — Hooks SEMPRE antes de qualquer retorno condicional para
+  // garantir a mesma ordem de hooks em todas as renderizações (zero itens →
+  // primeiro item → refresh).
   const counters = React.useMemo(() => {
     const c = { planned: 0, in_progress: 0, blocked: 0, completed: 0, cancelled: 0 };
     for (const it of items) c[it.status] += 1;
@@ -749,6 +744,15 @@ function PlanBody({
     () => new Map(options.map((o) => [o.assignmentId, o])),
     [options],
   );
+
+  if (items.length === 0) {
+    return (
+      <ProcessPlanTimelineEmpty
+        title="Nenhum item no plano de trabalho"
+        description="Adicione uma atividade ou pendência para organizar os próximos passos do processo."
+      />
+    );
+  }
 
   return (
     <div className="space-y-4" aria-busy={refreshing || undefined}>
