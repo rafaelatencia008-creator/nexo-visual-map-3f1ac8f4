@@ -90,10 +90,10 @@ void _snap_no_label;
 // @ts-expect-error CasePlanItemId não é CaseId.
 const _snap_bad_case: CreateCaseSnapshotInput = { caseId: planItemId, label: "L" };
 void _snap_bad_case;
-// @ts-expect-error payload é montado pelo serviço, nunca vem do input.
 const _snap_payload: CreateCaseSnapshotInput = {
   caseId,
   label: "L",
+  // @ts-expect-error payload é montado pelo serviço, nunca vem do input.
   payload: {},
 };
 void _snap_payload;
