@@ -179,8 +179,6 @@ export function ProcessAuditSnapshots({
         return;
       }
 
-      // eliminar aviso não usado
-      void events;
 
       setState({
         kind: "ready",
