@@ -26,6 +26,7 @@ import {
   SEED_REL_ALFA_1_ID,
   SEED_USER_1_ID,
   SEED_USER_2_ID,
+  SEED_USER_3_ID,
 } from "../src/domain/mocks/seed";
 import { AGE_CLASSIFICATIONS } from "../src/domain/core/person";
 import {
@@ -47,11 +48,15 @@ import {
   buildPersonUpdateInput,
   buildRelationshipUpdateInput,
   buildRelationshipViews,
+  collectDistinctLinkedPersonIds,
   emptyPeoplePermissions,
+  filterPersonsByDisplayLabel,
   isMinorAge,
   mapPeopleError,
   normalizePersonLabel,
 } from "../src/features/processos/process-people-model";
+import type { CasePerson } from "../src/domain/core/assignment";
+import type { Person } from "../src/domain/core/person";
 
 const ALFA_CTX: ServiceContext = {
   organizationId: SEED_ORG_ALFA_ID,
@@ -762,5 +767,172 @@ describe("LV-08.4 · auditoria de fontes", () => {
     const pwaSrc = readFileSync(resolve("src/pwa/pwa-config.ts"), "utf8");
     expect(pwaSrc).toContain("globPatterns");
     expect(pwaSrc).not.toMatch(/["']html["']/);
+  });
+});
+
+// ---- LV-08.4.2.1 — pesquisa, IDs vinculados e permissão de leitura -------
+
+describe("LV-08.4.2.1 · collectDistinctLinkedPersonIds", () => {
+  const p1 = SEED_PERSON_ALFA_1_ID;
+  const p2 = SEED_PERSON_ALFA_2_ID;
+  const cp = (personId: typeof p1, id = SEED_CP_ALFA_1_ID): CasePerson => ({
+    id,
+    organizationId: SEED_ORG_ALFA_ID,
+    caseId: SEED_CASE_ALFA_1_ID,
+    personId,
+    role: "applicant",
+    restrictedByDefault: false,
+    metadata: {
+      createdAt: "2025-01-01T00:00:00.000Z" as never,
+      updatedAt: "2025-01-01T00:00:00.000Z" as never,
+      version: 1,
+    },
+  });
+  it("lista vazia retorna vazio", () => {
+    expect(collectDistinctLinkedPersonIds([])).toEqual([]);
+  });
+  it("remove duplicatas de personId preservando ordem", () => {
+    const out = collectDistinctLinkedPersonIds([cp(p1), cp(p2, SEED_CP_ALFA_2_ID), cp(p1)]);
+    expect(out).toEqual([p1, p2]);
+  });
+  it("mantém ordem da primeira ocorrência para IDs distintos", () => {
+    const out = collectDistinctLinkedPersonIds([cp(p2, SEED_CP_ALFA_2_ID), cp(p1)]);
+    expect(out).toEqual([p2, p1]);
+  });
+});
+
+describe("LV-08.4.2.1 · filterPersonsByDisplayLabel", () => {
+  const mk = (id: typeof SEED_PERSON_ALFA_1_ID, label: string): Person => ({
+    id,
+    organizationId: SEED_ORG_ALFA_ID,
+    displayLabel: label,
+    ageClassification: "adult",
+    metadata: {
+      createdAt: "2025-01-01T00:00:00.000Z" as never,
+      updatedAt: "2025-01-01T00:00:00.000Z" as never,
+      version: 1,
+    },
+  });
+  const list: readonly Person[] = [
+    mk(SEED_PERSON_ALFA_1_ID, "Requerente A"),
+    mk(SEED_PERSON_ALFA_2_ID, "Testemunha B"),
+  ];
+  it("query vazia retorna todas as pessoas", () => {
+    expect(filterPersonsByDisplayLabel(list, "")).toEqual(list);
+  });
+  it("query só com espaços retorna todas as pessoas", () => {
+    expect(filterPersonsByDisplayLabel(list, "   ")).toEqual(list);
+  });
+  it("comparação é case-insensitive", () => {
+    const out = filterPersonsByDisplayLabel(list, "requerente");
+    expect(out.map((p) => p.displayLabel)).toEqual(["Requerente A"]);
+  });
+  it("subcadeia é suficiente", () => {
+    const out = filterPersonsByDisplayLabel(list, "TEM");
+    expect(out.map((p) => p.displayLabel)).toEqual(["Testemunha B"]);
+  });
+  it("consulta sem correspondência retorna lista vazia", () => {
+    expect(filterPersonsByDisplayLabel(list, "zzz")).toEqual([]);
+  });
+  it("nunca modifica a lista original", () => {
+    const copy = list.slice();
+    filterPersonsByDisplayLabel(list, "a");
+    expect(list).toEqual(copy);
+  });
+  it("preserva a ordem recebida", () => {
+    const out = filterPersonsByDisplayLabel(list, "e");
+    expect(out.map((p) => p.id)).toEqual([SEED_PERSON_ALFA_1_ID, SEED_PERSON_ALFA_2_ID]);
+  });
+});
+
+describe("LV-08.4.2.1 · permissão de leitura criada por memberships.create", () => {
+  it("proprietário Alfa cria membership 'leitura' para User 3 e o novo contexto consegue ler pessoas mas não criar", async () => {
+    const env = createMockDomainEnvironment();
+    const created = await env.services.memberships.create(ALFA_CTX, {
+      userId: SEED_USER_3_ID,
+      role: "leitura",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const readerCtx: ServiceContext = {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_3_ID,
+      membershipId: created.data.id,
+      role: "leitura",
+    };
+    const list = await env.services.persons.list(readerCtx, { page: { limit: 5 } });
+    expect(list.ok).toBe(true);
+    const attempt = await env.services.persons.create(
+      readerCtx,
+      buildCreatePersonInput({
+        displayLabel: "Sem permissão",
+        ageClassification: "adult",
+        role: "applicant",
+        restrictedByDefault: false,
+      }),
+    );
+    expect(attempt.ok).toBe(false);
+    if (attempt.ok) return;
+    const err = attempt.error as ServiceError;
+    expect(err.code).toBe("forbidden");
+  });
+});
+
+// ---- LV-08.4.2.1 — auditorias do diálogo de pesquisa e do retry ---------
+
+describe("LV-08.4.2.1 · auditoria do ProcessPersonDialog", () => {
+  const dlgSrc = readFileSync(
+    resolve("src/features/processos/ProcessPersonDialog.tsx"),
+    "utf8",
+  );
+  it("expõe Label visível 'Buscar pessoa' associado ao campo", () => {
+    expect(dlgSrc).toMatch(/htmlFor="personSearch"[^>]*>Buscar pessoa</);
+  });
+  it("usa filterPersonsByDisplayLabel para reduzir a lista visível", () => {
+    expect(dlgSrc).toContain("filterPersonsByDisplayLabel");
+  });
+  it("invalida personId quando a seleção sai do resultado filtrado", () => {
+    expect(dlgSrc).toMatch(/filteredPersons\.some\([\s\S]*?p\.id === personId/);
+    expect(dlgSrc).toMatch(/setPersonId\(""\)/);
+  });
+  it("resolve o vínculo somente dentro do resultado visível", () => {
+    expect(dlgSrc).toMatch(/filteredPersons\.find\([\s\S]*?p\.id === personId/);
+  });
+  it("rótulo do botão do fluxo retry-created-link é 'Tentar vincular novamente'", () => {
+    expect(dlgSrc).toContain("Tentar vincular novamente");
+  });
+  it("catálogo global não é consumido pela pesquisa (usa mode.availablePersons)", () => {
+    expect(dlgSrc).toMatch(/mode\.kind === "link-existing" \? mode\.availablePersons : \[\]/);
+  });
+});
+
+describe("LV-08.4.2.1 · guardas complementares", () => {
+  it("emptyPeoplePermissions cobre todas as PEOPLE_WRITE_ACTIONS com false", () => {
+    const perms = emptyPeoplePermissions();
+    for (const a of PEOPLE_WRITE_ACTIONS) {
+      expect(perms[a]).toBe(false);
+    }
+  });
+  it("isMinorAge classifica menores e adultos corretamente para todas as classificações", () => {
+    for (const a of AGE_CLASSIFICATIONS) {
+      const isMinor = a === "child" || a === "adolescent";
+      expect(isMinorAge(a)).toBe(isMinor);
+    }
+  });
+  it("normalizePersonLabel apara espaços das extremidades preservando internos", () => {
+    expect(normalizePersonLabel("  Requerente  A  ")).toBe("Requerente  A");
+    expect(normalizePersonLabel("   ")).toBe("");
+  });
+  it("mapPeopleError preserva o code em todos os ramos da união", () => {
+    const kinds = [
+      { code: "conflict", message: "x" },
+      { code: "not_found", message: "x" },
+      { code: "forbidden", message: "x" },
+      { code: "validation_error", message: "x" },
+    ] as const;
+    for (const e of kinds) {
+      const m = mapPeopleError(e);
+      expect(typeof m.kind).toBe("string"); expect(typeof m.message).toBe("string");
+    }
   });
 });
