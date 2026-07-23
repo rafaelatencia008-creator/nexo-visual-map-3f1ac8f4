@@ -229,16 +229,6 @@ export type ChangeAssignmentStatusInput = Readonly<{
 
 // ---- CasePlanItem (LV-08.5A) -----------------------------------------------
 
-import type {
-  CasePlanItemId as _CasePlanItemId,
-  CaseTimelineEntryId as _CaseTimelineEntryId,
-} from "../core/ids";
-import type {
-  CasePlanItemKind,
-  CasePlanItemPriority,
-  CasePlanItemStatus,
-  CaseTimelineEntryKind,
-} from "../core/case-plan";
 
 export type CreateCasePlanItemInput = Readonly<{
   caseId: CaseId;
