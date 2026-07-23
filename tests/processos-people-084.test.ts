@@ -1051,17 +1051,21 @@ describe("LV-08.4.2.2 · auditorias robustas da fonte de ProcessPeopleRelations"
     "utf8",
   );
   const src = stripSourceComments(rawSrc);
-  const loadAllRegion = extractRegion(
+  const loadAllRegion = extractBetween(
     src,
     /const\s+loadAll\s*=\s*React\.useCallback/,
-    3500,
+    /const\s+loadCatalog\s*=/,
   );
-  const loadCatalogRegion = extractRegion(
+  const loadCatalogRegion = extractBetween(
     src,
     /const\s+loadCatalog\s*=\s*React\.useCallback/,
-    900,
+    /const\s+openLinkExisting\s*=/,
   );
-  const retryLinkRegion = extractRegion(
+  const retryLinkRegion = extractBetween(
+    src,
+    /const\s+handleRetryCreatedLink\s*=/,
+    /const\s+handleLinkExisting\s*=/,
+  );
     src,
     /const\s+handleRetryCreatedLink\s*=/,
     1200,
