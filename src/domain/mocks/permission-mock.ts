@@ -116,6 +116,14 @@ const PERMISSION_MATRIX = Object.freeze({
   "caseTimelineEntry.create": WRITE_ROLES,
   "caseTimelineEntry.update": WRITE_ROLES,
   "caseTimelineEntry.remove": WRITE_ROLES,
+
+  "auditEvent.read": ALL_ROLES,
+  "caseSnapshot.read": ALL_ROLES,
+  "caseSnapshot.create": Object.freeze([
+    "proprietario",
+    "administrador",
+    "profissional",
+  ] as readonly Role[]),
 }) satisfies PermissionMatrix;
 
 // ---- Consulta pura (não expõe a matriz) -----------------------------------
