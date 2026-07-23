@@ -278,7 +278,16 @@ export function isCaseSnapshotPayload(v: unknown): v is CaseSnapshotPayload {
   if (!isReadonlyArrayOf(p.assignments, isAssignment)) return false;
   if (!isReadonlyArrayOf(p.casePlanItems, isCasePlanItem)) return false;
   if (!isReadonlyArrayOf(p.caseTimelineEntries, isCaseTimelineEntry)) return false;
-  return isCaseSnapshotPayloadCoherent(p as unknown as CaseSnapshotPayload);
+  const payload: CaseSnapshotPayload = {
+    case: p.case,
+    casePersons: p.casePersons,
+    persons: p.persons,
+    relationships: p.relationships,
+    assignments: p.assignments,
+    casePlanItems: p.casePlanItems,
+    caseTimelineEntries: p.caseTimelineEntries,
+  };
+  return isCaseSnapshotPayloadCoherent(payload);
 }
 
 // ---- Entidade CaseSnapshot -------------------------------------------------
