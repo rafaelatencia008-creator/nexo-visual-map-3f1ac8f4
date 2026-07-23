@@ -235,6 +235,7 @@ function ProcessoDetalhePage() {
       />
       <ProcessPeopleRelations case={state.case} />
       <ProcessPlanTimeline case={state.case} />
+      <ProcessAuditSnapshots caseId={state.case.id} />
     </div>
   );
 }
