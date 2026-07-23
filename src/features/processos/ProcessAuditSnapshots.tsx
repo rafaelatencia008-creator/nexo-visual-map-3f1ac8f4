@@ -18,8 +18,8 @@ import {
 import {
   AUDIT_SNAPSHOT_PAGE_LIMIT,
   EMPTY_AUDIT_FILTER,
-  buildAuditFilter,
   mapAuditSnapshotError,
+  type AuditFilterBuildError,
   type AuditFilterFormValues,
   type AuditSnapshotPublicError,
   type ProcessAuditSnapshotState,
