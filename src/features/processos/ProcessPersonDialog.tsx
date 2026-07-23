@@ -359,6 +359,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
                   </p>
                 ) : (
                   <>
+                    <Label htmlFor="personSearch">Buscar pessoa</Label>
                     <Input
                       id="personSearch"
                       type="search"
