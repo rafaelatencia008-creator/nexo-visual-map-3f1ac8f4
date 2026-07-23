@@ -53,7 +53,7 @@ declare const dl: Deadline;
 // @ts-expect-error Deadline é readonly
 dl.title = "x";
 // @ts-expect-error Deadline.metadata é readonly
-dl.metadata = { createdAt: "" as never, updatedAt: "" as never, version: 1 };
+dl.metadata = dl.metadata;
 
 declare const ap: Appointment;
 // @ts-expect-error Appointment é readonly
