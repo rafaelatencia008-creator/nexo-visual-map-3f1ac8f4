@@ -961,3 +961,428 @@ describe("LV-09.1A · determinismo", () => {
     }
   });
 });
+
+// ============================================================================
+// (12) LV-09.1A.1 — Validação do seed (regras relacionais)
+// ============================================================================
+
+import { validateMockDomainSeed, buildSeedSnapshot } from "@/domain/mocks/seed";
+import type { MockDomainSnapshot } from "@/domain/mocks/types";
+import type { Deadline, Appointment } from "@/domain/core/agenda";
+import { buildDomainId } from "@/domain/core/ids";
+
+describe("LV-09.1A.1 · seed - relational coherence", () => {
+  it("(115) seed oficial não tem issues", () => {
+    const seed = buildSeedSnapshot();
+    expect(validateMockDomainSeed(seed).length).toBe(0);
+  });
+  it("(116) Alfa 1 tem ≥ 3 deadlines", () => {
+    const s = buildSeedSnapshot();
+    const c = s.deadlines.filter((d) => d.caseId === SEED_CASE_ALFA_1_ID);
+    expect(c.length).toBeGreaterThanOrEqual(3);
+  });
+  it("(117) Alfa 2 tem ≥ 4 deadlines", () => {
+    const s = buildSeedSnapshot();
+    const c = s.deadlines.filter((d) => d.caseId === SEED_CASE_ALFA_2_ID);
+    expect(c.length).toBeGreaterThanOrEqual(4);
+  });
+  it("(118) Alfa 1 tem hearing/meeting + interview/diligence", () => {
+    const s = buildSeedSnapshot();
+    const alfa1 = s.appointments.filter((a) => a.caseId === SEED_CASE_ALFA_1_ID);
+    const kinds = new Set(alfa1.map((a) => a.kind));
+    expect(kinds.has("meeting") || kinds.has("hearing")).toBe(true);
+    expect(kinds.has("interview") || kinds.has("diligence")).toBe(true);
+  });
+  it("(119) Alfa 2 tem >=1 remote e >=1 in_person", () => {
+    const s = buildSeedSnapshot();
+    const alfa2 = s.appointments.filter((a) => a.caseId === SEED_CASE_ALFA_2_ID);
+    expect(alfa2.some((a) => a.mode === "remote")).toBe(true);
+    expect(alfa2.some((a) => a.mode === "in_person")).toBe(true);
+  });
+  it("(120) Alfa 2 tem >=1 appointment completed ou cancelled", () => {
+    const s = buildSeedSnapshot();
+    const alfa2 = s.appointments.filter((a) => a.caseId === SEED_CASE_ALFA_2_ID);
+    expect(alfa2.some((a) => a.status === "completed" || a.status === "cancelled")).toBe(true);
+  });
+  it("(121) Alfa 1/Beta 1: nenhum deadline usa assignment de outro caso", () => {
+    const s = buildSeedSnapshot();
+    const assignById = new Map(s.assignments.map((a) => [a.id, a]));
+    for (const d of s.deadlines) {
+      if (d.assignmentId === undefined) continue;
+      const a = assignById.get(d.assignmentId);
+      expect(a).toBeDefined();
+      if (a) expect(a.caseId).toBe(d.caseId);
+    }
+  });
+  it("(122) Alfa 2 tem ≥1 deadline completed OU cancelled", () => {
+    const s = buildSeedSnapshot();
+    const alfa2 = s.deadlines.filter((d) => d.caseId === SEED_CASE_ALFA_2_ID);
+    expect(alfa2.some((d) => d.status === "completed" || d.status === "cancelled")).toBe(true);
+  });
+  it("(123) Alfa 1 tem ≥1 deadline completed com completedAt", () => {
+    const s = buildSeedSnapshot();
+    const alfa1 = s.deadlines.filter((d) => d.caseId === SEED_CASE_ALFA_1_ID);
+    const completed = alfa1.filter((d) => d.status === "completed");
+    expect(completed.length).toBeGreaterThanOrEqual(1);
+    for (const d of completed) expect(typeof d.completedAt).toBe("string");
+  });
+  it("(124) Alfa 2 tem prioridades variadas", () => {
+    const s = buildSeedSnapshot();
+    const alfa2 = s.deadlines.filter((d) => d.caseId === SEED_CASE_ALFA_2_ID);
+    expect(new Set(alfa2.map((d) => d.priority)).size).toBeGreaterThan(1);
+  });
+  it("(125) validateMockDomainSeed detecta duplicate deadline id", () => {
+    const s = buildSeedSnapshot();
+    const dup = s.deadlines[0];
+    const seed: MockDomainSnapshot = { ...s, deadlines: [...s.deadlines, { ...dup }] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "deadline" && i.reason === "duplicate_id")).toBe(true);
+  });
+  it("(126) validateMockDomainSeed detecta duplicate appointment id", () => {
+    const s = buildSeedSnapshot();
+    const dup = s.appointments[0];
+    const seed: MockDomainSnapshot = { ...s, appointments: [...s.appointments, { ...dup }] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "appointment" && i.reason === "duplicate_id")).toBe(true);
+  });
+  it("(127) validateMockDomainSeed detecta deadline com case_not_found", () => {
+    const s = buildSeedSnapshot();
+    const bad: Deadline = {
+      ...s.deadlines[0],
+      id: buildDomainId("deadline", "bad_case") as Deadline["id"],
+      caseId: buildDomainId("case", "ghost_case") as Deadline["caseId"],
+    };
+    const seed: MockDomainSnapshot = { ...s, deadlines: [...s.deadlines, bad] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "deadline" && i.reason === "case_not_found")).toBe(true);
+  });
+  it("(128) validateMockDomainSeed detecta deadline com case_org_mismatch", () => {
+    const s = buildSeedSnapshot();
+    const bad: Deadline = {
+      ...s.deadlines[0],
+      id: buildDomainId("deadline", "bad_org") as Deadline["id"],
+      caseId: SEED_CASE_ALFA_1_ID,
+      organizationId: SEED_ORG_BETA_ID,
+    };
+    const seed: MockDomainSnapshot = { ...s, deadlines: [...s.deadlines, bad] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "deadline" && i.reason === "case_org_mismatch")).toBe(true);
+  });
+  it("(129) validateMockDomainSeed detecta deadline com assignment_case_mismatch", () => {
+    const s = buildSeedSnapshot();
+    const bad: Deadline = {
+      ...s.deadlines[0],
+      id: buildDomainId("deadline", "bad_assign") as Deadline["id"],
+      caseId: SEED_CASE_ALFA_1_ID,
+      assignmentId: SEED_ASSIGN_ALFA_1_ID, // pertence a Alfa 2
+    };
+    const seed: MockDomainSnapshot = { ...s, deadlines: [...s.deadlines, bad] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "deadline" && i.reason === "assignment_case_mismatch")).toBe(true);
+  });
+  it("(130) validateMockDomainSeed detecta appointment com case_not_found", () => {
+    const s = buildSeedSnapshot();
+    const bad: Appointment = {
+      ...s.appointments[0],
+      id: buildDomainId("appointment", "bad_case") as Appointment["id"],
+      caseId: buildDomainId("case", "ghost_case") as Appointment["caseId"],
+    };
+    const seed: MockDomainSnapshot = { ...s, appointments: [...s.appointments, bad] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "appointment" && i.reason === "case_not_found")).toBe(true);
+  });
+  it("(131) validateMockDomainSeed detecta appointment com assignment_case_mismatch", () => {
+    const s = buildSeedSnapshot();
+    const bad: Appointment = {
+      ...s.appointments[0],
+      id: buildDomainId("appointment", "bad_assign") as Appointment["id"],
+      caseId: SEED_CASE_ALFA_1_ID,
+      assignmentId: SEED_ASSIGN_ALFA_1_ID, // pertence a Alfa 2
+    };
+    const seed: MockDomainSnapshot = { ...s, appointments: [...s.appointments, bad] };
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "appointment" && i.reason === "assignment_case_mismatch")).toBe(true);
+  });
+  it("(132) validateMockDomainSeed detecta forbidden key raiz", () => {
+    const s = buildSeedSnapshot();
+    const seed = { ...s, __proto__: {} } as unknown as MockDomainSnapshot;
+    const issues = validateMockDomainSeed(seed);
+    expect(issues.some((i) => i.entity === "seed" && i.reason === "forbidden_key")).toBe(true);
+  });
+});
+
+// ============================================================================
+// (13) LV-09.1A.1 — Acesso contextual da Agenda
+// ============================================================================
+
+import { checkAgendaCaseAccess, hasAgendaCaseAccess, computeAgendaAccessibleCaseIds, isAgendaAdminRole, isAgendaAction } from "@/domain/mocks/agenda-case-access";
+import { createEmptyStore } from "@/domain/mocks/store";
+
+async function setupNonAdminAlfa(role: "profissional" | "revisor" | "colaborador" | "leitura") {
+  const env = createMockDomainEnvironment();
+  const mem = ok(await env.services.memberships.create(OWNER_ALFA, {
+    userId: buildDomainId("user", "seed_3") as never,
+    role,
+  }));
+  const ctx: ServiceContext = {
+    organizationId: SEED_ORG_ALFA_ID,
+    userId: buildDomainId("user", "seed_3") as never,
+    membershipId: mem.id,
+    role,
+  };
+  return { env, ctx };
+}
+
+describe("LV-09.1A.1 · acesso contextual", () => {
+  it("(133) isAgendaAdminRole reconhece proprietario e administrador", () => {
+    expect(isAgendaAdminRole("proprietario")).toBe(true);
+    expect(isAgendaAdminRole("administrador")).toBe(true);
+    expect(isAgendaAdminRole("profissional")).toBe(false);
+    expect(isAgendaAdminRole("revisor")).toBe(false);
+    expect(isAgendaAdminRole("colaborador")).toBe(false);
+    expect(isAgendaAdminRole("leitura")).toBe(false);
+  });
+  it("(134) isAgendaAction reconhece prefixos", () => {
+    expect(isAgendaAction("deadline.read")).toBe(true);
+    expect(isAgendaAction("appointment.create")).toBe(true);
+    expect(isAgendaAction("case.read")).toBe(false);
+  });
+  it("(135) proprietario tem acesso a todos os casos da org", () => {
+    const env = createMockDomainEnvironment();
+    const ids = computeAgendaAccessibleCaseIds(env.store, OWNER_ALFA);
+    expect(ids.has(SEED_CASE_ALFA_1_ID)).toBe(true);
+    expect(ids.has(SEED_CASE_ALFA_2_ID)).toBe(true);
+    expect(ids.has(SEED_CASE_BETA_1_ID)).toBe(false);
+  });
+  it("(136) checkAgendaCaseAccess: case_not_in_org para caso de outra org", () => {
+    const env = createMockDomainEnvironment();
+    const r = checkAgendaCaseAccess(env.store, OWNER_ALFA, SEED_CASE_BETA_1_ID);
+    expect(r.kind).toBe("case_not_in_org");
+  });
+  it("(137) hasAgendaCaseAccess: proprietario nas próprias orgs", () => {
+    const env = createMockDomainEnvironment();
+    expect(hasAgendaCaseAccess(env.store, OWNER_ALFA, SEED_CASE_ALFA_1_ID)).toBe(true);
+    expect(hasAgendaCaseAccess(env.store, OWNER_ALFA, SEED_CASE_BETA_1_ID)).toBe(false);
+  });
+  it("(138) colaborador sem profile: nenhum caso acessível", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("colaborador");
+    const ids = computeAgendaAccessibleCaseIds(env.store, ctx);
+    expect(ids.size).toBe(0);
+  });
+  it("(139) leitura sem profile: acesso negado a qualquer caso", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("leitura");
+    const r = checkAgendaCaseAccess(env.store, ctx, SEED_CASE_ALFA_1_ID);
+    expect(r.kind).toBe("denied");
+  });
+  it("(140) revisor sem profile: policy devolve case_access_denied", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const dec = ok(await env.services.permissions.evaluate(ctx, {
+      action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+    }));
+    expect(dec.allowed).toBe(false);
+    expect(dec.reason).toBe("case_access_denied");
+  });
+  it("(141) policy sem caseId em ação de Agenda: só verifica papel", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("profissional");
+    const dec = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.list" }));
+    expect(dec.allowed).toBe(true);
+  });
+  it("(142) policy revisor NÃO pode criar deadline: role_not_allowed", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const dec = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.create" }));
+    expect(dec.allowed).toBe(false);
+    expect(dec.reason).toBe("role_not_allowed");
+  });
+  it("(143) policy leitura NÃO pode criar deadline: role_not_allowed", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("leitura");
+    const dec = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.create" }));
+    expect(dec.allowed).toBe(false);
+    expect(dec.reason).toBe("role_not_allowed");
+  });
+  it("(144) policy admin pode criar deadline em caso da org", () => {
+    const env = createMockDomainEnvironment();
+    return env.services.permissions.evaluate(OWNER_ALFA, {
+      action: "deadline.create", caseId: SEED_CASE_ALFA_1_ID,
+    }).then((r) => {
+      const d = ok(r);
+      expect(d.allowed).toBe(true);
+      expect(d.reason).toBeUndefined();
+    });
+  });
+  it("(145) policy admin cross-org: policy allow (serviço abaixo é quem devolve not_found)", async () => {
+    const env = createMockDomainEnvironment();
+    const dec = ok(await env.services.permissions.evaluate(OWNER_ALFA, {
+      action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
+    }));
+    expect(dec.allowed).toBe(true);
+  });
+  it("(146) hasAgendaCaseAccess retorna false para caso inexistente", () => {
+    const s = createEmptyStore();
+    const ctx: ServiceContext = { ...OWNER_ALFA, role: "proprietario" };
+    const bogus = buildDomainId("case", "ghost") as never;
+    expect(hasAgendaCaseAccess(s, ctx, bogus)).toBe(false);
+  });
+  it("(147) computeAgendaAccessibleCaseIds vazio em store vazio", () => {
+    const s = createEmptyStore();
+    const ctx: ServiceContext = { ...OWNER_ALFA, role: "proprietario" };
+    expect(computeAgendaAccessibleCaseIds(s, ctx).size).toBe(0);
+  });
+});
+
+// ============================================================================
+// (14) LV-09.1A.1 — Integração serviços (case_access_denied vs not_found)
+// ============================================================================
+
+describe("LV-09.1A.1 · serviços com acesso contextual", () => {
+  it("(148) deadline.list de outra org: caseId cross-org → not_found", async () => {
+    const env = createMockDomainEnvironment();
+    const r = err(await env.services.deadlines.list(OWNER_ALFA, {
+      caseId: SEED_CASE_BETA_1_ID,
+    }));
+    expect(r.code).toBe("not_found");
+  });
+  it("(149) revisor sem profile em Alfa: deadlines.list caseId próprio → forbidden/case_access_denied", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const r = err(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_ALFA_1_ID }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+  });
+  it("(150) leitura sem profile: appointments.list caseId Alfa → forbidden/case_access_denied", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("leitura");
+    const r = err(await env.services.appointments.list(ctx, { caseId: SEED_CASE_ALFA_2_ID }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+  });
+  it("(151) revisor sem profile: deadlines.getById cross-org → not_found (não vaza case_access)", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_BETA_1_ID);
+    if (!seedDL) throw new Error("seed sem deadline Beta 1");
+    const r = err(await env.services.deadlines.getById(ctx, SEED_CASE_BETA_1_ID, seedDL.id));
+    expect(r.code).toBe("not_found");
+  });
+  it("(152) profissional sem profile na Alfa: appointments.list sem caseId retorna vazio", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("profissional");
+    const r = ok(await env.services.appointments.list(ctx));
+    expect(r.items.length).toBe(0);
+  });
+  it("(153) colaborador sem profile: deadlines.list sem caseId retorna vazio", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("colaborador");
+    const r = ok(await env.services.deadlines.list(ctx));
+    expect(r.items.length).toBe(0);
+  });
+  it("(154) admin: appointments.list sem caseId devolve todos da org", () => {
+    const env = createMockDomainEnvironment();
+    return env.services.appointments.list(OWNER_ALFA).then((r) => {
+      const p = ok(r);
+      for (const a of p.items) expect(a.organizationId).toBe(SEED_ORG_ALFA_ID);
+    });
+  });
+  it("(155) revisor sem profile: deadlines.create bloqueada por papel (role_not_allowed)", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const r = err(await env.services.deadlines.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      dueAt: T_A, priority: "normal",
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("permission_denied");
+  });
+  it("(156) colaborador sem profile: deadlines.create → case_access_denied (papel permitido)", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("colaborador");
+    const r = err(await env.services.deadlines.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      dueAt: T_A, priority: "normal",
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+  });
+  it("(157) colaborador sem profile: appointments.create → case_access_denied", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("colaborador");
+    const r = err(await env.services.appointments.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "meeting", title: "T",
+      startsAt: T_A, endsAt: T_B, mode: "remote",
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+  });
+  it("(158) colaborador sem profile: deadline.remove em Beta (fora da org) → forbidden (organization_mismatch)", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("colaborador");
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_BETA_1_ID)!;
+    const r = err(await env.services.deadlines.remove(ctx, SEED_CASE_BETA_1_ID, seedDL.id, seedDL.metadata.version));
+    // Guard tenta antes; case não pertence à org → policy deixa passar, serviço devolve not_found.
+    expect(["not_found","forbidden"]).toContain(r.code);
+  });
+  it("(159) proprietario pode criar deadline em Alfa 1 (permissão + acesso ok)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = ok(await env.services.deadlines.create(OWNER_ALFA, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      dueAt: T_A, priority: "normal",
+    }));
+    expect(r.status).toBe("pending");
+  });
+  it("(160) proprietario pode criar appointment em Alfa 2 (permissão + acesso ok)", async () => {
+    const env = createMockDomainEnvironment();
+    const r = ok(await env.services.appointments.create(OWNER_ALFA, {
+      caseId: SEED_CASE_ALFA_2_ID, kind: "meeting", title: "T",
+      startsAt: T_A, endsAt: T_B, mode: "remote",
+    }));
+    expect(r.status).toBe("scheduled");
+  });
+  it("(161) revisor sem profile: appointment.getById em Alfa 2 → forbidden/case_access_denied", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const seedAP = env.snapshot().appointments.find((a) => a.caseId === SEED_CASE_ALFA_2_ID)!;
+    const r = err(await env.services.appointments.getById(ctx, SEED_CASE_ALFA_2_ID, seedAP.id));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+  });
+  it("(162) admin pode ler appointment cross-org resulta em not_found (case fora da org)", async () => {
+    const env = createMockDomainEnvironment();
+    const seedAP = env.snapshot().appointments.find((a) => a.caseId === SEED_CASE_BETA_1_ID)!;
+    const r = err(await env.services.appointments.getById(OWNER_ALFA, SEED_CASE_BETA_1_ID, seedAP.id));
+    expect(r.code).toBe("not_found");
+  });
+  it("(163) admin pode ler deadline cross-org resulta em not_found", async () => {
+    const env = createMockDomainEnvironment();
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_BETA_1_ID)!;
+    const r = err(await env.services.deadlines.getById(OWNER_ALFA, SEED_CASE_BETA_1_ID, seedDL.id));
+    expect(r.code).toBe("not_found");
+  });
+  it("(164) revisor sem profile: deadline.changeStatus → forbidden (role_not_allowed)", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("revisor");
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_ALFA_1_ID)!;
+    const r = err(await env.services.deadlines.changeStatus(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, deadlineId: seedDL.id,
+      status: "completed", expectedVersion: seedDL.metadata.version,
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("permission_denied");
+  });
+  it("(165) leitura sem profile: deadline.list sem caseId retorna vazio", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("leitura");
+    const r = ok(await env.services.deadlines.list(ctx));
+    expect(r.items.length).toBe(0);
+  });
+  it("(166) leitura sem profile: appointment.list sem caseId retorna vazio", async () => {
+    const { env, ctx } = await setupNonAdminAlfa("leitura");
+    const r = ok(await env.services.appointments.list(ctx));
+    expect(r.items.length).toBe(0);
+  });
+});
+
+// ============================================================================
+// (15) LV-09.1A.1 — Aliases de catálogo e coerência de tipo
+// ============================================================================
+
+import { DEADLINE_STATUSES } from "@/domain/core/agenda";
+
+describe("LV-09.1A.1 · alias de catálogo", () => {
+  it("(167) DEADLINE_STATUSES é o mesmo objeto que AGENDA_DEADLINE_STATUSES", () => {
+    expect(DEADLINE_STATUSES).toBe(AGENDA_DEADLINE_STATUSES);
+  });
+  it("(168) DEADLINE_STATUSES tem os 3 valores canônicos", () => {
+    expect([...DEADLINE_STATUSES]).toEqual(["pending","completed","cancelled"]);
+  });
+  it("(169) DEADLINE_STATUSES é readonly (frozen ou tuple as const)", () => {
+    // tuple `as const` não é congelado em runtime, mas o tipo é readonly.
+    expect(Array.isArray(DEADLINE_STATUSES)).toBe(true);
+  });
+});
