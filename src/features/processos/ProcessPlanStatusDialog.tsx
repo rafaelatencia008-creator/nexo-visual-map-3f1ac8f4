@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   CASE_PLAN_ITEM_STATUSES,
+  isCasePlanItemStatus,
   type CasePlanItem,
   type CasePlanItemStatus,
 } from "@/domain/core/case-plan";
