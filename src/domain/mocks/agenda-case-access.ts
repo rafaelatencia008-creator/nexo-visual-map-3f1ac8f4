@@ -40,9 +40,10 @@ export function checkAgendaCaseAccess(
   if (isAgendaAdminRole(context.role)) return { kind: "allowed" };
   const profIds = new Set<string>();
   for (const p of store.professionalProfiles.values()) {
-    if (p.organizationId === context.organizationId && p.userId === context.userId) {
-      profIds.add(p.id);
-    }
+    if (p.organizationId !== context.organizationId) continue;
+    if (p.userId !== context.userId) continue;
+    if (p.status !== "active") continue;
+    profIds.add(p.id);
   }
   if (profIds.size === 0) return { kind: "denied" };
   for (const a of store.assignments.values()) {
