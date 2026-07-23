@@ -16,3 +16,5 @@ export * from "./professional-service";
 export * from "./case-service";
 export * from "./person-service";
 export * from "./assignment-service";
+export * from "./case-plan-service";
+export * from "./case-timeline-service";

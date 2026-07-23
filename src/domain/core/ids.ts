@@ -24,6 +24,8 @@ export const ID_PREFIX = {
   casePerson: "caseperson_",
   relationship: "rel_",
   assignment: "assign_",
+  casePlanItem: "planItem_",
+  caseTimelineEntry: "timelineEntry_",
 
   // Entidades reservadas — apenas catalogadas nesta microetapa.
   deadline: "deadline_",
@@ -79,6 +81,8 @@ export type PersonId = Brand<string, "PersonId">;
 export type CasePersonId = Brand<string, "CasePersonId">;
 export type RelationshipId = Brand<string, "RelationshipId">;
 export type AssignmentId = Brand<string, "AssignmentId">;
+export type CasePlanItemId = Brand<string, "CasePlanItemId">;
+export type CaseTimelineEntryId = Brand<string, "CaseTimelineEntryId">;
 
 /**
  * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
@@ -95,6 +99,8 @@ export type ImplementedIdMap = {
   casePerson: CasePersonId;
   relationship: RelationshipId;
   assignment: AssignmentId;
+  casePlanItem: CasePlanItemId;
+  caseTimelineEntry: CaseTimelineEntryId;
 };
 
 // ---- Validação de forma ----------------------------------------------------
@@ -144,6 +150,10 @@ export const isRelationshipId = (v: unknown): v is RelationshipId =>
   hasExpectedPrefix(v, "relationship");
 export const isAssignmentId = (v: unknown): v is AssignmentId =>
   hasExpectedPrefix(v, "assignment");
+export const isCasePlanItemId = (v: unknown): v is CasePlanItemId =>
+  hasExpectedPrefix(v, "casePlanItem");
+export const isCaseTimelineEntryId = (v: unknown): v is CaseTimelineEntryId =>
+  hasExpectedPrefix(v, "caseTimelineEntry");
 
 // ---- Builders determinísticos ---------------------------------------------
 
@@ -162,4 +172,14 @@ export function buildDomainId(kind: IdKind, suffix: string): string {
     throw new Error(`Sufixo inválido para ID (${kind}): ${String(suffix)}`);
   }
   return `${ID_PREFIX[kind]}${suffix}`;
+}
+
+// ---- Fábricas nomeadas (LV-08.5A) -----------------------------------------
+
+export function createCasePlanItemId(suffix: string): CasePlanItemId {
+  return buildDomainId("casePlanItem", suffix);
+}
+
+export function createCaseTimelineEntryId(suffix: string): CaseTimelineEntryId {
+  return buildDomainId("caseTimelineEntry", suffix);
 }

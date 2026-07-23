@@ -59,6 +59,19 @@ export const PERMISSION_ACTIONS = [
   "assignment.create",
   "assignment.update",
   "assignment.changeStatus",
+
+  "casePlanItem.read",
+  "casePlanItem.list",
+  "casePlanItem.create",
+  "casePlanItem.update",
+  "casePlanItem.changeStatus",
+  "casePlanItem.remove",
+
+  "caseTimelineEntry.read",
+  "caseTimelineEntry.list",
+  "caseTimelineEntry.create",
+  "caseTimelineEntry.update",
+  "caseTimelineEntry.remove",
 ] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];

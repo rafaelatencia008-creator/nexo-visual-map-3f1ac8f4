@@ -12,6 +12,8 @@ import type { ProfessionalProfile, Credential } from "../core/professional";
 import type { Case } from "../core/case";
 import type { Person } from "../core/person";
 import type { CasePerson, Relationship, Assignment } from "../core/assignment";
+import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
+import { isCasePlanItem, isCaseTimelineEntry } from "../core/case-plan";
 import {
   validateOrganization,
   validateUser,
@@ -85,6 +87,18 @@ export const SEED_REL_ALFA_1_ID = buildDomainId("relationship", "seed_alfa_1");
 // ---- Assignments -----------------------------------------------------------
 export const SEED_ASSIGN_ALFA_1_ID = buildDomainId("assignment", "seed_alfa_1");
 export const SEED_ASSIGN_BETA_1_ID = buildDomainId("assignment", "seed_beta_1");
+
+// ---- CasePlanItems ---------------------------------------------------------
+export const SEED_PLAN_ALFA_1_ID = buildDomainId("casePlanItem", "seed_alfa_1");
+export const SEED_PLAN_ALFA_2_ID = buildDomainId("casePlanItem", "seed_alfa_2");
+export const SEED_PLAN_ALFA_3_ID = buildDomainId("casePlanItem", "seed_alfa_3");
+export const SEED_PLAN_BETA_1_ID = buildDomainId("casePlanItem", "seed_beta_1");
+export const SEED_PLAN_BETA_2_ID = buildDomainId("casePlanItem", "seed_beta_2");
+
+// ---- CaseTimelineEntries ---------------------------------------------------
+export const SEED_TL_ALFA_1_ID = buildDomainId("caseTimelineEntry", "seed_alfa_1");
+export const SEED_TL_ALFA_2_ID = buildDomainId("caseTimelineEntry", "seed_alfa_2");
+export const SEED_TL_BETA_1_ID = buildDomainId("caseTimelineEntry", "seed_beta_1");
 
 // ---- Builder ---------------------------------------------------------------
 
@@ -371,6 +385,94 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     },
   ];
 
+  const casePlanItems: CasePlanItem[] = [
+    {
+      id: SEED_PLAN_ALFA_1_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "activity",
+      title: "Analisar documentos iniciais",
+      status: "in_progress",
+      priority: "high",
+      dueOn: "2026-02-01" as IsoDate,
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+      metadata: meta,
+    },
+    {
+      id: SEED_PLAN_ALFA_2_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "pending",
+      title: "Aguardar retorno do juízo",
+      status: "planned",
+      priority: "normal",
+      dueOn: "2026-02-15" as IsoDate,
+      metadata: meta,
+    },
+    {
+      id: SEED_PLAN_ALFA_3_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "activity",
+      title: "Reunião de alinhamento inicial",
+      status: "completed",
+      priority: "normal",
+      metadata: meta,
+    },
+    {
+      id: SEED_PLAN_BETA_1_ID,
+      organizationId: SEED_ORG_BETA_ID,
+      caseId: SEED_CASE_BETA_2_ID,
+      kind: "activity",
+      title: "Preparar cronograma de entrevistas",
+      status: "planned",
+      priority: "high",
+      dueOn: "2026-02-10" as IsoDate,
+      assignmentId: SEED_ASSIGN_BETA_1_ID,
+      metadata: meta,
+    },
+    {
+      id: SEED_PLAN_BETA_2_ID,
+      organizationId: SEED_ORG_BETA_ID,
+      caseId: SEED_CASE_BETA_2_ID,
+      kind: "pending",
+      title: "Coletar autorizações institucionais",
+      status: "blocked",
+      priority: "normal",
+      metadata: meta,
+    },
+  ];
+
+  const caseTimelineEntries: CaseTimelineEntry[] = [
+    {
+      id: SEED_TL_ALFA_1_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "milestone",
+      occurredOn: "2026-01-05" as IsoDate,
+      title: "Abertura do processo",
+      metadata: meta,
+    },
+    {
+      id: SEED_TL_ALFA_2_ID,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "note",
+      occurredOn: "2026-01-08" as IsoDate,
+      title: "Registro de primeira leitura dos autos",
+      metadata: meta,
+    },
+    {
+      id: SEED_TL_BETA_1_ID,
+      organizationId: SEED_ORG_BETA_ID,
+      caseId: SEED_CASE_BETA_2_ID,
+      kind: "milestone",
+      occurredOn: "2026-01-07" as IsoDate,
+      title: "Recebimento da nomeação",
+      metadata: meta,
+    },
+  ];
+
   return {
     organizations,
     users,
@@ -382,6 +484,8 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     casePersons,
     relationships,
     assignments,
+    casePlanItems,
+    caseTimelineEntries,
   };
 }
 
@@ -424,6 +528,41 @@ export function validateMockDomainSeed(
   dup("casePerson", seed.casePersons);
   dup("relationship", seed.relationships);
   dup("assignment", seed.assignments);
+  dup("casePlanItem", seed.casePlanItems);
+  dup("caseTimelineEntry", seed.caseTimelineEntries);
+
+  const caseByIdEarly = new Map(seed.cases.map((c) => [c.id, c]));
+  const assignByIdEarly = new Map(seed.assignments.map((a) => [a.id, a]));
+
+  for (const p of seed.casePlanItems) {
+    const pid = p.id;
+    if (!isCasePlanItem(p)) {
+      issues.push({ entity: "casePlanItem", id: pid, reason: "invalid_shape" });
+      continue;
+    }
+    const c = caseByIdEarly.get(p.caseId);
+    if (!c) issues.push({ entity: "casePlanItem", id: pid, reason: "case_not_found" });
+    else if (c.organizationId !== p.organizationId)
+      issues.push({ entity: "casePlanItem", id: pid, reason: "case_org_mismatch" });
+    if (p.assignmentId !== undefined) {
+      const a = assignByIdEarly.get(p.assignmentId);
+      if (!a)
+        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_not_found" });
+      else if (a.caseId !== p.caseId)
+        issues.push({ entity: "casePlanItem", id: pid, reason: "assignment_case_mismatch" });
+    }
+  }
+  for (const t of seed.caseTimelineEntries) {
+    const tid = t.id;
+    if (!isCaseTimelineEntry(t)) {
+      issues.push({ entity: "caseTimelineEntry", id: tid, reason: "invalid_shape" });
+      continue;
+    }
+    const c = caseByIdEarly.get(t.caseId);
+    if (!c) issues.push({ entity: "caseTimelineEntry", id: tid, reason: "case_not_found" });
+    else if (c.organizationId !== t.organizationId)
+      issues.push({ entity: "caseTimelineEntry", id: tid, reason: "case_org_mismatch" });
+  }
 
   for (const o of seed.organizations) {
     const r = validateOrganization(o);

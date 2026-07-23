@@ -138,17 +138,17 @@ function snapshotEqual(a: MockDomainSnapshot, b: MockDomainSnapshot): boolean {
 }
 
 // ============================================================================
-// (1) Matriz completa: 40 ações × 6 papéis = 240 decisões
+// (1) Matriz completa: 51 ações × 6 papéis = 306 decisões
 // ============================================================================
 
-describe("LV-07.4 — matriz completa (40 ações × 6 papéis)", () => {
+describe("LV-07.4 — matriz completa (51 ações × 6 papéis)", () => {
   const contexts = new Map<Role, RoleSetup>();
 
   beforeAll(async () => {
     for (const role of ROLES) {
       contexts.set(role, await setupRoleEnv(role));
     }
-    expect(PERMISSION_ACTIONS.length).toBe(40);
+    expect(PERMISSION_ACTIONS.length).toBe(51);
     expect(ROLES.length).toBe(6);
   });
 
