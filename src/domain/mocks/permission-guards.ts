@@ -41,6 +41,13 @@ async function enforce<T>(
   if (!r.ok) return { ok: false, error: r.error };
   return delegate();
 }
+function extractCaseId(input: unknown): import("../core/ids").CaseId | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const cid = (input as Record<string, unknown>).caseId;
+  return (typeof cid === "string" && cid.startsWith("case_"))
+    ? (cid as import("../core/ids").CaseId)
+    : null;
+}
 
 async function enforceWithCase<T>(
   store: MockStore,
