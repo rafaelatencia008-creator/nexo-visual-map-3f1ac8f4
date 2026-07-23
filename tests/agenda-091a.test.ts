@@ -1317,12 +1317,11 @@ describe("LV-09.1A.1 · serviços com acesso contextual", () => {
     expect(r.code).toBe("forbidden");
     expect(r.message).toBe("case_access_denied");
   });
-  it("(158) colaborador sem profile: deadline.remove em Beta (fora da org) → forbidden (organization_mismatch)", async () => {
+  it("(158) colaborador sem profile: deadline.remove em Beta (cross-org) → not_found", async () => {
     const { env, ctx } = await setupNonAdminAlfa("colaborador");
     const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_BETA_1_ID)!;
     const r = err(await env.services.deadlines.remove(ctx, SEED_CASE_BETA_1_ID, seedDL.id, seedDL.metadata.version));
-    // Guard tenta antes; case não pertence à org → policy deixa passar, serviço devolve not_found.
-    expect(["not_found","forbidden"]).toContain(r.code);
+    expect(r.code).toBe("not_found");
   });
   it("(159) proprietario pode criar deadline em Alfa 1 (permissão + acesso ok)", async () => {
     const env = createMockDomainEnvironment();
