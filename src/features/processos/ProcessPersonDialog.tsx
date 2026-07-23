@@ -34,6 +34,7 @@ import type { PersonId } from "@/domain/core/ids";
 import {
   AGE_CLASSIFICATION_LABELS_PT,
   CASE_PERSON_ROLE_LABELS_PT,
+  filterPersonsByDisplayLabel,
   isMinorAge,
   normalizePersonLabel,
   type PeoplePublicError,
@@ -140,6 +141,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
   const [role, setRole] = React.useState<CasePersonRole>(initialRole);
   const [restricted, setRestricted] = React.useState(initialRestricted);
   const [personId, setPersonId] = React.useState<PersonId | "">(initialPersonId);
+  const [search, setSearch] = React.useState("");
 
   const modeKind = mode.kind;
   React.useEffect(() => {
@@ -149,6 +151,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
     setRole(initialRole);
     setRestricted(initialRestricted);
     setPersonId(initialPersonId);
+    setSearch("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, modeKind]);
 
@@ -166,11 +169,11 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
 
   // Ao selecionar pessoa existente, força restrito se for menor.
   React.useEffect(() => {
-    if (mode.kind !== "link-existing" || catalog.kind !== "ready") return;
+    if (mode.kind !== "link-existing") return;
     if (personId === "") return;
-    const p = catalog.persons.find((x) => x.id === personId);
+    const p = mode.availablePersons.find((x) => x.id === personId);
     if (p && isMinorAge(p.ageClassification)) setRestricted(true);
-  }, [personId, catalog, mode]);
+  }, [personId, mode]);
 
   const title =
     mode.kind === "create-and-link"
@@ -184,6 +187,15 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       : "Editar vínculo com o processo";
 
   const isConflict = error?.kind === "conflict";
+
+  // Lista disponível para vincular (já sem pessoas atualmente vinculadas ao processo).
+  const availablePersons: readonly Person[] =
+    mode.kind === "link-existing" ? mode.availablePersons : [];
+  // Resultado local da pesquisa por displayLabel (preserva ordem recebida).
+  const filteredPersons: readonly Person[] = React.useMemo(
+    () => filterPersonsByDisplayLabel(availablePersons, search),
+    [availablePersons, search],
+  );
 
   const canSubmit = (() => {
     if (submitting) return false;
@@ -215,8 +227,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       return;
     }
     if (mode.kind === "link-existing") {
-      if (catalog.kind !== "ready") return;
-      const chosen = catalog.persons.find((p) => p.id === personId);
+      const chosen = mode.availablePersons.find((p) => p.id === personId);
       if (!chosen) return;
       onLinkExisting({
         personId: chosen.id,
@@ -259,12 +270,12 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
     (showPersonFields && isMinorAge(age)) ||
     (mode.kind === "edit-link" && isMinorAge(mode.person.ageClassification)) ||
     (mode.kind === "link-existing" &&
-      catalog.kind === "ready" &&
       personId !== "" &&
       isMinorAge(
-        catalog.persons.find((p) => p.id === personId)?.ageClassification ??
+        availablePersons.find((p) => p.id === personId)?.ageClassification ??
           "adult",
       ));
+
 
   return (
     <Dialog
@@ -325,28 +336,45 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
                 </div>
               )}
               {catalog.kind === "ready" &&
-                (catalog.persons.length === 0 ? (
+                (availablePersons.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Não há pessoas disponíveis para vincular.
                   </p>
                 ) : (
-                  <Select
-                    value={personId}
-                    onValueChange={(v) => setPersonId(v as PersonId)}
-                    disabled={submitting}
-                  >
-                    <SelectTrigger id="personId">
-                      <SelectValue placeholder="Selecione uma pessoa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {catalog.persons.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.displayLabel} —{" "}
-                          {AGE_CLASSIFICATION_LABELS_PT[p.ageClassification]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Input
+                      id="personSearch"
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Buscar por identificação"
+                      aria-label="Buscar pessoa"
+                      disabled={submitting}
+                    />
+                    {filteredPersons.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma pessoa encontrada.
+                      </p>
+                    ) : (
+                      <Select
+                        value={personId}
+                        onValueChange={(v) => setPersonId(v as PersonId)}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger id="personId">
+                          <SelectValue placeholder="Selecione uma pessoa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredPersons.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.displayLabel} —{" "}
+                              {AGE_CLASSIFICATION_LABELS_PT[p.ageClassification]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </>
                 ))}
             </div>
           )}
@@ -392,7 +420,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
             <div className="rounded-md border border-border p-3 text-sm">
               <p>
                 A pessoa <strong>{mode.person.displayLabel}</strong> já foi
-                cadastrada. Confirme para concluir o vínculo com o processo.
+                cadastrada. Tente vincular novamente ao processo.
               </p>
             </div>
           )}
@@ -453,7 +481,7 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
                 />
               )}
               {mode.kind === "retry-created-link"
-                ? "Concluir vínculo"
+                ? "Tentar vincular novamente"
                 : "Salvar"}
             </Button>
           )}

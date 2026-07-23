@@ -529,3 +529,30 @@ export function collectDistinctLinkedPersonIds(
   }
   return out;
 }
+
+// ---- Pesquisa local por rótulo público -----------------------------------
+
+/**
+ * Filtra pessoas pelo `displayLabel` de forma pura, local e sem PII.
+ *
+ * - `query` vazia (ou só espaços) retorna todas as pessoas;
+ * - a comparação ignora maiúsculas e minúsculas;
+ * - espaços externos são removidos antes de comparar;
+ * - a lista original nunca é modificada e a ordenação recebida é preservada;
+ * - nenhum outro campo além de `displayLabel` participa da comparação.
+ */
+export function filterPersonsByDisplayLabel(
+  persons: readonly Person[],
+  query: string,
+): readonly Person[] {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return persons.slice();
+  const needle = trimmed.toLocaleLowerCase("pt-BR");
+  const out: Person[] = [];
+  for (const p of persons) {
+    const hay = p.displayLabel.toLocaleLowerCase("pt-BR");
+    if (hay.includes(needle)) out.push(p);
+  }
+  return out;
+}
+
