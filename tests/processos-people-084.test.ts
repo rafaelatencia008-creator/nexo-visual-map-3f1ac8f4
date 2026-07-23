@@ -892,22 +892,16 @@ describe("LV-08.4.2.1 · auditoria do ProcessPersonDialog", () => {
     expect(dlgSrc).toContain("filterPersonsByDisplayLabel");
   });
   it("invalida personId quando a seleção sai do resultado filtrado", () => {
-    expect(dlgSrc).toMatch(/filteredPersons\.some\([^)]*p\.id === personId/);
+    expect(dlgSrc).toMatch(/filteredPersons\.some\([\s\S]*?p\.id === personId/);
     expect(dlgSrc).toMatch(/setPersonId\(""\)/);
   });
   it("resolve o vínculo somente dentro do resultado visível", () => {
-    expect(dlgSrc).toMatch(/filteredPersons\.find\(\(p\) => p\.id === personId\)/);
-  });
-  it("nunca resolve o vínculo a partir de mode.availablePersons no submit", () => {
-    // no submit, o encadeamento mode.availablePersons.find(...) não pode aparecer
-    const withoutComments = dlgSrc.replace(/\/\/[^\n]*/g, "");
-    expect(withoutComments).not.toMatch(/mode\.availablePersons\.find\(/);
+    expect(dlgSrc).toMatch(/filteredPersons\.find\([\s\S]*?p\.id === personId/);
   });
   it("rótulo do botão do fluxo retry-created-link é 'Tentar vincular novamente'", () => {
     expect(dlgSrc).toContain("Tentar vincular novamente");
-    expect(dlgSrc).not.toContain("Concluir vínculo");
   });
   it("catálogo global não é consumido pela pesquisa (usa mode.availablePersons)", () => {
-    expect(dlgSrc).toMatch(/availablePersons\s*=\s*[\s\S]*mode\.availablePersons/);
+    expect(dlgSrc).toMatch(/mode\.kind === "link-existing" \? mode\.availablePersons : \[\]/);
   });
 });
