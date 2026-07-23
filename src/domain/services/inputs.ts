@@ -241,7 +241,7 @@ export type CreateCasePlanItemInput = Readonly<{
 }>;
 
 export type UpdateCasePlanItemInput = Readonly<{
-  planItemId: _CasePlanItemId;
+  planItemId: CasePlanItemId;
   kind?: CasePlanItemKind;
   title?: string;
   description?: string | null;
@@ -252,7 +252,7 @@ export type UpdateCasePlanItemInput = Readonly<{
 }>;
 
 export type ChangeCasePlanItemStatusInput = Readonly<{
-  planItemId: _CasePlanItemId;
+  planItemId: CasePlanItemId;
   status: CasePlanItemStatus;
   expectedVersion: number;
 }>;
@@ -268,7 +268,7 @@ export type CreateCaseTimelineEntryInput = Readonly<{
 }>;
 
 export type UpdateCaseTimelineEntryInput = Readonly<{
-  timelineEntryId: _CaseTimelineEntryId;
+  timelineEntryId: CaseTimelineEntryId;
   kind?: CaseTimelineEntryKind;
   occurredOn?: IsoDate;
   title?: string;
