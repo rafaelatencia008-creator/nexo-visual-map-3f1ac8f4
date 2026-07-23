@@ -1045,15 +1045,13 @@ describe("LV-08.6A — permissões oficiais das novas ações", () => {
     expect(dec.allowed).toBe(true);
   });
 
-  it("proprietário Alfa não pode criar snapshot em caso Beta", async () => {
+  it("cross-org: create real de snapshot para case Beta é bloqueado", async () => {
     const env = createMockDomainEnvironment();
-    const dec = unwrapOk(
-      await env.services.permissions.evaluate(OWNER_ALFA, {
-        action: "caseSnapshot.create",
-        caseId: SEED_CASE_BETA_2_ID,
-      }),
-    );
-    expect(dec.allowed).toBe(false);
+    const r = await env.services.caseSnapshots.create(OWNER_ALFA, {
+      caseId: SEED_CASE_BETA_2_ID,
+      label: "cross",
+    });
+    expect(r.ok).toBe(false);
   });
 
   it("papel leitura pode ler auditEvent e caseSnapshot", async () => {
