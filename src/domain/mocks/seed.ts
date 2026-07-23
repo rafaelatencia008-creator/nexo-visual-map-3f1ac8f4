@@ -1172,29 +1172,31 @@ export function validateMockDomainSeed(
 
   // Deadline / Appointment: coerência relacional (org, caso, assignment).
   for (const d of seed.deadlines) {
+    const did = d.id;
     if (!isDeadline(d)) {
-      issues.push({ entity: "deadline", id: d.id, reason: "invalid_shape" });
+      issues.push({ entity: "deadline", id: did, reason: "invalid_shape" });
       continue;
     }
     const c = caseByIdEarly.get(d.caseId);
-    if (!c) issues.push({ entity: "deadline", id: d.id, reason: "case_not_found" });
+    if (!c) issues.push({ entity: "deadline", id: did, reason: "case_not_found" });
     else if (c.organizationId !== d.organizationId)
-      issues.push({ entity: "deadline", id: d.id, reason: "case_org_mismatch" });
+      issues.push({ entity: "deadline", id: did, reason: "case_org_mismatch" });
     if (d.assignmentId !== undefined) {
       const a = assignByIdEarly.get(d.assignmentId);
       if (!a)
-        issues.push({ entity: "deadline", id: d.id, reason: "assignment_not_found" });
+        issues.push({ entity: "deadline", id: did, reason: "assignment_not_found" });
       else {
         if (a.caseId !== d.caseId)
-          issues.push({ entity: "deadline", id: d.id, reason: "assignment_case_mismatch" });
+          issues.push({ entity: "deadline", id: did, reason: "assignment_case_mismatch" });
         if (a.organizationId !== d.organizationId)
-          issues.push({ entity: "deadline", id: d.id, reason: "assignment_org_mismatch" });
+          issues.push({ entity: "deadline", id: did, reason: "assignment_org_mismatch" });
       }
     }
   }
   for (const ap of seed.appointments) {
+    const aid = ap.id;
     if (!isAppointment(ap)) {
-      issues.push({ entity: "appointment", id: ap.id, reason: "invalid_shape" });
+      issues.push({ entity: "appointment", id: aid, reason: "invalid_shape" });
       continue;
     }
     const c = caseByIdEarly.get(ap.caseId);
