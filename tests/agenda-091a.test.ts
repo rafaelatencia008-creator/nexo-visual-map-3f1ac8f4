@@ -1888,12 +1888,12 @@ describe("LV-09.1A.3 · integridade do store após operações negadas", () => {
     const r = err(await env.services.deadlines.getById(ctx, SEED_CASE_BETA_1_ID, seedDL.id));
     expect(r.code).toBe("not_found");
   });
-  it("(308) revisor cross-org list: retorna vazio (org isola)", async () => {
+  it("(308) revisor cross-org list: serviço isola por org (erro not_found)", async () => {
     const { env, ctx } = await setupWorker("revisor", {
       profile: "active", assignCase: SEED_CASE_ALFA_1_ID, assignStatus: "active",
     });
-    const r = ok(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_BETA_1_ID }));
-    expect(r.items.length).toBe(0);
+    const r = err(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_BETA_1_ID }));
+    expect(r.code).toBe("not_found");
     void env;
   });
 });
