@@ -285,13 +285,10 @@ export function guardCasePlanService(
       enforceWithCase(store, ctx, "casePlanItem.list", cid, () =>
         s.listByCase(ctx, cid, page),
       ),
-    create: (ctx, input) => {
-      const cid = extractCaseId(input);
-      if (cid === null) return s.create(ctx, input);
-      return enforceWithCase(store, ctx, "casePlanItem.create", cid, () =>
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "casePlanItem.create", input, () =>
         s.create(ctx, input),
-      );
-    },
+      ),
     update: (ctx, cid, input) =>
       enforceWithCase(store, ctx, "casePlanItem.update", cid, () =>
         s.update(ctx, cid, input),
