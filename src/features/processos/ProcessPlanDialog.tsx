@@ -142,7 +142,10 @@ export function ProcessPlanDialog(props: ProcessPlanDialogProps) {
               <Label htmlFor="plan-kind">Tipo</Label>
               <Select
                 value={values.kind}
-                onValueChange={(v) => setValues((s) => ({ ...s, kind: v as CasePlanItemKind }))}
+                onValueChange={(v) => {
+                  if (!isCasePlanItemKind(v)) return;
+                  setValues((s) => ({ ...s, kind: v }));
+                }}
                 disabled={submitting}
               >
                 <SelectTrigger id="plan-kind" aria-label="Tipo do item">
