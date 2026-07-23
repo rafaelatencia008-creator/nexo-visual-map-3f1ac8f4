@@ -86,6 +86,8 @@ export type CasePlanItemId = Brand<string, "CasePlanItemId">;
 export type CaseTimelineEntryId = Brand<string, "CaseTimelineEntryId">;
 export type AuditEventId = Brand<string, "AuditEventId">;
 export type CaseSnapshotId = Brand<string, "CaseSnapshotId">;
+export type DeadlineId = Brand<string, "DeadlineId">;
+export type AppointmentId = Brand<string, "AppointmentId">;
 
 /**
  * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
@@ -106,6 +108,8 @@ export type ImplementedIdMap = {
   caseTimelineEntry: CaseTimelineEntryId;
   auditEvent: AuditEventId;
   caseSnapshot: CaseSnapshotId;
+  deadline: DeadlineId;
+  appointment: AppointmentId;
 };
 
 // ---- Validação de forma ----------------------------------------------------
@@ -168,6 +172,10 @@ export const isAuditEventId = (v: unknown): v is AuditEventId =>
   hasExpectedPrefix(v, "auditEvent");
 export const isCaseSnapshotId = (v: unknown): v is CaseSnapshotId =>
   hasExpectedPrefix(v, "caseSnapshot");
+export const isDeadlineId = (v: unknown): v is DeadlineId =>
+  hasExpectedPrefix(v, "deadline");
+export const isAppointmentId = (v: unknown): v is AppointmentId =>
+  hasExpectedPrefix(v, "appointment");
 
 // ---- Builders determinísticos ---------------------------------------------
 
@@ -204,4 +212,12 @@ export function createAuditEventId(suffix: string): AuditEventId {
 
 export function createCaseSnapshotId(suffix: string): CaseSnapshotId {
   return buildDomainId("caseSnapshot", suffix);
+}
+
+export function createDeadlineId(suffix: string): DeadlineId {
+  return buildDomainId("deadline", suffix);
+}
+
+export function createAppointmentId(suffix: string): AppointmentId {
+  return buildDomainId("appointment", suffix);
 }

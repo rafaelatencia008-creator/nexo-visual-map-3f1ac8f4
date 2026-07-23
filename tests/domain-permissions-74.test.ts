@@ -105,14 +105,34 @@ const SNAPSHOT_CREATE_ROLES: readonly Role[] = [
   "administrador",
   "profissional",
 ];
+// LV-09.1A — Agenda: escrita não inclui "revisor"; remoção também não inclui "colaborador".
+const AGENDA_WRITE_ROLES: readonly Role[] = [
+  "proprietario",
+  "administrador",
+  "profissional",
+  "colaborador",
+];
+const AGENDA_REMOVE_ROLES: readonly Role[] = [
+  "proprietario",
+  "administrador",
+  "profissional",
+];
 
 function isReadOrListAction(action: PermissionAction): boolean {
   return action.endsWith(".read") || action.endsWith(".list");
 }
 
+function isAgendaAction(action: PermissionAction): boolean {
+  return action.startsWith("deadline.") || action.startsWith("appointment.");
+}
+
 function expectedRolesFor(action: PermissionAction): readonly Role[] {
   if (isReadOrListAction(action)) return ALL_ROLES;
   if (action === "caseSnapshot.create") return SNAPSHOT_CREATE_ROLES;
+  if (isAgendaAction(action)) {
+    if (action.endsWith(".remove")) return AGENDA_REMOVE_ROLES;
+    return AGENDA_WRITE_ROLES;
+  }
   if (ADMIN_ACTIONS.includes(action)) return ADMIN_ROLES;
   return WRITE_ROLES;
 }
@@ -148,14 +168,14 @@ function snapshotEqual(a: MockDomainSnapshot, b: MockDomainSnapshot): boolean {
 // (1) Matriz completa: 54 ações × 6 papéis = 324 decisões
 // ============================================================================
 
-describe("LV-07.4 — matriz completa (54 ações × 6 papéis)", () => {
+describe("LV-07.4 — matriz completa (ações × 6 papéis)", () => {
   const contexts = new Map<Role, RoleSetup>();
 
   beforeAll(async () => {
     for (const role of ROLES) {
       contexts.set(role, await setupRoleEnv(role));
     }
-    expect(PERMISSION_ACTIONS.length).toBe(54);
+    expect(PERMISSION_ACTIONS.length).toBe(66);
     expect(ROLES.length).toBe(6);
   });
 

@@ -37,6 +37,8 @@ import {
   type InternalAuditAppender,
 } from "./audit-event-mock";
 import { createCaseSnapshotServiceMock } from "./case-snapshot-mock";
+import { createDeadlineServiceMock } from "./deadline-mock";
+import { createAppointmentServiceMock } from "./appointment-mock";
 import {
   guardOrganizationService,
   guardMembershipService,
@@ -51,6 +53,8 @@ import {
   guardCaseTimelineService,
   guardAuditEventService,
   guardCaseSnapshotService,
+  guardDeadlineService,
+  guardAppointmentService,
 } from "./permission-guards";
 import {
   MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS,
@@ -100,6 +104,8 @@ function loadSeed(store: MockStore): void {
     store.caseTimelineEntries.set(t.id, deepClone(t));
   for (const e of seed.auditEvents) store.auditEvents.set(e.id, deepClone(e));
   for (const s of seed.caseSnapshots) store.caseSnapshots.set(s.id, deepClone(s));
+  for (const d of seed.deadlines) store.deadlines.set(d.id, deepClone(d));
+  for (const a of seed.appointments) store.appointments.set(a.id, deepClone(a));
 }
 
 function snapshot(store: MockStore): MockDomainSnapshot {
@@ -118,6 +124,8 @@ function snapshot(store: MockStore): MockDomainSnapshot {
     caseTimelineEntries: Array.from(store.caseTimelineEntries.values()).map(deepClone),
     auditEvents: Array.from(store.auditEvents.values()).map(deepClone),
     caseSnapshots: Array.from(store.caseSnapshots.values()).map(deepClone),
+    deadlines: Array.from(store.deadlines.values()).map(deepClone),
+    appointments: Array.from(store.appointments.values()).map(deepClone),
   });
 }
 
@@ -460,6 +468,14 @@ export function createMockDomainEnvironment(
     caseSnapshots: guardCaseSnapshotService(
       store,
       createCaseSnapshotServiceMock(store, clock, ids, audit),
+    ),
+    deadlines: guardDeadlineService(
+      store,
+      createDeadlineServiceMock(store, clock, ids),
+    ),
+    appointments: guardAppointmentService(
+      store,
+      createAppointmentServiceMock(store, clock, ids),
     ),
   });
 

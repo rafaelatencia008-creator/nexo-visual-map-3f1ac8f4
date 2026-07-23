@@ -76,6 +76,20 @@ export const PERMISSION_ACTIONS = [
   "auditEvent.read",
   "caseSnapshot.read",
   "caseSnapshot.create",
+
+  "deadline.read",
+  "deadline.list",
+  "deadline.create",
+  "deadline.update",
+  "deadline.changeStatus",
+  "deadline.remove",
+
+  "appointment.read",
+  "appointment.list",
+  "appointment.create",
+  "appointment.update",
+  "appointment.changeStatus",
+  "appointment.remove",
 ] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];

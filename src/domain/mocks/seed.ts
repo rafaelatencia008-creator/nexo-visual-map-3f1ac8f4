@@ -16,6 +16,8 @@ import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import { isCasePlanItem, isCaseTimelineEntry } from "../core/case-plan";
 import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
 import { AUDIT_SUMMARY, isAuditEvent, isCaseSnapshot } from "../core/case-audit";
+import type { Deadline, Appointment } from "../core/agenda";
+import { isDeadline, isAppointment } from "../core/agenda";
 import {
   validateOrganization,
   validateUser,
@@ -669,6 +671,148 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     },
   ];
 
+  // ---- Agenda (LV-09.1A) ---------------------------------------------------
+  const DL_1 = buildDomainId("deadline", "seed_alfa_1_admin");
+  const DL_2 = buildDomainId("deadline", "seed_alfa_1_proc");
+  const DL_3 = buildDomainId("deadline", "seed_alfa_2_int");
+  const DL_4 = buildDomainId("deadline", "seed_alfa_2_admin");
+  const DL_5 = buildDomainId("deadline", "seed_beta_1_proc");
+  const AP_1 = buildDomainId("appointment", "seed_alfa_1_meet");
+  const AP_2 = buildDomainId("appointment", "seed_alfa_1_exam");
+  const AP_3 = buildDomainId("appointment", "seed_alfa_2_hear");
+  const AP_4 = buildDomainId("appointment", "seed_beta_1_meet");
+
+  const dtA = "2026-01-10T09:00:00.000Z" as IsoDateTime;
+  const dtB = "2026-01-10T14:00:00.000Z" as IsoDateTime;
+  const dtC = "2026-01-15T10:00:00.000Z" as IsoDateTime;
+  const dtD = "2026-01-20T16:00:00.000Z" as IsoDateTime;
+  const dtE = "2026-01-25T09:00:00.000Z" as IsoDateTime;
+
+  const deadlines: Deadline[] = [
+    {
+      id: DL_1,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "administrative",
+      title: "Prazo administrativo Alfa 1",
+      dueAt: dtA,
+      status: "pending",
+      priority: "normal",
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: DL_2,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "procedural",
+      title: "Manifestação pericial",
+      description: "Prazo para manifestação inicial",
+      dueAt: dtB,
+      status: "pending",
+      priority: "high",
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: DL_3,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "internal",
+      title: "Revisão interna do plano",
+      dueAt: dtC,
+      status: "pending",
+      priority: "low",
+      metadata: metaAt(T0),
+    },
+    {
+      id: DL_4,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "administrative",
+      title: "Atualização de honorários",
+      dueAt: dtD,
+      status: "cancelled",
+      priority: "normal",
+      metadata: metaAt(T0),
+    },
+    {
+      id: DL_5,
+      organizationId: SEED_ORG_BETA_ID,
+      caseId: SEED_CASE_BETA_1_ID,
+      kind: "procedural",
+      title: "Entrega de laudo Beta",
+      dueAt: dtE,
+      status: "pending",
+      priority: "high",
+      assignmentId: SEED_ASSIGN_BETA_1_ID,
+      metadata: metaAt(T0),
+    },
+  ];
+
+  const appointments: Appointment[] = [
+    {
+      id: AP_1,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "meeting",
+      title: "Reunião de alinhamento Alfa 1",
+      startsAt: "2026-01-12T13:00:00.000Z" as IsoDateTime,
+      endsAt: "2026-01-12T14:00:00.000Z" as IsoDateTime,
+      mode: "remote",
+      status: "scheduled",
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: AP_2,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "inspection",
+      title: "Vistoria técnica",
+      startsAt: "2026-01-14T09:00:00.000Z" as IsoDateTime,
+      endsAt: "2026-01-14T11:30:00.000Z" as IsoDateTime,
+      mode: "in_person",
+      location: "Sala 3",
+      status: "scheduled",
+      metadata: metaAt(T0),
+    },
+    {
+      id: AP_3,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      kind: "hearing",
+      title: "Audiência inicial",
+      startsAt: "2026-01-18T15:00:00.000Z" as IsoDateTime,
+      endsAt: "2026-01-18T16:30:00.000Z" as IsoDateTime,
+      mode: "hybrid",
+      status: "scheduled",
+      metadata: metaAt(T0),
+    },
+    {
+      id: AP_4,
+      organizationId: SEED_ORG_BETA_ID,
+      caseId: SEED_CASE_BETA_1_ID,
+      kind: "meeting",
+      title: "Alinhamento Beta",
+      startsAt: "2026-01-22T10:00:00.000Z" as IsoDateTime,
+      endsAt: "2026-01-22T11:00:00.000Z" as IsoDateTime,
+      mode: "remote",
+      status: "scheduled",
+      assignmentId: SEED_ASSIGN_BETA_1_ID,
+      metadata: metaAt(T0),
+    },
+  ];
+
+  for (const d of deadlines) {
+    if (!isDeadline(d))
+      throw new Error(`Invalid seed deadline ${(d as Deadline).id}`);
+  }
+  for (const a of appointments) {
+    if (!isAppointment(a))
+      throw new Error(`Invalid seed appointment ${(a as Appointment).id}`);
+  }
+
   return {
     organizations,
     users,
@@ -684,6 +828,8 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     caseTimelineEntries,
     auditEvents,
     caseSnapshots,
+    deadlines,
+    appointments,
   };
 }
 

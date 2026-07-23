@@ -13,6 +13,7 @@ import type { Person } from "../core/person";
 import type { CasePerson, Relationship, Assignment } from "../core/assignment";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
+import type { Deadline, Appointment } from "../core/agenda";
 
 export type MockStore = {
   organizations: Map<string, Organization>;
@@ -29,6 +30,8 @@ export type MockStore = {
   caseTimelineEntries: Map<string, CaseTimelineEntry>;
   auditEvents: Map<string, AuditEvent>;
   caseSnapshots: Map<string, CaseSnapshot>;
+  deadlines: Map<string, Deadline>;
+  appointments: Map<string, Appointment>;
 };
 
 export function createEmptyStore(): MockStore {
@@ -47,5 +50,7 @@ export function createEmptyStore(): MockStore {
     caseTimelineEntries: new Map(),
     auditEvents: new Map(),
     caseSnapshots: new Map(),
+    deadlines: new Map(),
+    appointments: new Map(),
   };
 }
