@@ -224,25 +224,28 @@ export function ProcessPlanTimeline({ case: c }: ProcessPlanTimelineProps) {
       const permissions = buildPlanTimelinePermissions(entries);
 
       // Resolver perfis dos responsáveis. Deduplica IDs; uma chamada por ID.
-      const distinct = collectDistinctProfessionalProfileIds(asgRes.data.items);
+      // Assignment.professionalProfileId já é branded (ProfessionalProfileId),
+      // então collectDistinctProfessionalProfileIds retorna diretamente o tipo
+      // oficial — nenhum cast necessário.
+      const distinct: readonly ProfessionalProfileId[] =
+        collectDistinctProfessionalProfileIds(asgRes.data.items);
       const profileResults: ServiceResult<ProfessionalProfile>[] = await Promise.all(
-        distinct.map((id) => {
-          if (!isProfessionalProfileId(id)) {
-            const err: ServiceError = { code: "internal_error", message: "invalid_profile_id" };
-            return Promise.resolve<ServiceResult<ProfessionalProfile>>({ ok: false, error: err });
-          }
-          return environment.services.professionalProfiles.getById(
-            context,
-            id as ProfessionalProfileId,
-          );
-        }),
+        distinct.map((id) =>
+          environment.services.professionalProfiles.getById(context, id),
+        ),
       );
       if (!mountedRef.current || reqId !== requestIdRef.current) return;
+
+      const RESOLVE_FAIL_MESSAGE =
+        "Não foi possível identificar todos os responsáveis do processo.";
 
       const profiles: ProfessionalProfile[] = [];
       for (const r of profileResults) {
         if (!r.ok) {
-          setState({ kind: "error", error: mapPlanTimelineError(r.error) });
+          setState({
+            kind: "error",
+            error: { kind: "generic", message: RESOLVE_FAIL_MESSAGE },
+          });
           return;
         }
         profiles.push(r.data);
@@ -252,10 +255,7 @@ export function ProcessPlanTimeline({ case: c }: ProcessPlanTimelineProps) {
       if (!built.ok) {
         setState({
           kind: "error",
-          error: {
-            kind: "generic",
-            message: "Não foi possível identificar todos os responsáveis do processo.",
-          },
+          error: { kind: "generic", message: RESOLVE_FAIL_MESSAGE },
         });
         return;
       }
