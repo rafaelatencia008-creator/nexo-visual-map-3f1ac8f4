@@ -81,6 +81,8 @@ export type PersonId = Brand<string, "PersonId">;
 export type CasePersonId = Brand<string, "CasePersonId">;
 export type RelationshipId = Brand<string, "RelationshipId">;
 export type AssignmentId = Brand<string, "AssignmentId">;
+export type CasePlanItemId = Brand<string, "CasePlanItemId">;
+export type CaseTimelineEntryId = Brand<string, "CaseTimelineEntryId">;
 
 /**
  * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
@@ -97,6 +99,8 @@ export type ImplementedIdMap = {
   casePerson: CasePersonId;
   relationship: RelationshipId;
   assignment: AssignmentId;
+  casePlanItem: CasePlanItemId;
+  caseTimelineEntry: CaseTimelineEntryId;
 };
 
 // ---- Validação de forma ----------------------------------------------------
