@@ -95,7 +95,7 @@ export function createAuditAppender(
  */
 export function seedAuditEvent(store: MockStore, evt: AuditEvent): void {
   if (!isAuditEvent(evt)) {
-    throw new Error(`audit-seed: invalid event ${evt.id}`);
+    throw new Error(`audit-seed: invalid event`);
   }
   store.auditEvents.set(evt.id, evt);
 }
