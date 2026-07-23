@@ -296,3 +296,154 @@ void invalidPersonId2;
 // @ts-expect-error PersonId não é OrganizationId
 const invalidOrgId: OrganizationId = personId;
 void invalidOrgId;
+
+// ============================================================================
+// LV-08.4.2.2 — Provas negativas dos DTOs de atualização.
+// Nenhum cast `as any`, `as never` ou `as unknown as`.
+// ============================================================================
+
+// ---- UpdatePersonInput -----------------------------------------------------
+
+const _upPersonOk: UpdatePersonInput = {
+  displayLabel: "Novo",
+  ageClassification: "adult",
+  expectedVersion: 1,
+};
+void _upPersonOk;
+const _upPersonMin: UpdatePersonInput = { expectedVersion: 1 };
+void _upPersonMin;
+
+// @ts-expect-error id não pertence ao DTO de atualização de pessoa
+const _upPersonBadId: UpdatePersonInput = { id: personId, expectedVersion: 1 };
+void _upPersonBadId;
+
+// @ts-expect-error organizationId não pertence ao DTO de atualização de pessoa
+const _upPersonBadOrg: UpdatePersonInput = { organizationId, expectedVersion: 1 };
+void _upPersonBadOrg;
+
+const _upPersonBadMeta: UpdatePersonInput = {
+  expectedVersion: 1,
+  // @ts-expect-error metadata não pertence ao DTO de atualização de pessoa
+  metadata: { createdAt: "x", updatedAt: "x", version: 1 },
+};
+void _upPersonBadMeta;
+
+// @ts-expect-error caseId não pertence ao DTO de atualização de pessoa
+const _upPersonBadCase: UpdatePersonInput = { caseId, expectedVersion: 1 };
+void _upPersonBadCase;
+
+// @ts-expect-error role de vínculo não pertence ao DTO de atualização de pessoa
+const _upPersonBadRole: UpdatePersonInput = { role: "applicant", expectedVersion: 1 };
+void _upPersonBadRole;
+
+// @ts-expect-error restrictedByDefault não pertence ao DTO de atualização de pessoa
+const _upPersonBadRestricted: UpdatePersonInput = { restrictedByDefault: false, expectedVersion: 1 };
+void _upPersonBadRestricted;
+
+// @ts-expect-error ageClassification inválido
+const _upPersonBadAge: UpdatePersonInput = { ageClassification: "elderly", expectedVersion: 1 };
+void _upPersonBadAge;
+
+// @ts-expect-error expectedVersion é obrigatório em UpdatePersonInput
+const _upPersonMissingVer: UpdatePersonInput = { displayLabel: "X" };
+void _upPersonMissingVer;
+
+// ---- UpdateCasePersonInput -------------------------------------------------
+
+const _upCPOk: UpdateCasePersonInput = {
+  casePersonId,
+  role: "witness",
+  restrictedByDefault: true,
+  expectedVersion: 1,
+};
+void _upCPOk;
+const _upCPMin: UpdateCasePersonInput = { casePersonId, expectedVersion: 1 };
+void _upCPMin;
+
+// @ts-expect-error caseId não pertence ao DTO de atualização de vínculo
+const _upCPBadCase: UpdateCasePersonInput = { casePersonId, caseId, expectedVersion: 1 };
+void _upCPBadCase;
+
+// @ts-expect-error personId não pertence ao DTO de atualização de vínculo
+const _upCPBadPerson: UpdateCasePersonInput = { casePersonId, personId, expectedVersion: 1 };
+void _upCPBadPerson;
+
+// @ts-expect-error organizationId não pertence ao DTO de atualização de vínculo
+const _upCPBadOrg: UpdateCasePersonInput = { casePersonId, organizationId, expectedVersion: 1 };
+void _upCPBadOrg;
+
+const _upCPBadMeta: UpdateCasePersonInput = {
+  casePersonId,
+  expectedVersion: 1,
+  // @ts-expect-error metadata não pertence ao DTO de atualização de vínculo
+  metadata: { createdAt: "x", updatedAt: "x", version: 1 },
+};
+void _upCPBadMeta;
+
+// @ts-expect-error relationshipId não pertence ao DTO de atualização de vínculo
+const _upCPBadRel: UpdateCasePersonInput = { casePersonId, relationshipId, expectedVersion: 1 };
+void _upCPBadRel;
+
+// @ts-expect-error role inválido em UpdateCasePersonInput
+const _upCPBadRole: UpdateCasePersonInput = { casePersonId, role: "boss", expectedVersion: 1 };
+void _upCPBadRole;
+
+// @ts-expect-error casePersonId é obrigatório em UpdateCasePersonInput
+const _upCPMissingId: UpdateCasePersonInput = { expectedVersion: 1 };
+void _upCPMissingId;
+
+// @ts-expect-error expectedVersion é obrigatório em UpdateCasePersonInput
+const _upCPMissingVer: UpdateCasePersonInput = { casePersonId };
+void _upCPMissingVer;
+
+// ---- UpdateRelationshipInput -----------------------------------------------
+
+const _upRelOk: UpdateRelationshipInput = {
+  relationshipId,
+  type: "spouse",
+  expectedVersion: 1,
+};
+void _upRelOk;
+const _upRelMin: UpdateRelationshipInput = { relationshipId, expectedVersion: 1 };
+void _upRelMin;
+
+// @ts-expect-error caseId não pertence ao DTO de atualização de relação
+const _upRelBadCase: UpdateRelationshipInput = { relationshipId, caseId, expectedVersion: 1 };
+void _upRelBadCase;
+
+// @ts-expect-error fromPersonId não pertence ao DTO de atualização de relação
+const _upRelBadFrom: UpdateRelationshipInput = { relationshipId, fromPersonId: personId, expectedVersion: 1 };
+void _upRelBadFrom;
+
+// @ts-expect-error toPersonId não pertence ao DTO de atualização de relação
+const _upRelBadTo: UpdateRelationshipInput = { relationshipId, toPersonId: otherPersonId, expectedVersion: 1 };
+void _upRelBadTo;
+
+// @ts-expect-error organizationId não pertence ao DTO de atualização de relação
+const _upRelBadOrg: UpdateRelationshipInput = { relationshipId, organizationId, expectedVersion: 1 };
+void _upRelBadOrg;
+
+const _upRelBadMeta: UpdateRelationshipInput = {
+  relationshipId,
+  expectedVersion: 1,
+  // @ts-expect-error metadata não pertence ao DTO de atualização de relação
+  metadata: { createdAt: "x", updatedAt: "x", version: 1 },
+};
+void _upRelBadMeta;
+
+// @ts-expect-error casePersonId não pertence ao DTO de atualização de relação
+const _upRelBadCP: UpdateRelationshipInput = { relationshipId, casePersonId, expectedVersion: 1 };
+void _upRelBadCP;
+
+// @ts-expect-error type inválido em UpdateRelationshipInput
+const _upRelBadType: UpdateRelationshipInput = { relationshipId, type: "friend", expectedVersion: 1 };
+void _upRelBadType;
+
+// @ts-expect-error relationshipId é obrigatório em UpdateRelationshipInput
+const _upRelMissingId: UpdateRelationshipInput = { expectedVersion: 1 };
+void _upRelMissingId;
+
+// @ts-expect-error expectedVersion é obrigatório em UpdateRelationshipInput
+const _upRelMissingVer: UpdateRelationshipInput = { relationshipId };
+void _upRelMissingVer;
+
