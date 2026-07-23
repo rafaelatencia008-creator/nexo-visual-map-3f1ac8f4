@@ -25,7 +25,7 @@ import {
   type ProcessAuditSnapshotState,
 } from "@/features/processos/process-audit-snapshot-model";
 import type { AuditEventListOptions } from "@/domain/services/audit-service";
-import type { CaseSnapshot } from "@/domain/core/case-audit";
+import type { AuditEvent, CaseSnapshot } from "@/domain/core/case-audit";
 import type { Case } from "@/domain/core/case";
 import type { CaseSnapshotId } from "@/domain/core/ids";
 import type { ServiceError } from "@/domain/services/result";
