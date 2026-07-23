@@ -936,3 +936,212 @@ describe("LV-08.4.2.1 · guardas complementares", () => {
     }
   });
 });
+
+// ============================================================================
+// LV-08.4.2.2 — provas de permissão via permissions.evaluate e auditorias
+// robustas de fonte (sem depender de comentários).
+// ============================================================================
+
+function stripSourceComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
+
+function extractRegion(src: string, header: RegExp, size = 2500): string {
+  const m = header.exec(src);
+  if (!m) return "";
+  return src.slice(m.index, m.index + size);
+}
+
+describe("LV-08.4.2.2 · permissions.evaluate para membership 'leitura'", () => {
+  async function makeReaderEnv() {
+    const env = createMockDomainEnvironment();
+    const created = await env.services.memberships.create(ALFA_CTX, {
+      userId: SEED_USER_3_ID,
+      role: "leitura",
+    });
+    if (!created.ok) throw new Error("membership 'leitura' não pôde ser criada");
+    const readerCtx: ServiceContext = {
+      organizationId: SEED_ORG_ALFA_ID,
+      userId: SEED_USER_3_ID,
+      membershipId: created.data.id,
+      role: "leitura",
+    };
+    return { env, readerCtx };
+  }
+
+  const readAllowed: readonly {
+    label: string;
+    action: Parameters<
+      Awaited<ReturnType<typeof createMockDomainEnvironment>>["services"]["permissions"]["evaluate"]
+    >[1]["action"];
+    withCaseId: boolean;
+  }[] = [
+    { label: "case.read", action: "case.read", withCaseId: true },
+    { label: "case.list", action: "case.list", withCaseId: false },
+    { label: "person.read", action: "person.read", withCaseId: false },
+    { label: "person.list", action: "person.list", withCaseId: false },
+    { label: "casePerson.read", action: "casePerson.read", withCaseId: true },
+    { label: "casePerson.list", action: "casePerson.list", withCaseId: true },
+    { label: "relationship.read", action: "relationship.read", withCaseId: true },
+    { label: "relationship.list", action: "relationship.list", withCaseId: true },
+  ];
+
+  for (const c of readAllowed) {
+    it(`allowed=true para ${c.label}`, async () => {
+      const { env, readerCtx } = await makeReaderEnv();
+      const req = c.withCaseId
+        ? { action: c.action, caseId: SEED_CASE_ALFA_1_ID }
+        : { action: c.action };
+      const r = await env.services.permissions.evaluate(readerCtx, req);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.data.allowed).toBe(true);
+    });
+  }
+
+  const writeDenied: readonly {
+    label: string;
+    action: Parameters<
+      Awaited<ReturnType<typeof createMockDomainEnvironment>>["services"]["permissions"]["evaluate"]
+    >[1]["action"];
+    withCaseId: boolean;
+  }[] = [
+    { label: "person.create", action: "person.create", withCaseId: false },
+    { label: "person.update", action: "person.update", withCaseId: false },
+    { label: "casePerson.create", action: "casePerson.create", withCaseId: true },
+    { label: "casePerson.update", action: "casePerson.update", withCaseId: true },
+    { label: "casePerson.remove", action: "casePerson.remove", withCaseId: true },
+    { label: "relationship.create", action: "relationship.create", withCaseId: true },
+    { label: "relationship.update", action: "relationship.update", withCaseId: true },
+    { label: "relationship.remove", action: "relationship.remove", withCaseId: true },
+  ];
+
+  for (const c of writeDenied) {
+    it(`allowed=false para ${c.label}`, async () => {
+      const { env, readerCtx } = await makeReaderEnv();
+      const req = c.withCaseId
+        ? { action: c.action, caseId: SEED_CASE_ALFA_1_ID }
+        : { action: c.action };
+      const r = await env.services.permissions.evaluate(readerCtx, req);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.data.allowed).toBe(false);
+    });
+  }
+});
+
+// ---- Auditorias robustas de fonte (LV-08.4.1 e LV-08.4.2.1) ---------------
+
+describe("LV-08.4.2.2 · auditorias robustas da fonte de ProcessPeopleRelations", () => {
+  const rawSrc = readFileSync(
+    resolve("src/features/processos/ProcessPeopleRelations.tsx"),
+    "utf8",
+  );
+  const src = stripSourceComments(rawSrc);
+  const loadAllRegion = extractRegion(
+    src,
+    /const\s+loadAll\s*=\s*React\.useCallback/,
+    3500,
+  );
+  const loadCatalogRegion = extractRegion(
+    src,
+    /const\s+loadCatalog\s*=\s*React\.useCallback/,
+    900,
+  );
+  const retryLinkRegion = extractRegion(
+    src,
+    /const\s+handleRetryCreatedLink\s*=/,
+    1200,
+  );
+  const editPersonRegion = extractRegion(src, /const\s+handleEditPerson\s*=/, 1400);
+  const editLinkRegion = extractRegion(src, /const\s+handleEditLink\s*=/, 1400);
+  const rawDlg = readFileSync(
+    resolve("src/features/processos/ProcessPersonDialog.tsx"),
+    "utf8",
+  );
+  const dlgSrc = stripSourceComments(rawDlg);
+
+  it("carga inicial usa persons.getById", () => {
+    expect(loadAllRegion).toMatch(/environment\.services\.persons\.getById\(/);
+  });
+  it("IDs passam por collectDistinctLinkedPersonIds", () => {
+    expect(loadAllRegion).toMatch(/collectDistinctLinkedPersonIds\(/);
+  });
+  it("persons.list não participa da carga inicial", () => {
+    expect(loadAllRegion).not.toMatch(/persons\.list\(/);
+  });
+  it("persons.list aparece dentro de loadCatalog", () => {
+    expect(loadCatalogRegion).toMatch(/environment\.services\.persons\.list\(/);
+  });
+  it("loadCatalog usa limit: 100", () => {
+    expect(loadCatalogRegion).toMatch(/limit:\s*100/);
+  });
+  it("loadCatalog usa sortBy: \"displayLabel\"", () => {
+    expect(loadCatalogRegion).toMatch(/sortBy:\s*"displayLabel"/);
+  });
+  it("loadCatalog usa sortDir: \"asc\"", () => {
+    expect(loadCatalogRegion).toMatch(/sortDir:\s*"asc"/);
+  });
+  it("linkedBuild.unresolved é verificado", () => {
+    expect(src).toMatch(/linkedBuild\.unresolved\.length\s*>\s*0/);
+  });
+  it("relationshipBuild.unresolved é verificado", () => {
+    expect(src).toMatch(/relationshipBuild\.unresolved\.length\s*>\s*0/);
+  });
+  it("writeOperationRef existe", () => {
+    expect(src).toMatch(/writeOperationRef\s*=\s*React\.useRef/);
+  });
+  it("tryAcquireWrite verifica a trava antes da escrita", () => {
+    const matches = src.match(/if\s*\(\s*!tryAcquireWrite\(/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(6);
+  });
+  it("retry-created-link chama casePersons.create", () => {
+    expect(retryLinkRegion).toMatch(/environment\.services\.casePersons\.create\(/);
+  });
+  it("retry-created-link não chama persons.create", () => {
+    expect(retryLinkRegion).not.toMatch(/environment\.services\.persons\.create\(/);
+  });
+  it("handleEditPerson chama persons.update", () => {
+    expect(editPersonRegion).toMatch(/environment\.services\.persons\.update\(/);
+  });
+  it("handleEditPerson não chama casePersons.update", () => {
+    expect(editPersonRegion).not.toMatch(/environment\.services\.casePersons\.update\(/);
+  });
+  it("handleEditLink chama casePersons.update", () => {
+    expect(editLinkRegion).toMatch(/environment\.services\.casePersons\.update\(/);
+  });
+  it("handleEditLink não chama persons.update", () => {
+    expect(editLinkRegion).not.toMatch(/environment\.services\.persons\.update\(/);
+  });
+  it("ações person.* são avaliadas sem caseId", () => {
+    expect(src).toMatch(
+      /PEOPLE_PERSON_ACTIONS\.map\(\(action\)\s*=>\s*[\s\S]{0,120}permissions\.evaluate\(context,\s*\{\s*action\s*\}\s*\)/,
+    );
+  });
+  it("ações casePerson.* e relationship.* são avaliadas com caseId", () => {
+    expect(src).toMatch(
+      /PEOPLE_CASE_ACTIONS\.map\(\(action\)\s*=>\s*[\s\S]{0,120}permissions\.evaluate\(context,\s*\{\s*action,\s*caseId\s*\}\s*\)/,
+    );
+  });
+  it("edit-link mantém menor com restrictedByDefault true", () => {
+    expect(dlgSrc).toMatch(
+      /onEditLink\([\s\S]{0,200}restrictedByDefault:\s*isMinorAge\(mode\.person\.ageClassification\)\s*\?\s*true\s*:\s*restricted/,
+    );
+  });
+  it("conflitos mostram Recarregar pessoas e relações", () => {
+    expect(src).toMatch(/Recarregar pessoas e rela[cç][oõ]es/);
+  });
+  it("estado de loading possui role=\"status\"", () => {
+    expect(src).toMatch(/state\.kind === "loading"[\s\S]{0,600}role="status"/);
+  });
+  it("estado de erro possui role=\"alert\"", () => {
+    expect(src).toMatch(/state\.kind === "error"[\s\S]{0,800}role="alert"/);
+  });
+  it("remoções possuem aria-label", () => {
+    expect(src).toMatch(/aria-label="Remover pessoa do processo"/);
+    expect(src).toMatch(/aria-label="Remover rela[cç][ãa]o"/);
+  });
+});
+
