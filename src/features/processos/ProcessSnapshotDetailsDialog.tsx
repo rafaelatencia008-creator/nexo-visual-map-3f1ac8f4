@@ -26,7 +26,7 @@ import {
 import {
   CASE_STATUS_LABELS_PT,
   CONFIDENTIALITY_LABELS_PT,
-} from "@/features/processos/process-detail-model";
+} from "@/features/processos/process-list-model";
 import {
   CASE_PERSON_ROLE_LABELS_PT,
   RELATIONSHIP_TYPE_LABELS_PT,
