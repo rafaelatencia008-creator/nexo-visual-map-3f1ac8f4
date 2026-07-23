@@ -954,6 +954,17 @@ function extractRegion(src: string, header: RegExp, size = 2500): string {
   return src.slice(m.index, m.index + size);
 }
 
+function extractBetween(src: string, header: RegExp, stop: RegExp): string {
+  const m = header.exec(src);
+  if (!m) return "";
+  const rest = src.slice(m.index + m[0].length);
+  const s = stop.exec(rest);
+  const end = s ? m.index + m[0].length + s.index : src.length;
+  return src.slice(m.index, end);
+}
+
+
+
 describe("LV-08.4.2.2 · permissions.evaluate para membership 'leitura'", () => {
   async function makeReaderEnv() {
     const env = createMockDomainEnvironment();
