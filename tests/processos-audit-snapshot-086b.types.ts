@@ -239,3 +239,43 @@ const _perms: AuditSnapshotPermissions = {
   canCreateSnapshot: false,
 };
 void _perms;
+
+// União exata de AuditSnapshotAction ---------------------------------------
+
+import {
+  AUDIT_SNAPSHOT_ACTIONS,
+  type AuditSnapshotAction,
+} from "@/features/processos/process-audit-snapshot-model";
+
+type ExpectedAuditSnapshotAction =
+  | "auditEvent.read"
+  | "caseSnapshot.read"
+  | "caseSnapshot.create";
+
+const _asaExtendsExpected: AuditSnapshotAction extends ExpectedAuditSnapshotAction
+  ? true
+  : false = true;
+const _expectedExtendsAsa: ExpectedAuditSnapshotAction extends AuditSnapshotAction
+  ? true
+  : false = true;
+void _asaExtendsExpected;
+void _expectedExtendsAsa;
+
+type ArrayElem = (typeof AUDIT_SNAPSHOT_ACTIONS)[number];
+const _arrayElemIsAsa: ArrayElem extends AuditSnapshotAction ? true : false = true;
+const _asaIsArrayElem: AuditSnapshotAction extends ArrayElem ? true : false = true;
+void _arrayElemIsAsa;
+void _asaIsArrayElem;
+
+// Provas negativas ---------------------------------------------------------
+
+// @ts-expect-error "case.update" não é AuditSnapshotAction
+const _notCaseUpdate: AuditSnapshotAction = "case.update";
+// @ts-expect-error "caseSnapshot.remove" não é AuditSnapshotAction
+const _notSnapRemove: AuditSnapshotAction = "caseSnapshot.remove";
+// @ts-expect-error "auditEvent.create" não é AuditSnapshotAction
+const _notAuditCreate: AuditSnapshotAction = "auditEvent.create";
+void _notCaseUpdate;
+void _notSnapRemove;
+void _notAuditCreate;
+
