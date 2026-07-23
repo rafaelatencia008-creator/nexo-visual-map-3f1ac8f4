@@ -242,7 +242,9 @@ export function ProcessPersonDialog(props: ProcessPersonDialogProps) {
       return;
     }
     if (mode.kind === "link-existing") {
-      const chosen = mode.availablePersons.find((p) => p.id === personId);
+      // Resolve a pessoa somente dentro do resultado visível: uma opção
+      // escondida pela pesquisa nunca pode ser vinculada.
+      const chosen = filteredPersons.find((p) => p.id === personId);
       if (!chosen) return;
       onLinkExisting({
         personId: chosen.id,
