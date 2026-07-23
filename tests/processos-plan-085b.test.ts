@@ -783,3 +783,194 @@ describe("LV-08.5B · mapPlanTimelineError", () => {
     expect(msg).not.toMatch(/internal_error|boom/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// LV-08.5B.1 · correções de ordem de hooks, validação e casts
+// ---------------------------------------------------------------------------
+
+describe("LV-08.5B.1 · builders rejeitam assignment inativo em nova atribuição", () => {
+  const caseId = makeCaseId();
+  const activeId = makeAssignId("active");
+  const suspendedId = makeAssignId("susp");
+  const concludedId = makeAssignId("conc");
+  const cancelledId = makeAssignId("canc");
+  const opts: readonly AssignmentOption[] = [
+    { assignmentId: activeId, area: "psicologia", role: "lead_professional", status: "active",
+      label: "A", availableForNewAssignments: true },
+    { assignmentId: suspendedId, area: "psicologia", role: "co_professional", status: "suspended",
+      label: "S", availableForNewAssignments: false },
+    { assignmentId: concludedId, area: "psicologia", role: "reviewer", status: "concluded",
+      label: "C", availableForNewAssignments: false },
+    { assignmentId: cancelledId, area: "psicologia", role: "collaborator", status: "cancelled",
+      label: "X", availableForNewAssignments: false },
+  ];
+  const base = { kind: "activity" as const, title: "t", description: "", priority: "normal" as const, dueOn: "" };
+
+  it("aceita assignment ativo na criação", () => {
+    const r = buildCreateCasePlanItemInput(caseId, { ...base, assignmentId: activeId }, opts);
+    expect(r.ok).toBe(true);
+  });
+  it("rejeita assignment suspenso na criação", () => {
+    const r = buildCreateCasePlanItemInput(caseId, { ...base, assignmentId: suspendedId }, opts);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("invalid_assignment");
+  });
+  it("rejeita assignment concluído na criação", () => {
+    const r = buildCreateCasePlanItemInput(caseId, { ...base, assignmentId: concludedId }, opts);
+    expect(r.ok).toBe(false);
+  });
+  it("rejeita assignment cancelado na criação", () => {
+    const r = buildCreateCasePlanItemInput(caseId, { ...base, assignmentId: cancelledId }, opts);
+    expect(r.ok).toBe(false);
+  });
+
+  it("edição preserva assignment atual inativo sem alteração", () => {
+    const item = makePlanItem({ assignmentId: suspendedId });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "", priority: item.priority,
+      dueOn: "", assignmentId: suspendedId,
+    }, opts);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input).toBeNull();
+  });
+  it("edição permite remover assignment atual inativo", () => {
+    const item = makePlanItem({ assignmentId: suspendedId });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "", priority: item.priority,
+      dueOn: "", assignmentId: "",
+    }, opts);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.input) expect(r.input.assignmentId).toBeNull();
+  });
+  it("edição permite substituir por assignment ativo", () => {
+    const item = makePlanItem({ assignmentId: suspendedId });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "", priority: item.priority,
+      dueOn: "", assignmentId: activeId,
+    }, opts);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.input) expect(r.input.assignmentId).toBe(activeId);
+  });
+  it("edição rejeita troca para outro assignment inativo", () => {
+    const item = makePlanItem({ assignmentId: activeId });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "", priority: item.priority,
+      dueOn: "", assignmentId: concludedId,
+    }, opts);
+    expect(r.ok).toBe(false);
+  });
+  it("edição rejeita ID desconhecido", () => {
+    const item = makePlanItem();
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "", priority: item.priority,
+      dueOn: "", assignmentId: makeAssignId("unknown"),
+    }, opts);
+    expect(r.ok).toBe(false);
+  });
+  it("update sem mudanças continua retornando null", () => {
+    const item = makePlanItem({ assignmentId: activeId, description: "x", dueOn: "2026-05-10" as IsoDate });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: item.title, description: "x", priority: item.priority,
+      dueOn: "2026-05-10", assignmentId: activeId,
+    }, opts);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input).toBeNull();
+  });
+  it("update mantém expectedVersion vindo da entidade", () => {
+    const item = makePlanItem({ assignmentId: activeId });
+    const r = buildUpdateCasePlanItemInput(item, {
+      kind: item.kind, title: "novo", description: "", priority: item.priority,
+      dueOn: "", assignmentId: activeId,
+    }, opts);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.input) expect(r.input.expectedVersion).toBe(item.metadata.version);
+  });
+});
+
+describe("LV-08.5B.1 · auditorias de fonte", () => {
+  it("process-plan-model.ts não contém 'as unknown as'", () => {
+    expect(SRC_MODEL.includes("as unknown as")).toBe(false);
+  });
+  it("process-plan-model.ts não contém 'as any'", () => {
+    expect(/\bas\s+any\b/.test(SRC_MODEL)).toBe(false);
+  });
+  it("process-plan-model.ts não contém 'as never'", () => {
+    expect(/\bas\s+never\b/.test(SRC_MODEL)).toBe(false);
+  });
+  it("ProcessPlanDialog usa isCasePlanItemKind como guarda", () => {
+    expect(SRC_PLAN_DIALOG.includes("isCasePlanItemKind(")).toBe(true);
+  });
+  it("ProcessPlanDialog usa isCasePlanItemPriority como guarda", () => {
+    expect(SRC_PLAN_DIALOG.includes("isCasePlanItemPriority(")).toBe(true);
+  });
+  it("ProcessPlanStatusDialog usa isCasePlanItemStatus como guarda", () => {
+    expect(SRC_STATUS_DIALOG.includes("isCasePlanItemStatus(")).toBe(true);
+  });
+  it("ProcessTimelineDialog usa isCaseTimelineEntryKind como guarda", () => {
+    expect(SRC_TL_DIALOG.includes("isCaseTimelineEntryKind(")).toBe(true);
+  });
+  it("nenhum diálogo usa cast direto de string para enum do plano", () => {
+    expect(SRC_PLAN_DIALOG.includes("as CasePlanItemKind")).toBe(false);
+    expect(SRC_PLAN_DIALOG.includes("as CasePlanItemPriority")).toBe(false);
+    expect(SRC_STATUS_DIALOG.includes("as CasePlanItemStatus")).toBe(false);
+    expect(SRC_TL_DIALOG.includes("as CaseTimelineEntryKind")).toBe(false);
+  });
+  it("ProcessPlanDialog não referencia currentEditAssignmentInactiveOption", () => {
+    expect(SRC_PLAN_DIALOG.includes("currentEditAssignmentInactiveOption")).toBe(false);
+  });
+  it("ProcessPlanDialog combinedOptions realmente filtra (não é identidade)", () => {
+    expect(SRC_PLAN_DIALOG.includes("availableForNewAssignments")).toBe(true);
+    expect(SRC_PLAN_DIALOG.includes(".filter(")).toBe(true);
+  });
+  it("ProcessPlanTimeline não usa cast para ProfessionalProfileId", () => {
+    expect(SRC_TIMELINE.includes("as ProfessionalProfileId")).toBe(false);
+  });
+  it("PlanBody executa hooks antes do retorno vazio", () => {
+    const idx = SRC_TIMELINE.indexOf("function PlanBody");
+    expect(idx).toBeGreaterThan(0);
+    const body = SRC_TIMELINE.slice(idx, idx + 2000);
+    const firstUseMemo = body.indexOf("React.useMemo");
+    const firstEmpty = body.indexOf("Nenhum item no plano de trabalho");
+    expect(firstUseMemo).toBeGreaterThan(0);
+    expect(firstEmpty).toBeGreaterThan(firstUseMemo);
+  });
+  it("ProcessPlanTimeline usa mensagem pública única para falha de resolução", () => {
+    const count = (SRC_TIMELINE.match(/Não foi possível identificar todos os responsáveis do processo/g) || []).length;
+    expect(count).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("LV-08.5B.1 · coleta de perfis profissionais", () => {
+  it("collectDistinctProfessionalProfileIds retorna IDs únicos", () => {
+    const pid1 = makeProfId("p1");
+    const pid2 = makeProfId("p2");
+    const a1 = makeAssignment({ professionalProfileId: pid1 });
+    const a2 = makeAssignment({ id: makeAssignId("b"), professionalProfileId: pid1 });
+    const a3 = makeAssignment({ id: makeAssignId("c"), professionalProfileId: pid2 });
+    const out = collectDistinctProfessionalProfileIds([a1, a2, a3]);
+    expect(out.length).toBe(2);
+    expect(out).toContain(pid1);
+    expect(out).toContain(pid2);
+  });
+  it("collectDistinctProfessionalProfileIds preserva ordem de aparição", () => {
+    const pid1 = makeProfId("x1");
+    const pid2 = makeProfId("x2");
+    const a = makeAssignment({ professionalProfileId: pid2 });
+    const b = makeAssignment({ id: makeAssignId("b"), professionalProfileId: pid1 });
+    const out = collectDistinctProfessionalProfileIds([a, b]);
+    expect(out[0]).toBe(pid2);
+    expect(out[1]).toBe(pid1);
+  });
+});
+
+describe("LV-08.5B.1 · allow-list da LV-08.5A", () => {
+  it("allow-list agora contém somente ProcessPlanTimeline.tsx", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "processos-plan-085a.test.ts"), "utf8");
+    const block = src.match(/lv085bAllowed\s*=\s*new Set\(\[([\s\S]*?)\]\)/);
+    expect(block).not.toBeNull();
+    if (block) {
+      expect(block[1].includes("ProcessPlanTimeline.tsx")).toBe(true);
+      expect(block[1].includes("process-plan-model.ts")).toBe(false);
+    }
+  });
+});
