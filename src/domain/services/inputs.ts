@@ -11,6 +11,8 @@ import type {
   AssignmentId,
   CaseId,
   CasePersonId,
+  CasePlanItemId,
+  CaseTimelineEntryId,
   CredentialId,
   MembershipId,
   PersonId,
@@ -39,6 +41,12 @@ import type { MembershipStatus } from "../core/access";
 import type { OrganizationStatus } from "../core/organization";
 import type { IsoDate } from "../core/common";
 import type { Perfil, Role, WorkMode } from "../shared/work-context";
+import type {
+  CasePlanItemKind,
+  CasePlanItemPriority,
+  CasePlanItemStatus,
+  CaseTimelineEntryKind,
+} from "../core/case-plan";
 
 // ---- Organization ----------------------------------------------------------
 
