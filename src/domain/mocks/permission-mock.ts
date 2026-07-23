@@ -210,10 +210,9 @@ export function createPermissionPolicyMock(store: MockStore): PermissionPolicy {
       }
       if (isAgendaAction(request.action) && request.caseId !== undefined) {
         const access = checkAgendaCaseAccess(store, ctx.data.context, request.caseId);
-        if (access.kind === "denied") {
+        if (access.kind !== "allowed") {
           return { ok: true, data: { allowed: false, reason: "case_access_denied" } };
         }
-        // case_not_in_org: policy permite; serviço subsequente devolverá not_found.
       }
       return { ok: true, data: { allowed: true } };
     },

@@ -100,4 +100,26 @@ const _agendaActs: readonly PermissionAction[] = [
 ] as const;
 void _agendaActs;
 
+// LV-09.1A.2 — Provas adicionais.
+
+// DeadlineId e AppointmentId são distintos entre si e distintos de CaseId.
+type _NotEq1 = Expect<Equals<Equals<DeadlineId, AppointmentId>, false>>;
+type _NotEq2 = Expect<Equals<Equals<DeadlineId, CaseId>, false>>;
+type _NotEq3 = Expect<Equals<Equals<AppointmentId, CaseId>, false>>;
+
+// Appointment.startsAt e Appointment.endsAt são IsoDateTime.
+declare const ap2: Appointment;
+const _apStarts: string = ap2.startsAt; void _apStarts;
+
+// UpdateAppointmentInput não aceita status nem metadata.
+declare const ua2: UpdateAppointmentInput;
+// @ts-expect-error UpdateAppointmentInput não tem status
+ua2.status = "scheduled";
+// @ts-expect-error UpdateAppointmentInput não tem metadata
+ua2.metadata = undefined;
+
+// ChangeAppointmentStatusInput.status é obrigatoriamente AppointmentStatus.
+declare const sa2: ChangeAppointmentStatusInput;
+const _saStatus: AppointmentStatus = sa2.status; void _saStatus;
+
 export {};

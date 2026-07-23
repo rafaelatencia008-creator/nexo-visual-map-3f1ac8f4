@@ -12,6 +12,7 @@ import {
   SEED_ORG_BETA_ID,
   SEED_USER_1_ID,
   SEED_USER_2_ID,
+  SEED_USER_3_ID,
   SEED_MEM_ALFA_OWNER_ID,
   SEED_MEM_BETA_OWNER_ID,
   SEED_CASE_ALFA_1_ID,
@@ -1220,12 +1221,13 @@ describe("LV-09.1A.1 · acesso contextual", () => {
       expect(d.reason).toBeUndefined();
     });
   });
-  it("(145) policy admin cross-org: policy allow (serviço abaixo é quem devolve not_found)", async () => {
+  it("(145) policy admin cross-org: denied com case_access_denied (LV-09.1A.2)", async () => {
     const env = createMockDomainEnvironment();
     const dec = ok(await env.services.permissions.evaluate(OWNER_ALFA, {
       action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
     }));
-    expect(dec.allowed).toBe(true);
+    expect(dec.allowed).toBe(false);
+    expect(dec.reason).toBe("case_access_denied");
   });
   it("(146) hasAgendaCaseAccess retorna false para caso inexistente", () => {
     const s = createEmptyStore();
@@ -1397,3 +1399,405 @@ describe("LV-09.1A.1 · alias de catálogo", () => {
     expect(Array.isArray(DEADLINE_STATUSES)).toBe(true);
   });
 });
+
+// ============================================================================
+// (16) LV-09.1A.2 — Matriz comportamental completa dos 6 papéis
+// ============================================================================
+
+import type { Role } from "@/domain/shared/work-context";
+import type { CaseId } from "@/domain/core/ids";
+import type { AssignmentRole, AssignmentStatus } from "@/domain/core/assignment";
+
+type NonAdminRole = "profissional" | "revisor" | "colaborador" | "leitura";
+const NON_ADMIN_ROLES: readonly NonAdminRole[] = ["profissional","revisor","colaborador","leitura"];
+const ALL_ROLES_LIST: readonly Role[] = ["proprietario","administrador","profissional","revisor","colaborador","leitura"];
+const ADMIN_ROLES_LIST: readonly Role[] = ["proprietario","administrador"];
+
+function assignRoleForContextRole(role: Role): AssignmentRole {
+  switch (role) {
+    case "proprietario": return "lead_professional";
+    case "administrador": return "co_professional";
+    case "profissional": return "lead_professional";
+    case "revisor": return "reviewer";
+    case "colaborador": return "collaborator";
+    case "leitura": return "read_only";
+  }
+}
+
+async function setupWorker(
+  role: NonAdminRole,
+  opts: {
+    profile: "active" | "inactive" | "none";
+    assignCase?: CaseId;
+    assignStatus?: AssignmentStatus;
+  },
+) {
+  const env = createMockDomainEnvironment();
+  const userId = SEED_USER_3_ID as never;
+  const mem = ok(await env.services.memberships.create(OWNER_ALFA, { userId, role }));
+  const ctx: ServiceContext = {
+    organizationId: SEED_ORG_ALFA_ID,
+    userId,
+    membershipId: mem.id,
+    role,
+  };
+  if (opts.profile !== "none") {
+    // Cria profile no contexto do OWNER passando o userId trabalhador.
+    const prof = ok(await env.services.professionalProfiles.create(OWNER_ALFA, {
+      userId,
+      area: "psicologia",
+    }));
+    if (opts.profile === "inactive") {
+      ok(await env.services.professionalProfiles.update(OWNER_ALFA, prof.id, {
+        status: "inactive",
+        expectedVersion: prof.metadata.version,
+      }));
+    }
+    if (opts.assignCase !== undefined) {
+      const a = ok(await env.services.assignments.create(OWNER_ALFA, {
+        caseId: opts.assignCase,
+        professionalProfileId: prof.id,
+        role: assignRoleForContextRole(role),
+        startedOn: "2026-01-05" as never,
+      }));
+      if (opts.assignStatus && opts.assignStatus !== "active") {
+        ok(await env.services.assignments.changeStatus(OWNER_ALFA, opts.assignCase, {
+          assignmentId: a.id,
+          status: opts.assignStatus,
+          expectedVersion: a.metadata.version,
+        }));
+      }
+    }
+  }
+  return { env, ctx };
+}
+
+describe("LV-09.1A.2 · admins acessam qualquer caso da própria org", () => {
+  for (const role of ADMIN_ROLES_LIST) {
+    async function adminCtx(env: ReturnType<typeof createMockDomainEnvironment>): Promise<ServiceContext> {
+      if (role === "proprietario") return { ...OWNER_ALFA };
+      // Cria uma membership de administrador para SEED_USER_3.
+      const mem = ok(await env.services.memberships.create(OWNER_ALFA, {
+        userId: SEED_USER_3_ID as never,
+        role: "administrador",
+      }));
+      return {
+        organizationId: SEED_ORG_ALFA_ID,
+        userId: SEED_USER_3_ID as never,
+        membershipId: mem.id,
+        role: "administrador",
+      };
+    }
+    it(`(200-${role}) ${role}: policy allow em Alfa 1 sem profile nenhum`, async () => {
+      const env = createMockDomainEnvironment();
+      const ctx = await adminCtx(env);
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(true);
+    });
+    it(`(201-${role}) ${role}: policy denied cross-org com case_access_denied`, async () => {
+      const env = createMockDomainEnvironment();
+      const ctx = await adminCtx(env);
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+    });
+    it(`(202-${role}) ${role}: hasAgendaCaseAccess em store vazio devolve false`, () => {
+      const s = createEmptyStore();
+      const ctx: ServiceContext = { ...OWNER_ALFA, role };
+      expect(hasAgendaCaseAccess(s, ctx, SEED_CASE_ALFA_1_ID)).toBe(false);
+    });
+  }
+});
+
+describe("LV-09.1A.2 · não-admin exige ProfessionalProfile ATIVO", () => {
+  for (const role of NON_ADMIN_ROLES) {
+    it(`(210-${role}) ${role} sem profile: policy denied com case_access_denied`, async () => {
+      const { env, ctx } = await setupWorker(role, { profile: "none" });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+      void env;
+    });
+    it(`(211-${role}) ${role} profile ativo, sem assignment: policy denied`, async () => {
+      const { env, ctx } = await setupWorker(role, { profile: "active" });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "appointment.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+      void env;
+    });
+    it(`(212-${role}) ${role} profile INATIVO com assignment ativo: policy denied`, async () => {
+      const { env, ctx } = await setupWorker(role, {
+        profile: "active",
+        assignCase: SEED_CASE_ALFA_1_ID,
+        assignStatus: "active",
+      });
+      // Depois de criar assignment, marcar profile como inativo.
+      const snap = env.snapshot().professionalProfiles.find((p) => p.userId === ctx.userId && p.organizationId === SEED_ORG_ALFA_ID)!;
+      ok(await env.services.professionalProfiles.update(OWNER_ALFA, snap.id, {
+        status: "inactive",
+        expectedVersion: snap.metadata.version,
+      }));
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+    });
+    it(`(213-${role}) ${role} profile ativo + assignment ATIVO no caso: policy allow`, async () => {
+      const { env, ctx } = await setupWorker(role, {
+        profile: "active",
+        assignCase: SEED_CASE_ALFA_1_ID,
+        assignStatus: "active",
+      });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(true);
+      void env;
+    });
+    it(`(214-${role}) ${role} profile ativo + assignment CONCLUÍDO: policy denied`, async () => {
+      const { env, ctx } = await setupWorker(role, {
+        profile: "active",
+        assignCase: SEED_CASE_ALFA_1_ID,
+        assignStatus: "concluded",
+      });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+      void env;
+    });
+    it(`(215-${role}) ${role} assignment em OUTRO caso: policy denied no caso pedido`, async () => {
+      const { env, ctx } = await setupWorker(role, {
+        profile: "active",
+        assignCase: SEED_CASE_ALFA_2_ID,
+        assignStatus: "active",
+      });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+      // Já no caso do assignment, permite.
+      const dec2 = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_ALFA_2_ID,
+      }));
+      expect(dec2.allowed).toBe(true);
+    });
+    it(`(216-${role}) ${role} cross-org: policy sempre denied com case_access_denied`, async () => {
+      const { env, ctx } = await setupWorker(role, { profile: "active", assignCase: SEED_CASE_ALFA_1_ID });
+      const dec = ok(await env.services.permissions.evaluate(ctx, {
+        action: "deadline.read", caseId: SEED_CASE_BETA_1_ID,
+      }));
+      expect(dec.allowed).toBe(false);
+      expect(dec.reason).toBe("case_access_denied");
+      void env;
+    });
+  }
+});
+
+describe("LV-09.1A.2 · serviços: forbidden vs not_found (mesma org vs cross-org)", () => {
+  it("(230) leitura com assignment ATIVO: deadlines.list caseId Alfa 1 devolve itens", async () => {
+    const { env, ctx } = await setupWorker("leitura", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const p = ok(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_ALFA_1_ID }));
+    for (const d of p.items) expect(d.caseId).toBe(SEED_CASE_ALFA_1_ID);
+  });
+  it("(231) leitura com assignment ATIVO: deadlines.create → role_not_allowed", async () => {
+    const { env, ctx } = await setupWorker("leitura", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const r = err(await env.services.deadlines.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      dueAt: T_A, priority: "normal",
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("permission_denied");
+    void env;
+  });
+  it("(232) profissional com assignment ATIVO: deadlines.create OK", async () => {
+    const { env, ctx } = await setupWorker("profissional", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const r = ok(await env.services.deadlines.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "administrative", title: "T",
+      dueAt: T_A, priority: "normal",
+    }));
+    expect(r.status).toBe("pending");
+    void env;
+  });
+  it("(233) colaborador com assignment ATIVO: appointments.create OK", async () => {
+    const { env, ctx } = await setupWorker("colaborador", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const r = ok(await env.services.appointments.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, kind: "meeting", title: "T",
+      startsAt: T_A, endsAt: T_B, mode: "remote",
+    }));
+    expect(r.status).toBe("scheduled");
+    void env;
+  });
+  it("(234) colaborador com assignment ATIVO: deadlines.remove → role_not_allowed", async () => {
+    const { env, ctx } = await setupWorker("colaborador", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_ALFA_1_ID)!;
+    const r = err(await env.services.deadlines.remove(ctx, SEED_CASE_ALFA_1_ID, seedDL.id, seedDL.metadata.version));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("permission_denied");
+  });
+  it("(235) revisor com assignment ATIVO: deadlines.list caseId próprio devolve itens", async () => {
+    const { env, ctx } = await setupWorker("revisor", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const p = ok(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_ALFA_1_ID }));
+    for (const d of p.items) expect(d.caseId).toBe(SEED_CASE_ALFA_1_ID);
+    void env;
+  });
+  it("(236) revisor com assignment ATIVO: deadlines.changeStatus → role_not_allowed", async () => {
+    const { env, ctx } = await setupWorker("revisor", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const seedDL = env.snapshot().deadlines.find((d) => d.caseId === SEED_CASE_ALFA_1_ID)!;
+    const r = err(await env.services.deadlines.changeStatus(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID, deadlineId: seedDL.id,
+      status: "completed", expectedVersion: seedDL.metadata.version,
+    }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("permission_denied");
+  });
+  it("(237) profissional com assignment ATIVO cross-org caseId: service not_found", async () => {
+    const { env, ctx } = await setupWorker("profissional", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const r = err(await env.services.deadlines.list(ctx, { caseId: SEED_CASE_BETA_1_ID }));
+    expect(r.code).toBe("not_found");
+    void env;
+  });
+  it("(238) colaborador sem assignment em Alfa 2: appointments.list caseId Alfa 2 → forbidden/case_access_denied", async () => {
+    const { env, ctx } = await setupWorker("colaborador", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const r = err(await env.services.appointments.list(ctx, { caseId: SEED_CASE_ALFA_2_ID }));
+    expect(r.code).toBe("forbidden");
+    expect(r.message).toBe("case_access_denied");
+    void env;
+  });
+  it("(239) leitura profile ATIVO sem assignment: deadlines.list sem caseId retorna vazio", async () => {
+    const { env, ctx } = await setupWorker("leitura", { profile: "active" });
+    const r = ok(await env.services.deadlines.list(ctx));
+    expect(r.items.length).toBe(0);
+    void env;
+  });
+  it("(240) profissional profile INATIVO com assignment ATIVO: deadlines.list sem caseId vazio", async () => {
+    const { env, ctx } = await setupWorker("profissional", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const snap = env.snapshot().professionalProfiles.find((p) => p.userId === ctx.userId && p.organizationId === SEED_ORG_ALFA_ID)!;
+    ok(await env.services.professionalProfiles.update(OWNER_ALFA, snap.id, {
+      status: "inactive",
+      expectedVersion: snap.metadata.version,
+    }));
+    const r = ok(await env.services.deadlines.list(ctx));
+    expect(r.items.length).toBe(0);
+  });
+  it("(241) proprietário: policy allow em Alfa 1 e Alfa 2", async () => {
+    const env = createMockDomainEnvironment();
+    for (const cid of [SEED_CASE_ALFA_1_ID, SEED_CASE_ALFA_2_ID]) {
+      const dec = ok(await env.services.permissions.evaluate(OWNER_ALFA, {
+        action: "deadline.read", caseId: cid,
+      }));
+      expect(dec.allowed).toBe(true);
+    }
+  });
+  it("(242) leitura + assignment ATIVO: appointments.getById caseId próprio devolve item", async () => {
+    const { env, ctx } = await setupWorker("leitura", {
+      profile: "active",
+      assignCase: SEED_CASE_ALFA_1_ID,
+      assignStatus: "active",
+    });
+    const seedAP = env.snapshot().appointments.find((a) => a.caseId === SEED_CASE_ALFA_1_ID);
+    if (!seedAP) return; // seed pode não ter appointment em Alfa 1
+    const r = ok(await env.services.appointments.getById(ctx, SEED_CASE_ALFA_1_ID, seedAP.id));
+    expect(r.id).toBe(seedAP.id);
+  });
+});
+
+describe("LV-09.1A.2 · computeAgendaAccessibleCaseIds — matriz por papel", () => {
+  it("(250) proprietario: enumera todos os casos da org", async () => {
+    const env = createMockDomainEnvironment();
+    // Testamos indiretamente através das permissões — ambos casos Alfa devem allow.
+    const d1 = ok(await env.services.permissions.evaluate(OWNER_ALFA, { action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID }));
+    const d2 = ok(await env.services.permissions.evaluate(OWNER_ALFA, { action: "deadline.read", caseId: SEED_CASE_ALFA_2_ID }));
+    expect(d1.allowed && d2.allowed).toBe(true);
+  });
+  for (const role of NON_ADMIN_ROLES) {
+    it(`(251-${role}) ${role} sem profile: sem casos acessíveis`, async () => {
+      const { env, ctx } = await setupWorker(role, { profile: "none" });
+      const d1 = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID }));
+      const d2 = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.read", caseId: SEED_CASE_ALFA_2_ID }));
+      expect(d1.allowed).toBe(false);
+      expect(d2.allowed).toBe(false);
+    });
+    it(`(252-${role}) ${role} com assignment ATIVO só no Alfa 1: allow em 1, denied em 2`, async () => {
+      const { env, ctx } = await setupWorker(role, {
+        profile: "active", assignCase: SEED_CASE_ALFA_1_ID, assignStatus: "active",
+      });
+      const d1 = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.read", caseId: SEED_CASE_ALFA_1_ID }));
+      const d2 = ok(await env.services.permissions.evaluate(ctx, { action: "deadline.read", caseId: SEED_CASE_ALFA_2_ID }));
+      expect(d1.allowed).toBe(true);
+      expect(d2.allowed).toBe(false);
+      void env;
+    });
+  }
+});
+
+// Verificações finais de tipagem/catálogo — LV-09.1A.2
+describe("LV-09.1A.2 · catálogo e tipos", () => {
+  it("(260) ALL_ROLES cobre exatamente 6 papéis", () => {
+    expect(ALL_ROLES_LIST.length).toBe(6);
+    expect(new Set(ALL_ROLES_LIST).size).toBe(6);
+  });
+  it("(261) ADMIN_ROLES são apenas proprietario e administrador", () => {
+    expect([...ADMIN_ROLES_LIST]).toEqual(["proprietario","administrador"]);
+  });
+  it("(262) NON_ADMIN_ROLES são exatamente 4", () => {
+    expect(NON_ADMIN_ROLES.length).toBe(4);
+  });
+  it("(263) isAgendaAction cobre 12 ações da agenda", () => {
+    let count = 0;
+    for (const a of PERMISSION_ACTIONS) if (isAgendaAction(a)) count += 1;
+    expect(count).toBe(12);
+  });
+});
+
