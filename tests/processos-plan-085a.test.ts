@@ -118,10 +118,10 @@ describe("LV-08.5A · CasePlanService.listByCase (ordenação determinística)",
     const page = ok<{ items: readonly { id: string; status: string }[] }>(
       await env.services.casePlan.listByCase(OWNER_ALFA, SEED_CASE_ALFA_2_ID, PAGE),
     );
-    // Primeira posição: in_progress (ALFA_1), depois planned (ALFA_2), depois completed (ALFA_3)
+    // Ordem: planned (ALFA_2, dueOn=02-15) < in_progress (ALFA_1) < completed (ALFA_3)
     expect(page.items.length).toBe(3);
-    expect(page.items[0]!.id).toBe(SEED_PLAN_ALFA_1_ID);
-    expect(page.items[1]!.id).toBe(SEED_PLAN_ALFA_2_ID);
+    expect(page.items[0]!.id).toBe(SEED_PLAN_ALFA_2_ID);
+    expect(page.items[1]!.id).toBe(SEED_PLAN_ALFA_1_ID);
     expect(page.items[2]!.id).toBe(SEED_PLAN_ALFA_3_ID);
 
     const betaPage = ok<{ items: readonly unknown[] }>(
