@@ -267,10 +267,29 @@ export function AgendaItemDetailDialog(
     "close" | "cancel_edit" | "reload_after_conflict" | null
   >(null);
 
+  // LV-09.1B.6 — status change / remove
+  const [permChangeStatus, setPermChangeStatus] =
+    React.useState<PermState>("unknown");
+  const [permRemove, setPermRemove] = React.useState<PermState>("unknown");
+  const [pendingStatus, setPendingStatus] = React.useState<
+    | Readonly<{ kind: "deadline"; action: DeadlineStatusAction }>
+    | Readonly<{ kind: "appointment"; action: AppointmentStatusAction }>
+    | null
+  >(null);
+  const [pendingRemoval, setPendingRemoval] = React.useState<boolean>(false);
+  const [mutating, setMutating] = React.useState<boolean>(false);
+  const [mutationError, setMutationError] =
+    React.useState<TranslatedMutationError | null>(null);
+  const [statusConflict, setStatusConflict] = React.useState<{
+    expected?: number;
+    actual?: number;
+  } | null>(null);
+
   const mountedRef = React.useRef(true);
   const detailReqIdRef = React.useRef(0);
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
+  const mutationInFlightRef = React.useRef(false);
 
   React.useEffect(() => {
     mountedRef.current = true;
