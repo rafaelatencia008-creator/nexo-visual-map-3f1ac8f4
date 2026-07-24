@@ -721,7 +721,14 @@ function AgendaPage() {
           <Button
             ref={newItemButtonRef}
             type="button"
-            onClick={() => setCreateOpen(true)}
+            onClick={() =>
+              navigate({
+                to: "/app/agenda/novo",
+                search: filters.caseId
+                  ? { caseId: String(filters.caseId) }
+                  : undefined,
+              })
+            }
             disabled={casesState.kind !== "ready" || accessibleCases.length === 0}
           >
             <Plus className="mr-2 h-4 w-4" aria-hidden />
@@ -730,15 +737,7 @@ function AgendaPage() {
         </div>
       </header>
 
-      <AgendaCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        environment={environment}
-        context={context}
-        cases={accessibleCases}
-        initialCaseId={filters.caseId ?? undefined}
-        onCreated={handleCreated}
-      />
+
 
       <AgendaItemDetailDialog
         selected={selected}
