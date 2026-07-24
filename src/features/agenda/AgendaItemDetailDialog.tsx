@@ -298,24 +298,14 @@ export function AgendaItemDetailDialog(
           );
     call
       .then((res) => {
-        if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
-        if (!res.ok) {
-          const e = res.error;
-          if (e.code === "not_found") setDetail({ kind: "not_found" });
-          else if (e.code === "forbidden" || e.code === "unauthorized")
-            setDetail({ kind: "forbidden" });
-          else
-            setDetail({
-              kind: "error",
-              message: translateGenericError(e),
-            });
-          return;
-        }
-        const loaded: Loaded =
-          selected.type === "deadline"
-            ? { type: "deadline", item: res.data as Deadline }
-            : { type: "appointment", item: res.data as Appointment };
-        setDetail({ kind: "ready", loaded });
+        if (!mountedRef.current) return;
+        const decided = resolveDetailLoadResponse(detailReqIdRef.current, {
+          requestId: reqId,
+          type: selected.type,
+          response: res,
+        });
+        if (decided === "ignore") return;
+        applyDetail(decided);
       })
       .catch(() => {
         if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
@@ -325,6 +315,18 @@ export function AgendaItemDetailDialog(
         });
       });
   }, [selected, environment, context, reload]);
+
+  function applyDetail(snapshot: DetailStateSnapshot) {
+    if (snapshot.kind === "ready") {
+      const loaded: Loaded =
+        snapshot.type === "deadline"
+          ? { type: "deadline", item: snapshot.item }
+          : { type: "appointment", item: snapshot.item };
+      setDetail({ kind: "ready", loaded });
+      return;
+    }
+    setDetail(snapshot);
+  }
 
   // Avalia permissão de edição para o item carregado
   React.useEffect(() => {
