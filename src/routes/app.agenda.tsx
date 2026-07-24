@@ -649,13 +649,35 @@ function AgendaPage() {
     setReloadKey((k) => k + 1);
   }, []);
 
-  const handleDeleted = React.useCallback(() => {
-    setSelected(null);
-    setReloadKey((k) => k + 1);
-    window.setTimeout(() => {
-      lastTriggerRef.current?.focus?.();
-    }, 0);
-  }, []);
+  const handleDeleted = React.useCallback(
+    (deleted: { readonly type: "deadline" | "appointment"; readonly id: string }) => {
+      setPendingRemoval(
+        buildPendingRemovalMarker(loadGenerationRef.current, {
+          type: deleted.type,
+          id: String(deleted.id),
+        }),
+      );
+      setSelected(null);
+      setReloadKey((k) => k + 1);
+      window.setTimeout(() => {
+        newItemButtonRef.current?.focus?.();
+      }, 0);
+    },
+    [],
+  );
+
+  // Confirma a remoção quando uma geração *posterior* à exclusão não lista o ID.
+  React.useEffect(() => {
+    if (!pendingRemoval) return;
+    const decision = resolvePendingRemovalAction(
+      pendingRemoval,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision.kind === "wait") return;
+    setPendingRemoval(null);
+  }, [pendingRemoval, state, visibleDeadlineIds, visibleAppointmentIds]);
 
   const openDeadline = React.useCallback(
     (d: Deadline, ev?: React.SyntheticEvent) => {
