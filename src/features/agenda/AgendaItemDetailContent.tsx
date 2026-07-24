@@ -268,6 +268,18 @@ type DetailState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string };
 
+// LV-09.1B.6.3B.2.1.3 — snapshot de detalhe vinculado à sessão de atividade.
+// Cada snapshot carrega a geração e a chave semântica capturadas no momento
+// em que foi produzido. Um snapshot cuja geração/chave não é a corrente é
+// considerado órfão e apresentado como "loading" — mesmo que carregue um
+// estado `ready`. Isso corrige o cenário A → B → A, em que a resposta lenta
+// de B poderia acender um "ready" alheio à sessão final.
+type DetailSnapshot = Readonly<{
+  activityGeneration: number;
+  selectionKey: AgendaDetailSelectionKey | null;
+  state: DetailState;
+}>;
+
 type PermState = PermissionEvalState;
 type AssignmentsState =
   | { kind: "idle" }
