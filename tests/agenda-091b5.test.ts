@@ -1524,18 +1524,17 @@ describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", (
   });
 });
 
-describe("LV-09.1B.5.1 — sem mudança de status, exclusão ou nova rota", () => {
-  it("121. diálogo não invoca changeStatus", () => {
-    expect(DETAIL_SRC).not.toContain("changeStatus(");
+describe("LV-09.1B.5.1 — [OBSOLETO na LV-09.1B.6]", () => {
+  it("121. diálogo agora invoca changeStatus (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toContain("changeStatus(");
   });
 
-  it("122. diálogo não invoca .remove/.delete", () => {
-    expect(DETAIL_SRC).not.toContain(".remove(");
-    expect(DETAIL_SRC).not.toContain(".delete(");
+  it("122. diálogo agora invoca .remove (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toContain(".remove(");
   });
 
-  it("123. diálogo não expõe botão 'Excluir'", () => {
-    expect(DETAIL_SRC).not.toMatch(/>\s*Excluir\s*</);
+  it("123. diálogo agora expõe botão 'Excluir' (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toMatch(/>\s*Excluir\s*</);
   });
 
   it("124. rota app.agenda não navega para uma rota de detalhe própria", () => {
