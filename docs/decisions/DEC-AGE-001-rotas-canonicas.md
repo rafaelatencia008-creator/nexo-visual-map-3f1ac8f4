@@ -32,7 +32,15 @@ ainda não iniciada.
 Nesta parcela A, as páginas de rota ainda montam diretamente os diálogos
 existentes:
 
-- `/app/agenda/novo` monta `AgendaCreateDialog`.
+- `/app/agenda/novo` monta `AgendaCreateDialog` com
+  `closeAfterCreate={false}`. A rota canônica é a autoridade da navegação
+  pós-sucesso: ao criar um compromisso, navega para
+  `/app/agenda/$appointmentId`; ao criar um prazo, registra
+  `pendingCreated` no provider e navega uma única vez para `/app/agenda`.
+  O diálogo não dispara `onOpenChange(false)` após sucesso, evitando uma
+  segunda navegação. Cancelamento sem rascunho e descarte de rascunho
+  continuam chamando `onOpenChange(false)` normalmente, e a rota trata
+  esse fechamento como volta para `/app/agenda`.
 - `/app/agenda/$appointmentId` monta `AgendaItemDetailDialog`.
 
 Isso é intencional: mantém o comportamento oficial idêntico enquanto as
