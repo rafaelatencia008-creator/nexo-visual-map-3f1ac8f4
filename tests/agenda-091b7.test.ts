@@ -49,6 +49,7 @@ import {
   toConflict,
   type AppointmentAvailabilityConflict,
 } from "@/features/agenda/availability";
+import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
 
 const OWNER_ALFA: ServiceContext = Object.freeze({
   organizationId: SEED_ORG_ALFA_ID,
@@ -701,8 +702,128 @@ describe("LV-09.1B.7.1 · isolamento e ausência de efeitos", () => {
 });
 
 // =========================================================================
-// (G) Provas estruturais — arquivos e ausência de escopo proibido
+// (F2) LV-09.1B.7.1.1 — Vínculo ao domínio oficial (conversor + limite)
 // =========================================================================
+
+describe("LV-09.1B.7.1.1 · conversor temporal oficial e limite de página", () => {
+  it("A1. AVAILABILITY_PAGE_LIMIT === PAGE_LIMIT_MAX", () => {
+    expect(AVAILABILITY_PAGE_LIMIT).toBe(PAGE_LIMIT_MAX);
+  });
+
+  it("A2. orquestrador importa isoDateTimeToEpoch", () => {
+    const src = readFileSync(
+      resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/isoDateTimeToEpoch/);
+  });
+
+  it("A3. orquestrador não usa Date.parse", () => {
+    const src = readFileSync(
+      resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/Date\.parse/);
+  });
+
+  it("A4. orquestrador não usa `new Date`", () => {
+    const src = readFileSync(
+      resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/new\s+Date\b/);
+  });
+
+  it("A5. orquestrador importa PAGE_LIMIT_MAX do contrato oficial", () => {
+    const src = readFileSync(
+      resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/PAGE_LIMIT_MAX/);
+    expect(src).toMatch(/@\/domain\/services\/pagination/);
+  });
+
+  it("A6. instantes equivalentes em fusos diferentes geram conflict", async () => {
+    const existing = makeFakeAppointment(
+      "eq-1",
+      dt("2027-03-10T09:00:00-03:00"),
+      dt("2027-03-10T10:00:00-03:00"),
+    );
+    const { env } = buildFakeEnv([{ items: [existing] }]);
+    const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
+      startsAt: dt("2027-03-10T12:30:00Z"),
+      endsAt: dt("2027-03-10T13:30:00Z"),
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+    });
+    expect(d.kind).toBe("conflict");
+  });
+
+  it("A7. limites encostados equivalentes em fusos diferentes NÃO conflitam", async () => {
+    // existente 09:00–10:00 -03:00 == 12:00–13:00 Z
+    const existing = makeFakeAppointment(
+      "eq-2",
+      dt("2027-03-10T09:00:00-03:00"),
+      dt("2027-03-10T10:00:00-03:00"),
+    );
+    const { env } = buildFakeEnv([{ items: [existing] }]);
+    const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
+      startsAt: dt("2027-03-10T13:00:00Z"), // = 10:00 -03:00
+      endsAt: dt("2027-03-10T14:00:00Z"),
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+    });
+    expect(d.kind).toBe("available");
+  });
+
+  it("A8. primeira página envia limit=PAGE_LIMIT_MAX sem cursor; próxima página preserva o cursor oficial", async () => {
+    type Captured = {
+      limit: number | undefined;
+      cursor: string | undefined;
+      statuses: readonly AppointmentStatus[] | undefined;
+      assignmentIds: readonly string[] | undefined;
+    };
+    const captured: Captured[] = [];
+    const page1Item = makeFakeAppointment(
+      "cap-1",
+      dt("2027-03-11T09:00:00Z"),
+      dt("2027-03-11T10:00:00Z"),
+    );
+    const page2Item = makeFakeAppointment(
+      "cap-2",
+      dt("2027-03-12T09:00:00Z"),
+      dt("2027-03-12T10:00:00Z"),
+    );
+    const list: AppointmentService["list"] = async (_ctx, options) => {
+      captured.push({
+        limit: options?.page?.limit,
+        cursor: options?.page?.cursor,
+        statuses: options?.statuses,
+        assignmentIds: options?.assignmentIds as readonly string[] | undefined,
+      });
+      if (captured.length === 1) {
+        return {
+          ok: true,
+          data: { items: [page1Item], nextCursor: "cursor-oficial-xyz", total: undefined },
+        };
+      }
+      return { ok: true, data: { items: [page2Item], nextCursor: undefined, total: undefined } };
+    };
+    const env: AvailabilityEnvironment = { services: { appointments: { list } } };
+    await checkAppointmentAvailability(env, OWNER_ALFA, {
+      startsAt: dt("2027-03-20T09:00:00Z"),
+      endsAt: dt("2027-03-20T10:00:00Z"),
+      assignmentId: SEED_ASSIGN_ALFA_1_ID,
+    });
+    expect(captured.length).toBe(2);
+    expect(captured[0].limit).toBe(PAGE_LIMIT_MAX);
+    expect(captured[0].cursor).toBeUndefined();
+    expect(captured[0].statuses).toEqual(["scheduled"]);
+    expect(captured[0].assignmentIds).toEqual([SEED_ASSIGN_ALFA_1_ID]);
+    expect(captured[1].limit).toBe(PAGE_LIMIT_MAX);
+    expect(captured[1].cursor).toBe("cursor-oficial-xyz");
+    expect(captured[1].statuses).toEqual(["scheduled"]);
+    expect(captured[1].assignmentIds).toEqual([SEED_ASSIGN_ALFA_1_ID]);
+  });
+});
 
 function read(rel: string): string {
   return readFileSync(resolve(__dirname, "..", rel), "utf8");

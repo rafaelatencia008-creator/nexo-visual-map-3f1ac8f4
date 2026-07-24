@@ -18,10 +18,11 @@
  */
 
 import type { Appointment } from "@/domain/core/agenda";
-import type { IsoDateTime } from "@/domain/core/common";
+import { isoDateTimeToEpoch, type IsoDateTime } from "@/domain/core/common";
 import type { AppointmentId, AssignmentId } from "@/domain/core/ids";
 import type { AppointmentService } from "@/domain/services/appointment-service";
 import type { ServiceContext } from "@/domain/services/context";
+import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
 import {
   decisionAvailable,
   decisionConflict,
@@ -37,7 +38,7 @@ import {
 /**
  * Limite oficial da paginação (compatível com `PAGE_LIMIT_MAX`).
  */
-export const AVAILABILITY_PAGE_LIMIT = 100;
+export const AVAILABILITY_PAGE_LIMIT = PAGE_LIMIT_MAX;
 
 /**
  * Teto defensivo de páginas percorridas. Além disso a consulta é
@@ -105,8 +106,8 @@ export async function checkAppointmentAvailability(
       // Isolamento organizacional: o serviço já filtra por contexto,
       // mas verificamos aqui como segunda barreira defensiva.
       if (existing.organizationId !== context.organizationId) continue;
-      const s = Date.parse(existing.startsAt);
-      const e = Date.parse(existing.endsAt);
+      const s = isoDateTimeToEpoch(existing.startsAt);
+      const e = isoDateTimeToEpoch(existing.endsAt);
       if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
       if (intervalsOverlap(normalized.startEpoch, normalized.endEpoch, s, e)) {
         collected.push(toConflict(existing));
