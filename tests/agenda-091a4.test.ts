@@ -152,7 +152,7 @@ describe("LV-09.1A.4 · isoDateTimeToEpoch", () => {
 
 describe("LV-09.1A.4 · isAppointment com fusos", () => {
   const base = {
-    id: "apt_test_00000001" as unknown,
+    id: createAppointmentId("test000000000001"),
     organizationId: SEED_ORG_ALFA_ID,
     caseId: SEED_CASE_ALFA_1_ID,
     kind: "meeting" as const,
