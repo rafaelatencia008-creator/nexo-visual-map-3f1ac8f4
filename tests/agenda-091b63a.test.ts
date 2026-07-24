@@ -43,7 +43,7 @@ const OWNER_ALFA: ServiceContext = {
   organizationId: SEED_ORG_ALFA_ID,
   userId: SEED_USER_1_ID,
   membershipId: SEED_MEM_ALFA_OWNER_ID,
-  role: "owner",
+  role: "proprietario",
 };
 
 async function makeAppointment(env: ReturnType<typeof createMockDomainEnvironment>) {
