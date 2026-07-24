@@ -129,13 +129,14 @@ describe("Escopo — parcela B pendente (só criação extraída) e LV-09.1B.7 a
     ).toBe(true);
   });
 
-  it("AgendaItemDetailContent ainda não existe", () => {
+  it("AgendaItemDetailContent existe (extraído em LV-09.1B.6.3B.2.1)", () => {
     expect(
       existsSync(
         resolve(__dirname, "..", "src/features/agenda/AgendaItemDetailContent.tsx"),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
+
 
   it("availability.ts continua ausente (LV-09.1B.7)", () => {
     expect(

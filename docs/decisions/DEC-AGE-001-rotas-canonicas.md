@@ -56,19 +56,41 @@ iniciada.
   ou `error` do provider). Durante submit o Content permanece na página
   (o handle é responsável por ignorar o pedido).
 
-### Pendente da parcela B (LV-09.1B.6.3B.2)
+### Entregue na parcela B (LV-09.1B.6.3B.2.1 — extração do detalhe)
 
-Ainda **não** foi criado:
+- Criado `src/features/agenda/AgendaItemDetailContent.tsx` — corpo
+  funcional completo do fluxo de detalhe/edição, sem shell de diálogo.
+  Concentra a **única** implementação: carregamento, avaliação de
+  permissões, formulário de edição, submit com `expectedVersion`,
+  mudanças de status, exclusão, resolução de conflitos, banner de retry,
+  single-flight (`bindSingleFlightLockToRef`), seis gates unificados
+  (`deriveMutationLockDecisions` + `permissionAllowsAction`), toasts
+  e detecção de rascunho com `AlertDialog` "Descartar alterações?".
+- O Content expõe `forwardRef` com o handle imperativo
+  `AgendaItemDetailContentHandle.requestClose()`; usa a prop
+  `surface: "page" | "dialog"` para condicionar apenas layout e nível de
+  cabeçalho (`h1` em página, `h2` em diálogo). NÃO conhece a camada de
+  roteamento — não importa `@tanstack/react-router` nem `useNavigate`.
+- `AgendaItemDetailDialog` passou a ser um **wrapper fino**: monta
+  apenas `<Dialog>` + `<DialogContent>` acessível (título/descrição no
+  `DialogHeader` `sr-only`) e delega o fechamento externo (X, Escape,
+  clique fora) ao Content via `contentRef.current.requestClose()`. A API
+  pública histórica (`AgendaItemDetailDialog`,
+  `AgendaItemDetailDialogProps`, `SelectedAgendaItem`,
+  `AgendaItemUpdated`, `AgendaItemDeleted`) permanece compatível — os
+  testes existentes continuam válidos, apenas as leituras estruturais de
+  fonte foram redirecionadas para `AgendaItemDetailContent.tsx`.
 
-- `AgendaItemDetailContent` — corpo do fluxo de detalhe/edição sem shell
-  de diálogo.
+### Pendente da parcela B (LV-09.1B.6.3B.2.2)
 
-A rota `/app/agenda/$appointmentId` continua montando temporariamente
-(condição transitória) o `AgendaItemDetailDialog` existente — os diálogos
-ainda não foram convertidos em wrappers finos para o detalhe. A
-LV-09.1B.6.3 permanece **aberta** e só será encerrada quando a
-LV-09.1B.6.3B.2 extrair esse `Content` e transformar o diálogo de detalhe
-em wrapper fino.
+Ainda **não** foi realizada a conversão total do detalhe em página:
+
+- A rota `/app/agenda/$appointmentId` continua montando temporariamente
+  o `AgendaItemDetailDialog` (wrapper fino) até que a LV-09.1B.6.3B.2.2
+  substitua esse uso por `AgendaItemDetailContent` com
+  `surface="page"`. A LV-09.1B.6.3 permanece **aberta** até essa
+  substituição.
+
 
 A LV-09.1B.7 (motor consultivo de disponibilidade) **não está iniciada**.
 Qualquer artefato antecipado dessa etapa foi removido na LV-09.1B.6.3A.1.
