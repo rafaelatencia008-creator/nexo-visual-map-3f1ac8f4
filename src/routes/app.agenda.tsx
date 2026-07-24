@@ -891,6 +891,8 @@ function AgendaPage() {
                       deadlines={visible.deadlines}
                       appointments={visible.appointments}
                       nowEpoch={nowEpoch}
+                      onOpenDeadline={openDeadline}
+                      onOpenAppointment={openAppointment}
                     />
                   )}
                   {mode === "week" && (
@@ -903,6 +905,8 @@ function AgendaPage() {
                         setAnchor(startOfDay(d));
                         setMode("day");
                       }}
+                      onOpenDeadline={openDeadline}
+                      onOpenAppointment={openAppointment}
                     />
                   )}
                   {mode === "month" && (
@@ -921,7 +925,13 @@ function AgendaPage() {
               )}
             </div>
 
-            {showUpcoming && <UpcomingDeadlines items={upcomingDeadlines} />}
+            {showUpcoming && (
+              <UpcomingDeadlines
+                items={upcomingDeadlines}
+                onOpenDeadline={openDeadline}
+              />
+            )}
+
           </div>
         </>
       )}
