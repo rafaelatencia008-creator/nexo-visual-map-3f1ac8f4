@@ -831,7 +831,7 @@ describe("LV-09.1B.5 — item-visibility (reexport)", () => {
     };
     const decision = resolveAgendaItemVisibility(
       marker,
-      { kind: "ready", generation: 5, data: { deadlines: [], appointments: [] } as never },
+      { kind: "ready", generation: 5 },
       new Set(),
       new Set(["appointment_xyz"]),
     );
