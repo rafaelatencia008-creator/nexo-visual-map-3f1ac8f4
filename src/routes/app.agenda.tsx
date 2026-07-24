@@ -106,6 +106,10 @@ import {
   type PendingCreatedItem,
 } from "@/features/agenda/created-visibility";
 import {
+  buildPendingUpdateMarker,
+  resolvePendingUpdateAction,
+} from "@/features/agenda/detail-reducers";
+import {
   AgendaItemDetailDialog,
   type AgendaItemUpdated,
   type SelectedAgendaItem,
@@ -616,14 +620,14 @@ function AgendaPage() {
   // Mesma estratégia de geração para itens atualizados (LV-09.1B.5).
   React.useEffect(() => {
     if (!pendingUpdated) return;
-    const decision = resolveCreatedItemVisibility(
+    const effect = resolvePendingUpdateAction(
       pendingUpdated,
       state,
       visibleDeadlineIds,
       visibleAppointmentIds,
     );
-    if (decision === "wait") return;
-    if (decision === "hidden") {
+    if (effect.kind === "wait") return;
+    if (effect.kind === "clear_with_notice") {
       toast.info(
         "Item atualizado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
       );
@@ -632,12 +636,9 @@ function AgendaPage() {
   }, [pendingUpdated, state, visibleDeadlineIds, visibleAppointmentIds]);
 
   const handleUpdated = React.useCallback((updated: AgendaItemUpdated) => {
-    const requiredGeneration = loadGenerationRef.current + 1;
-    setPendingUpdated({
-      id: String(updated.item.id),
-      type: updated.type,
-      requiredGeneration,
-    });
+    setPendingUpdated(
+      buildPendingUpdateMarker(loadGenerationRef.current, updated),
+    );
     setReloadKey((k) => k + 1);
   }, []);
 

@@ -94,6 +94,11 @@ import {
   type TranslatedUpdateError,
 } from "./edit-form";
 import { getDeadlinePresentation } from "./visual-state";
+import {
+  reduceConflictAction,
+  resolveDetailLoadResponse,
+  resolveDiscardIntent,
+} from "./detail-reducers";
 
 // ---- Tipos públicos -----------------------------------------------------
 
@@ -292,24 +297,22 @@ export function AgendaItemDetailDialog(
           );
     call
       .then((res) => {
-        if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
-        if (!res.ok) {
-          const e = res.error;
-          if (e.code === "not_found") setDetail({ kind: "not_found" });
-          else if (e.code === "forbidden" || e.code === "unauthorized")
-            setDetail({ kind: "forbidden" });
-          else
-            setDetail({
-              kind: "error",
-              message: translateGenericError(e),
-            });
+        if (!mountedRef.current) return;
+        const decided = resolveDetailLoadResponse(detailReqIdRef.current, {
+          requestId: reqId,
+          type: selected.type,
+          response: res,
+        });
+        if (decided === "ignore") return;
+        if (decided.kind === "ready") {
+          const loaded: Loaded =
+            decided.type === "deadline"
+              ? { type: "deadline", item: decided.item }
+              : { type: "appointment", item: decided.item };
+          setDetail({ kind: "ready", loaded });
           return;
         }
-        const loaded: Loaded =
-          selected.type === "deadline"
-            ? { type: "deadline", item: res.data as Deadline }
-            : { type: "appointment", item: res.data as Appointment };
-        setDetail({ kind: "ready", loaded });
+        setDetail(decided);
       })
       .catch(() => {
         if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
@@ -319,6 +322,7 @@ export function AgendaItemDetailDialog(
         });
       });
   }, [selected, environment, context, reload]);
+
 
   // Avalia permissão de edição para o item carregado
   React.useEffect(() => {
@@ -426,8 +430,13 @@ export function AgendaItemDetailDialog(
   }, [mode, detail, dForm, aForm]);
 
   const cancelEdit = React.useCallback(() => {
-    if (submittingRef.current) return;
-    if (hasLocalChanges) {
+    const dec = resolveDiscardIntent("cancel_edit", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("cancel_edit");
       return;
     }
@@ -435,11 +444,16 @@ export function AgendaItemDetailDialog(
     setErrors({});
     setGeneralError(null);
     setConflictState(null);
-  }, [hasLocalChanges]);
+  }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
-    if (submittingRef.current) return;
-    if (mode === "edit" && hasLocalChanges) {
+    const dec = resolveDiscardIntent("close", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("close");
       return;
     }
@@ -457,7 +471,9 @@ export function AgendaItemDetailDialog(
       setGeneralError(null);
       setConflictState(null);
     } else if (action === "reload_after_conflict") {
-      setConflictState(null);
+      setConflictState((prev) =>
+        reduceConflictAction(prev, { type: "reload_confirmed" }),
+      );
       setMode("view");
       setErrors({});
       setGeneralError(null);
@@ -466,14 +482,22 @@ export function AgendaItemDetailDialog(
   }, [confirmDiscard, onClose]);
 
   const reloadAfterConflict = React.useCallback(() => {
-    if (hasLocalChanges) {
+    const dec = resolveDiscardIntent("reload_after_conflict", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("reload_after_conflict");
       return;
     }
-    setConflictState(null);
+    setConflictState((prev) =>
+      reduceConflictAction(prev, { type: "reload_confirmed" }),
+    );
     setMode("view");
     setReload((r) => r + 1);
-  }, [hasLocalChanges]);
+  }, [mode, hasLocalChanges]);
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
@@ -567,12 +591,17 @@ export function AgendaItemDetailDialog(
     function handleUpdateError(err: ServiceError): void {
       const t: TranslatedUpdateError = translateAgendaUpdateError(err);
       if (t.kind === "conflict") {
-        setConflictState({
-          ...(t.expectedVersion !== undefined
-            ? { expected: t.expectedVersion }
-            : {}),
-          ...(t.actualVersion !== undefined ? { actual: t.actualVersion } : {}),
-        });
+        setConflictState((prev) =>
+          reduceConflictAction(prev, {
+            type: "receive_conflict",
+            ...(t.expectedVersion !== undefined
+              ? { expected: t.expectedVersion }
+              : {}),
+            ...(t.actualVersion !== undefined
+              ? { actual: t.actualVersion }
+              : {}),
+          }),
+        );
         return;
       }
       if (t.kind === "field") {
@@ -1535,13 +1564,4 @@ function AppointmentEditFields({
       </div>
     </div>
   );
-}
-
-function translateGenericError(e: ServiceError): string {
-  if (e.code === "offline") return "Sem conexão. Tente novamente.";
-  if (e.code === "unavailable")
-    return "Serviço indisponível. Tente novamente em instantes.";
-  if (e.code === "internal_error")
-    return "Erro interno. Tente novamente em instantes.";
-  return "Não foi possível carregar este item.";
 }
