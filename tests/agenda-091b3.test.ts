@@ -574,9 +574,9 @@ describe("LV-09.1B.3 — filtros aplicados aos serviços", () => {
     const d = ok(
       await env.services.deadlines.list(OWNER_ALFA, { page: { limit: 100 } }),
     );
-    const sorted = d.items.slice().sort((a, b) =>
-      a.dueAt < b.dueAt ? -1 : a.dueAt > b.dueAt ? 1 : 0,
-    );
+    const sorted = d.items
+      .slice()
+      .sort((a, b) => compareIsoDateTime(a.dueAt, b.dueAt));
     // Não impõe ordem específica do serviço; validamos que a Agenda ordena
     // cronologicamente ao consumir — helper puro:
     const upcoming = selectUpcomingDeadlines(
@@ -585,7 +585,7 @@ describe("LV-09.1B.3 — filtros aplicados aos serviços", () => {
       10,
     );
     const ts = upcoming.map((x) => x.dueAt);
-    expect(ts).toEqual([...ts].sort());
+    expect(ts).toEqual([...ts].sort(compareIsoDateTime));
     void sorted;
   });
 
