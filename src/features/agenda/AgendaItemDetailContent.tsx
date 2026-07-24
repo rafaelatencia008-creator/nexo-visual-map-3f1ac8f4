@@ -151,10 +151,26 @@ import {
 import {
   buildAgendaDetailSelectionKey,
   buildAgendaDetailActivationKey,
+  createAgendaDetailActivitySession,
+  deriveAgendaDetailRenderSession,
   deriveAgendaDetailActivityState,
   isAgendaDetailAsyncResultCurrent,
+  type AgendaDetailActivitySession,
   type AgendaDetailSelectionKey,
 } from "./detail-activity";
+
+// LV-09.1B.6.3B.2.1.3.1 — hook isomórfico para confirmar a sessão de
+// atividade apenas no commit. `useLayoutEffect` no navegador (roda antes
+// do próximo paint, preservando invalidação imediata) e `useEffect` em
+// SSR (evita warnings).
+const useCommitLayoutEffect =
+  typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+
+interface AgendaDetailRuntimeActivity {
+  readonly active: boolean;
+  readonly selectionKey: AgendaDetailSelectionKey | null;
+  readonly activityGeneration: number;
+}
 
 
 
