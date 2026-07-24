@@ -105,6 +105,13 @@ import {
   resolveCreatedItemVisibility,
   type PendingCreatedItem,
 } from "@/features/agenda/created-visibility";
+import {
+  AgendaItemDetailDialog,
+  type AgendaItemUpdated,
+  type SelectedAgendaItem,
+} from "@/features/agenda/AgendaItemDetailDialog";
+import type { AppointmentId, DeadlineId } from "@/domain/core/ids";
+
 
 // ============================================================================
 // Tela oficial /app/agenda.
