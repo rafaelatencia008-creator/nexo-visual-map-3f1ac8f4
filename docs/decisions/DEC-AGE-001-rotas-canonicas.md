@@ -322,3 +322,25 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
   `AgendaItemDetailContent` sem alterar nenhuma dessas regras.
 - Este DEC não introduz nenhuma nova regra de permissão nem novo
   contrato de serviço.
+
+## Adendo LV-09.1B.6.3B.2.1 e LV-09.1B.6.3B.2.2
+
+- **LV-09.1B.6.3B.2.1** concluída: `AgendaItemDetailContent` é a única
+  implementação funcional do fluxo de detalhe/edição.
+- `AgendaItemDetailDialog` permanece como **wrapper fino** consumido em
+  `/app/agenda` (calendário) para abertura rápida em diálogo. Delega o
+  fechamento seguro ao handle `requestClose()` exposto pelo Content.
+- **LV-09.1B.6.3B.2.2** concluída: a rota canônica
+  `/app/agenda/$appointmentId` tornou-se **página real**. Ela monta
+  diretamente `AgendaItemDetailContent` com `surface="page"` (sem
+  diálogo). O botão superior "Voltar para a agenda" chama
+  `contentRef.current.requestClose()`; o fallback direto para
+  `navigate({ to: "/app/agenda" })` só ocorre quando o Content ainda não
+  está montado (loading / not_found / error / forbidden).
+- Consequência: criação (`/app/agenda/novo`) e detalhe
+  (`/app/agenda/$appointmentId`) agora possuem **páginas canônicas
+  reais**, encerrando **LV-09.1B.6.3B.2** e permitindo marcar
+  **LV-09.1B.6.3** como concluída se nenhuma outra parcela pendente
+  existir dentro dela.
+- Disponibilidade permanece **não iniciada**. `LV-09.1B.7` não foi
+  iniciada nem concluída.
