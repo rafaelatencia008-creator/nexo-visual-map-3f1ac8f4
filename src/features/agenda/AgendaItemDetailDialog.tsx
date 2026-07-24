@@ -941,7 +941,32 @@ export function AgendaItemDetailDialog(
   );
 }
 
-// ---- Painel de visualização -----------------------------------------------
+// ---- Ícone de estado do prazo --------------------------------------------
+
+function DeadlineStateIcon({
+  state,
+}: {
+  state: ReturnType<typeof getDeadlinePresentation>["state"];
+}) {
+  const cls = "h-3.5 w-3.5" as const;
+  switch (state) {
+    case "cancelled":
+      return <Ban className={cls} aria-hidden />;
+    case "completed":
+      return <CheckCircle2 className={cls} aria-hidden />;
+    case "overdue":
+      return <AlertTriangle className={cls} aria-hidden />;
+    case "urgent":
+      return <AlertCircle className={cls} aria-hidden />;
+    case "high":
+      return <Flag className={cls} aria-hidden />;
+    case "normal":
+    case "low":
+    default:
+      return <Clock className={cls} aria-hidden />;
+  }
+}
+
 
 function ViewPanel({
   loaded,
