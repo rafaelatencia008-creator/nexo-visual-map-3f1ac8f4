@@ -267,8 +267,8 @@ function formatDayShort(d: Date): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-function isInRange(iso: string, from: Date, to: Date): boolean {
-  const t = isoDateTimeToEpoch(iso as never);
+function isInRange(iso: IsoDateTime, from: Date, to: Date): boolean {
+  const t = isoDateTimeToEpoch(iso);
   return t >= from.getTime() && t < to.getTime();
 }
 
