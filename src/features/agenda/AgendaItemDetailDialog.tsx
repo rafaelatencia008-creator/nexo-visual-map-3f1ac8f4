@@ -686,31 +686,34 @@ export function AgendaItemDetailDialog(
     return null;
   }, [mode, detail, dForm, aForm, expectedVersion]);
 
-  const canSubmit =
-    mode === "edit" &&
-    perm === "allowed" &&
-    currentBuildResult !== null &&
-    currentBuildResult.ok &&
-    currentBuildResult.changed &&
-    !submitting;
+  // Fonte única de verdade da UI de edição. `deriveEditUiState` é o mesmo
+  // helper puro exercitado pelos testes comportamentais — o componente real
+  // consome exatamente a decisão testada, sem duplicação manual das regras
+  // de `canSubmit` e de exibição progressiva de erros.
+  const editUiState = React.useMemo(
+    () =>
+      deriveEditUiState({
+        mode,
+        perm,
+        submitting,
+        build: currentBuildResult,
+        storedErrors: errors,
+        touched,
+        attemptedSubmit,
+      }),
+    [
+      mode,
+      perm,
+      submitting,
+      currentBuildResult,
+      errors,
+      touched,
+      attemptedSubmit,
+    ],
+  );
+  const canSubmit = editUiState.canSubmit;
+  const displayErrors = editUiState.displayErrors;
 
-  // Erros exibidos = união dos erros já persistidos (submit / retorno do
-  // serviço) + erros derivados apenas para campos "tocados" pelo usuário
-  // ou após tentativa de submit. Isso evita mostrar erros em todos os
-  // campos assim que a edição começa.
-  const displayErrors: Readonly<Record<string, string>> = React.useMemo(() => {
-    if (currentBuildResult && !currentBuildResult.ok) {
-      const merged: Record<string, string> = { ...errors };
-      for (const [k, v] of Object.entries(currentBuildResult.errors)) {
-        if (merged[k]) continue;
-        if (attemptedSubmit || touched[k]) {
-          merged[k] = v;
-        }
-      }
-      return merged;
-    }
-    return errors;
-  }, [currentBuildResult, errors, touched, attemptedSubmit]);
 
 
   const title =
