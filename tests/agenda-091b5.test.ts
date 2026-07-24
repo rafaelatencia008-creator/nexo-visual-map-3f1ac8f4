@@ -118,7 +118,7 @@ async function makeAppointment(env: ReturnType<typeof createMockDomainEnvironmen
 
 const AGENDA_ROUTE_SRC = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
 const DETAIL_SRC = readFileSync(
-  "src/features/agenda/AgendaItemDetailDialog.tsx",
+  "src/features/agenda/AgendaItemDetailContent.tsx",
   "utf8",
 );
 const EDIT_FORM_SRC = readFileSync(

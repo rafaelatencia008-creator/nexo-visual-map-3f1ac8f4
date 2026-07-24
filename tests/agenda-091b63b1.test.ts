@@ -279,13 +279,14 @@ describe("LV-09.1B.6.3B.1 · Sem duplicação funcional e escopo intocado", () =
     expect(src).toMatch(/AgendaItemDetailDialog/);
   });
 
-  it("40. AgendaItemDetailContent ainda não existe", () => {
+  it("40. AgendaItemDetailContent existe (extraído em LV-09.1B.6.3B.2.1)", () => {
     expect(
       existsSync(
         resolve(__dirname, "..", "src/features/agenda/AgendaItemDetailContent.tsx"),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
+
 
   it("41. disponibilidade continua ausente (LV-09.1B.7)", () => {
     expect(
