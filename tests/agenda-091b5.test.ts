@@ -1462,7 +1462,7 @@ describe("LV-09.1B.5.1 — conversão ISO defensiva", () => {
 });
 
 describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", () => {
-  it("116. arquivo de testes não usa casts inseguros nem @ts-ignore/@ts-nocheck", () => {
+  it("116. arquivo de testes não usa casts inseguros nem supressões de tipo", () => {
     const src = readFileSync("tests/agenda-091b5.test.ts", "utf8");
     // Constrói tokens em runtime para que o próprio assertivo NÃO produza
     // ocorrência literal do padrão no fonte deste arquivo.
