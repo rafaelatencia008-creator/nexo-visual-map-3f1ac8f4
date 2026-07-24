@@ -324,7 +324,7 @@ export function AgendaItemDetailDialog(
     setPendingRemoval(false);
     setMutating(false);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     mutationInFlightRef.current = false;
     setAssignments({ kind: "idle" });
     setDForm(null);
@@ -729,7 +729,7 @@ export function AgendaItemDetailDialog(
     mutationInFlightRef.current = true;
     setMutating(true);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     try {
       if (
         pendingStatus.kind === "deadline" &&
@@ -747,7 +747,7 @@ export function AgendaItemDetailDialog(
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
           if (t.kind === "conflict") {
-            setStatusConflict({
+            setMutationConflict({
               ...(t.expectedVersion !== undefined
                 ? { expected: t.expectedVersion }
                 : {}),
@@ -782,7 +782,7 @@ export function AgendaItemDetailDialog(
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
           if (t.kind === "conflict") {
-            setStatusConflict({
+            setMutationConflict({
               ...(t.expectedVersion !== undefined
                 ? { expected: t.expectedVersion }
                 : {}),
@@ -876,7 +876,7 @@ export function AgendaItemDetailDialog(
     if (mutationInFlightRef.current) return;
     setPendingStatus(null);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     setReload((r) => r + 1);
   }, []);
 
@@ -1052,12 +1052,12 @@ export function AgendaItemDetailDialog(
                     mutationError={mutationError}
                     onSelectDeadlineAction={(action) => {
                       setMutationError(null);
-                      setStatusConflict(null);
+                      setMutationConflict(null);
                       setPendingStatus({ kind: "deadline", action });
                     }}
                     onSelectAppointmentAction={(action) => {
                       setMutationError(null);
-                      setStatusConflict(null);
+                      setMutationConflict(null);
                       setPendingStatus({ kind: "appointment", action });
                     }}
                     onRequestRemoval={() => {
@@ -1255,7 +1255,7 @@ export function AgendaItemDetailDialog(
           if (!o && !mutationInFlightRef.current) {
             setPendingStatus(null);
             setMutationError(null);
-            setStatusConflict(null);
+            setMutationConflict(null);
           }
         }}
       >
@@ -1283,7 +1283,7 @@ export function AgendaItemDetailDialog(
             </div>
           )}
           <AlertDialogFooter>
-            {statusConflict ? (
+            {mutationConflict ? (
               <>
                 <AlertDialogCancel disabled={mutating}>Fechar</AlertDialogCancel>
                 <AlertDialogAction
