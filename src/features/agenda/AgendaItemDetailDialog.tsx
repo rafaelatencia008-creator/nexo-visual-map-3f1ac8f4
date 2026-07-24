@@ -634,7 +634,7 @@ export function AgendaItemDetailDialog(
   const submit = React.useCallback(async () => {
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
-    if (perm !== "allowed") return;
+    if (!permissionAllowsAction(perm)) return;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
@@ -956,6 +956,19 @@ export function AgendaItemDetailDialog(
     remove: permRemove,
   });
 
+  // Gates unificados da UI (fonte única). Todos os botões e handlers
+  // consomem estes valores em vez de recompor `submitting || mutating`.
+  const canCloseDetail = lockDecisions.canClose;
+  const canEditItem =
+    lockDecisions.canEnterEdit && permissionAllowsAction(perm);
+  const canOpenItemAction = lockDecisions.canOpenConfirmation;
+  const canConfirmStatusChange =
+    lockDecisions.canOpenConfirmation &&
+    permissionAllowsAction(permChangeStatus);
+  const canConfirmRemoval =
+    lockDecisions.canOpenConfirmation && permissionAllowsAction(permRemove);
+  const canRetryPermissionEvaluation = lockDecisions.canRetryPermissions;
+
 
 
   const caseById = React.useMemo(() => {
@@ -1124,7 +1137,7 @@ export function AgendaItemDetailDialog(
                     loaded={detail.loaded}
                     permChangeStatus={permChangeStatus}
                     permRemove={permRemove}
-                    mutating={mutating}
+                    actionsDisabled={!canOpenItemAction}
                     mutationError={mutationError}
                     onSelectDeadlineAction={requestDeadlineStatusChange}
                     onSelectAppointmentAction={requestAppointmentStatusChange}
@@ -1143,7 +1156,7 @@ export function AgendaItemDetailDialog(
                         size="sm"
                         variant="outline"
                         onClick={retryPermissions}
-                        disabled={mutating || !lockDecisions.canRetryPermissions}
+                        disabled={!canRetryPermissionEvaluation}
                       >
                         Tentar novamente
                       </Button>
@@ -1259,7 +1272,7 @@ export function AgendaItemDetailDialog(
                     type="button"
                     variant="outline"
                     onClick={requestClose}
-                    disabled={submitting || mutating}
+                    disabled={!canCloseDetail}
                   >
                     Fechar
                   </Button>
@@ -1267,7 +1280,7 @@ export function AgendaItemDetailDialog(
                     <Button
                       type="button"
                       onClick={enterEdit}
-                      disabled={perm !== "allowed" || mutating}
+                      disabled={!canEditItem}
                       aria-describedby={
                         perm === "denied" ? "detail-perm-hint" : undefined
                       }
@@ -1403,7 +1416,7 @@ export function AgendaItemDetailDialog(
             {mutationConflict && mutationConflict.operation === "change_status" ? (
               <>
                 <AlertDialogCancel
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                   onClick={(e) => {
                     e.preventDefault();
                     keepReviewingMutation();
@@ -1416,7 +1429,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     reloadAfterMutationConflict();
                   }}
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
                   Recarregar dados
@@ -1424,13 +1437,13 @@ export function AgendaItemDetailDialog(
               </>
             ) : (
               <>
-                <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={!canOpenItemAction}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
                     void confirmStatusChange();
                   }}
-                  disabled={mutating || !permissionAllowsAction(permChangeStatus)}
+                  disabled={!canConfirmStatusChange}
                   aria-busy={mutating}
                 >
                   {mutating && (
@@ -1502,7 +1515,7 @@ export function AgendaItemDetailDialog(
             {mutationConflict && mutationConflict.operation === "remove" ? (
               <>
                 <AlertDialogCancel
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                   onClick={(e) => {
                     e.preventDefault();
                     keepReviewingMutation();
@@ -1515,7 +1528,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     reloadAfterMutationConflict();
                   }}
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
                   Recarregar dados
@@ -1523,7 +1536,7 @@ export function AgendaItemDetailDialog(
               </>
             ) : (
               <>
-                <AlertDialogCancel disabled={mutating} autoFocus>
+                <AlertDialogCancel disabled={!canOpenItemAction} autoFocus>
                   Manter item
                 </AlertDialogCancel>
                 <AlertDialogAction
@@ -1531,7 +1544,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmRemoval();
                   }}
-                  disabled={mutating || !permissionAllowsAction(permRemove)}
+                  disabled={!canConfirmRemoval}
                   aria-busy={mutating}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
@@ -1556,7 +1569,7 @@ function ItemActionsSection({
   loaded,
   permChangeStatus,
   permRemove,
-  mutating,
+  actionsDisabled,
   mutationError,
   onSelectDeadlineAction,
   onSelectAppointmentAction,
@@ -1565,7 +1578,7 @@ function ItemActionsSection({
   loaded: Loaded;
   permChangeStatus: PermState;
   permRemove: PermState;
-  mutating: boolean;
+  actionsDisabled: boolean;
   mutationError: TranslatedMutationError | null;
   onSelectDeadlineAction: (action: DeadlineStatusAction) => void;
   onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
@@ -1598,7 +1611,7 @@ function ItemActionsSection({
               type="button"
               size="sm"
               variant="outline"
-              disabled={mutating}
+              disabled={actionsDisabled}
               onClick={() => onSelectDeadlineAction(a)}
             >
               {a.status === "completed" ? (
@@ -1618,7 +1631,7 @@ function ItemActionsSection({
               type="button"
               size="sm"
               variant="outline"
-              disabled={mutating}
+              disabled={actionsDisabled}
               onClick={() => onSelectAppointmentAction(a)}
             >
               {a.status === "completed" ? (
@@ -1636,7 +1649,7 @@ function ItemActionsSection({
             type="button"
             size="sm"
             variant="destructive"
-            disabled={mutating}
+            disabled={actionsDisabled}
             onClick={onRequestRemoval}
           >
             <Trash2 className="mr-2 h-4 w-4" aria-hidden />
