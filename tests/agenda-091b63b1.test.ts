@@ -288,7 +288,7 @@ describe("LV-09.1B.6.3B.1 · Sem duplicação funcional e escopo intocado", () =
   });
 
 
-  it("41. motor consultivo criado (LV-09.1B.7.1) mas rota /app/disponibilidade ausente", () => {
+  it("41. motor consultivo criado (LV-09.1B.7.1) e rota /app/disponibilidade existente (LV-09.1B.7.2)", () => {
     expect(
       existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts")),
     ).toBe(true);
@@ -299,7 +299,7 @@ describe("LV-09.1B.6.3B.1 · Sem duplicação funcional e escopo intocado", () =
     ).toBe(true);
     expect(
       existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("42. domínio, serviços e mocks permanecem inalterados (arquivos-âncora presentes)", () => {
