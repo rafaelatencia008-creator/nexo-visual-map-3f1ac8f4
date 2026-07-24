@@ -105,6 +105,13 @@ import {
   resolveCreatedItemVisibility,
   type PendingCreatedItem,
 } from "@/features/agenda/created-visibility";
+import {
+  AgendaItemDetailDialog,
+  type AgendaItemUpdated,
+  type SelectedAgendaItem,
+} from "@/features/agenda/AgendaItemDetailDialog";
+import type { AppointmentId, DeadlineId } from "@/domain/core/ids";
+
 
 // ============================================================================
 // Tela oficial /app/agenda.
@@ -406,10 +413,17 @@ function AgendaPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
   const [pendingCreated, setPendingCreated] =
     React.useState<PendingCreatedItem | null>(null);
+  const [pendingUpdated, setPendingUpdated] =
+    React.useState<PendingCreatedItem | null>(null);
+  const [selected, setSelected] = React.useState<SelectedAgendaItem | null>(
+    null,
+  );
+  const lastTriggerRef = React.useRef<HTMLElement | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
   const loadGenerationRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -599,6 +613,68 @@ function AgendaPage() {
     setPendingCreated(null);
   }, [pendingCreated, state, visibleDeadlineIds, visibleAppointmentIds]);
 
+  // Mesma estratégia de geração para itens atualizados (LV-09.1B.5).
+  React.useEffect(() => {
+    if (!pendingUpdated) return;
+    const decision = resolveCreatedItemVisibility(
+      pendingUpdated,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision === "wait") return;
+    if (decision === "hidden") {
+      toast.info(
+        "Item atualizado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
+      );
+    }
+    setPendingUpdated(null);
+  }, [pendingUpdated, state, visibleDeadlineIds, visibleAppointmentIds]);
+
+  const handleUpdated = React.useCallback((updated: AgendaItemUpdated) => {
+    const requiredGeneration = loadGenerationRef.current + 1;
+    setPendingUpdated({
+      id: String(updated.item.id),
+      type: updated.type,
+      requiredGeneration,
+    });
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  const openDeadline = React.useCallback(
+    (d: Deadline, ev?: React.SyntheticEvent) => {
+      if (ev?.currentTarget instanceof HTMLElement) {
+        lastTriggerRef.current = ev.currentTarget;
+      }
+      setSelected({
+        type: "deadline",
+        caseId: d.caseId,
+        id: d.id as DeadlineId,
+      });
+    },
+    [],
+  );
+  const openAppointment = React.useCallback(
+    (a: Appointment, ev?: React.SyntheticEvent) => {
+      if (ev?.currentTarget instanceof HTMLElement) {
+        lastTriggerRef.current = ev.currentTarget;
+      }
+      setSelected({
+        type: "appointment",
+        caseId: a.caseId,
+        id: a.id as AppointmentId,
+      });
+    },
+    [],
+  );
+  const closeDetail = React.useCallback(() => {
+    setSelected(null);
+    window.setTimeout(() => {
+      lastTriggerRef.current?.focus?.();
+    }, 0);
+  }, []);
+
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -638,6 +714,16 @@ function AgendaPage() {
         initialCaseId={filters.caseId ?? undefined}
         onCreated={handleCreated}
       />
+
+      <AgendaItemDetailDialog
+        selected={selected}
+        onClose={closeDetail}
+        environment={environment}
+        context={context}
+        cases={accessibleCases}
+        onUpdated={handleUpdated}
+      />
+
 
 
       <AgendaFiltersBar
@@ -805,6 +891,8 @@ function AgendaPage() {
                       deadlines={visible.deadlines}
                       appointments={visible.appointments}
                       nowEpoch={nowEpoch}
+                      onOpenDeadline={openDeadline}
+                      onOpenAppointment={openAppointment}
                     />
                   )}
                   {mode === "week" && (
@@ -817,6 +905,8 @@ function AgendaPage() {
                         setAnchor(startOfDay(d));
                         setMode("day");
                       }}
+                      onOpenDeadline={openDeadline}
+                      onOpenAppointment={openAppointment}
                     />
                   )}
                   {mode === "month" && (
@@ -835,7 +925,13 @@ function AgendaPage() {
               )}
             </div>
 
-            {showUpcoming && <UpcomingDeadlines items={upcomingDeadlines} />}
+            {showUpcoming && (
+              <UpcomingDeadlines
+                items={upcomingDeadlines}
+                onOpenDeadline={openDeadline}
+              />
+            )}
+
           </div>
         </>
       )}
@@ -1174,11 +1270,15 @@ function DayView({
   deadlines,
   appointments,
   nowEpoch,
+  onOpenDeadline,
+  onOpenAppointment,
 }: {
   anchor: Date;
   deadlines: readonly Deadline[];
   appointments: readonly Appointment[];
   nowEpoch: number;
+  onOpenDeadline: (d: Deadline, ev?: React.SyntheticEvent) => void;
+  onOpenAppointment: (a: Appointment, ev?: React.SyntheticEvent) => void;
 }) {
   const isEmpty = deadlines.length === 0 && appointments.length === 0;
   return (
@@ -1212,10 +1312,19 @@ function DayView({
         ) : (
           <>
             {deadlines.map((d) => (
-              <DeadlineCard key={d.id} deadline={d} nowEpoch={nowEpoch} />
+              <DeadlineCard
+                key={d.id}
+                deadline={d}
+                nowEpoch={nowEpoch}
+                onOpen={onOpenDeadline}
+              />
             ))}
             {appointments.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} />
+              <AppointmentCard
+                key={a.id}
+                appointment={a}
+                onOpen={onOpenAppointment}
+              />
             ))}
           </>
         )}
@@ -1230,12 +1339,16 @@ function WeekView({
   appointments,
   nowEpoch,
   onPickDay,
+  onOpenDeadline,
+  onOpenAppointment,
 }: {
   anchor: Date;
   deadlines: readonly Deadline[];
   appointments: readonly Appointment[];
   nowEpoch: number;
   onPickDay: (d: Date) => void;
+  onOpenDeadline: (d: Deadline, ev?: React.SyntheticEvent) => void;
+  onOpenAppointment: (a: Appointment, ev?: React.SyntheticEvent) => void;
 }) {
   const start = startOfWeek(anchor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -1255,35 +1368,43 @@ function WeekView({
             );
             const isToday = sameDay(d, new Date());
             return (
-              <button
-                type="button"
+              <section
                 key={d.toISOString()}
-                onClick={() => onPickDay(d)}
-                aria-label={`Abrir dia ${d.toLocaleDateString("pt-BR")}`}
-                className={`flex min-h-[120px] flex-col rounded-md border p-2 text-left transition hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                aria-label={`Dia ${d.toLocaleDateString("pt-BR")}`}
+                className={`flex min-h-[120px] flex-col rounded-md border p-2 ${
                   isToday
                     ? "border-primary/50 bg-primary/5"
                     : "border-border/70 bg-card"
                 }`}
               >
-                <div className="mb-2 flex items-baseline justify-between">
+                <button
+                  type="button"
+                  onClick={() => onPickDay(d)}
+                  aria-label={`Abrir dia ${d.toLocaleDateString("pt-BR")}`}
+                  className="mb-2 flex items-baseline justify-between rounded px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   <span className="text-xs font-medium uppercase text-muted-foreground">
                     {d.toLocaleDateString("pt-BR", { weekday: "short" })}
                   </span>
                   <span className="text-sm font-semibold text-foreground">
                     {d.getDate().toString().padStart(2, "0")}
                   </span>
-                </div>
+                </button>
                 <div className="space-y-1">
                   {dayDeadlines.slice(0, 2).map((x) => (
                     <WeekDeadlineItem
                       key={x.id}
                       deadline={x}
                       nowEpoch={nowEpoch}
+                      onOpen={onOpenDeadline}
                     />
                   ))}
                   {dayAppointments.slice(0, 2).map((x) => (
-                    <WeekAppointmentItem key={x.id} appointment={x} />
+                    <WeekAppointmentItem
+                      key={x.id}
+                      appointment={x}
+                      onOpen={onOpenAppointment}
+                    />
                   ))}
                   {dayDeadlines.length + dayAppointments.length > 4 && (
                     <div className="text-[11px] text-muted-foreground">
@@ -1291,7 +1412,7 @@ function WeekView({
                     </div>
                   )}
                 </div>
-              </button>
+              </section>
             );
           })}
         </div>
@@ -1299,6 +1420,7 @@ function WeekView({
     </Card>
   );
 }
+
 
 function MonthView({
   anchor,
@@ -1414,17 +1536,36 @@ function MonthView({
 function DeadlineCard({
   deadline,
   nowEpoch,
+  onOpen,
 }: {
   deadline: Deadline;
   nowEpoch: number;
+  onOpen?: (d: Deadline, ev?: React.SyntheticEvent) => void;
 }) {
   const presentation = getDeadlinePresentation(deadline, nowEpoch);
   const overdue = isDeadlineOverdue(deadline, nowEpoch);
   const StateIcon = DEADLINE_STATE_ICON[presentation.state];
+  const clickable = typeof onOpen === "function";
+  const activate = (ev: React.SyntheticEvent) => {
+    if (onOpen) onOpen(deadline, ev);
+  };
   return (
     <article
       aria-label={`Prazo — ${deadline.title}`}
-      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? activate : undefined}
+      onKeyDown={
+        clickable
+          ? (ev) => {
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                activate(ev);
+              }
+            }
+          : undefined
+      }
+      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass} ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
     >
       <span
         aria-hidden
@@ -1485,7 +1626,15 @@ function DeadlineCard({
   );
 }
 
-function AppointmentCard({ appointment }: { appointment: Appointment }) {
+
+function AppointmentCard({
+  appointment,
+  onOpen,
+}: {
+  appointment: Appointment;
+  onOpen?: (a: Appointment, ev?: React.SyntheticEvent) => void;
+}) {
+
   const presentation = getAppointmentPresentation(appointment);
   const ModeIcon = APPOINTMENT_MODE_ICON[appointment.mode];
   const StateIcon =
@@ -1494,11 +1643,29 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
       : presentation.state === "cancelled"
         ? XCircle
         : CalendarDays;
+  const clickable = typeof onOpen === "function";
+  const activate = (ev: React.SyntheticEvent) => {
+    if (onOpen) onOpen(appointment, ev);
+  };
   return (
     <article
       aria-label={`Compromisso — ${appointment.title}`}
-      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? activate : undefined}
+      onKeyDown={
+        clickable
+          ? (ev) => {
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                activate(ev);
+              }
+            }
+          : undefined
+      }
+      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass} ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
     >
+
       <span
         aria-hidden
         className={`absolute inset-y-0 left-0 w-1 ${presentation.accentClass}`}
@@ -1563,39 +1730,66 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
 function WeekDeadlineItem({
   deadline,
   nowEpoch,
+  onOpen,
 }: {
   deadline: Deadline;
   nowEpoch: number;
+  onOpen?: (d: Deadline, ev?: React.SyntheticEvent) => void;
 }) {
   const presentation = getDeadlinePresentation(deadline, nowEpoch);
   const StateIcon = DEADLINE_STATE_ICON[presentation.state];
   const isDone =
     presentation.state === "cancelled" || presentation.state === "completed";
-  return (
-    <div
-      className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] ${presentation.containerClass}`}
-      title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
-      aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
-    >
+  const commonClass = `flex w-full items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] text-left ${presentation.containerClass}`;
+  const content = (
+    <>
       <StateIcon className="h-3 w-3 shrink-0" aria-hidden />
       <span className="shrink-0 font-medium">{formatTime(deadline.dueAt)}</span>
       <span className={`truncate ${isDone ? "line-through opacity-70" : ""}`}>
         {deadline.title}
       </span>
+    </>
+  );
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onOpen(deadline, ev);
+        }}
+        title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
+        aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
+        className={`${commonClass} transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div
+      className={commonClass}
+      title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
+      aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
+    >
+      {content}
     </div>
   );
 }
 
-function WeekAppointmentItem({ appointment }: { appointment: Appointment }) {
+function WeekAppointmentItem({
+  appointment,
+  onOpen,
+}: {
+  appointment: Appointment;
+  onOpen?: (a: Appointment, ev?: React.SyntheticEvent) => void;
+}) {
   const presentation = getAppointmentPresentation(appointment);
   const isDone =
     presentation.state === "cancelled" || presentation.state === "completed";
-  return (
-    <div
-      className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] ${presentation.containerClass}`}
-      title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
-      aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
-    >
+  const commonClass = `flex w-full items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] text-left ${presentation.containerClass}`;
+  const content = (
+    <>
       <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
       <span className="shrink-0 font-medium">
         {formatTime(appointment.startsAt)}
@@ -1603,13 +1797,45 @@ function WeekAppointmentItem({ appointment }: { appointment: Appointment }) {
       <span className={`truncate ${isDone ? "line-through opacity-70" : ""}`}>
         {appointment.title}
       </span>
+    </>
+  );
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onOpen(appointment, ev);
+        }}
+        title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
+        aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
+        className={`${commonClass} transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div
+      className={commonClass}
+      title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
+      aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
+    >
+      {content}
     </div>
   );
 }
 
+
 // ---- Próximos prazos ------------------------------------------------------
 
-function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
+function UpcomingDeadlines({
+  items,
+  onOpenDeadline,
+}: {
+  items: readonly Deadline[];
+  onOpenDeadline?: (d: Deadline, ev?: React.SyntheticEvent) => void;
+}) {
   return (
     <Card className="h-fit border-border/70">
       <CardHeader>
@@ -1635,10 +1861,28 @@ function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
                       ? "normal"
                       : "low";
               const PriorityIcon = DEADLINE_STATE_ICON[priorityState];
+              const clickable = typeof onOpenDeadline === "function";
+              const activate = (ev: React.SyntheticEvent) => {
+                if (onOpenDeadline) onOpenDeadline(d, ev);
+              };
               return (
                 <li
                   key={d.id}
-                  className="rounded-md border border-border/70 bg-card p-3 text-sm"
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onClick={clickable ? activate : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.preventDefault();
+                            activate(ev);
+                          }
+                        }
+                      : undefined
+                  }
+                  aria-label={clickable ? `Abrir prazo ${d.title}` : undefined}
+                  className={`rounded-md border border-border/70 bg-card p-3 text-sm ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
                 >
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" aria-hidden />
@@ -1673,3 +1917,4 @@ function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
     </Card>
   );
 }
+
