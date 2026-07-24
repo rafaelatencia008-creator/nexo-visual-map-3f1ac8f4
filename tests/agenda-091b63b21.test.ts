@@ -244,9 +244,9 @@ describe("LV-09.1B.6.3B.2.1 · Comportamento com active=false", () => {
 // ---------------------------------------------------------------------------
 
 describe("LV-09.1B.6.3B.2.1 · Rotas e consumidores", () => {
-  it("40. Rota /app/agenda/$appointmentId continua montando o wrapper", () => {
-    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailDialog");
-    expect(ROUTE_DETAIL_SRC).toContain('from "@/features/agenda/AgendaItemDetailDialog"');
+  it("40. Rota /app/agenda/$appointmentId monta o Content (página canônica — LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailContent");
+    expect(ROUTE_DETAIL_SRC).toContain('from "@/features/agenda/AgendaItemDetailContent"');
   });
   it("41. Calendário /app/agenda continua montando o wrapper", () => {
     expect(ROUTE_INDEX_SRC).toContain("<AgendaItemDetailDialog");
