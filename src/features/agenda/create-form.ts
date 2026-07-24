@@ -427,6 +427,10 @@ const AGENDA_MESSAGE_MAP: Readonly<Record<string, TranslatedServiceError>> =
       message: "O horário de término deve ser posterior ao início.",
       field: "endsAt",
     },
+    period_inverted: {
+      message: "O horário de término deve ser posterior ao início.",
+      field: "endsAt",
+    },
     invalid_mode: { message: "Modalidade inválida.", field: "mode" },
     invalid_location: {
       message: `Localização inválida (até ${APPOINTMENT_LOCATION_MAX} caracteres).`,
