@@ -1117,31 +1117,24 @@ export function AgendaItemDetailDialog(
                     permRemove={permRemove}
                     mutating={mutating}
                     mutationError={mutationError}
-                    onSelectDeadlineAction={(action) => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingStatus({ kind: "deadline", action });
-                    }}
-                    onSelectAppointmentAction={(action) => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingStatus({ kind: "appointment", action });
-                    }}
-                    onRequestRemoval={() => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingRemoval(true);
-                    }}
+                    onSelectDeadlineAction={requestDeadlineStatusChange}
+                    onSelectAppointmentAction={requestAppointmentStatusChange}
+                    onRequestRemoval={requestRemoval}
                   />
-                  {(permChangeStatus === "error" || permRemove === "error") && (
-                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground">
+                  {(perm === "error" || permChangeStatus === "error" || permRemove === "error") && (
+                    <div
+                      role="status"
+                      className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground"
+                      data-testid="perm-eval-error-banner"
+                      data-has-error={hasPermEvalError ? "true" : "false"}
+                    >
                       <span>Não foi possível verificar esta permissão.</span>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         onClick={retryPermissions}
-                        disabled={mutating}
+                        disabled={mutating || !lockDecisions.canRetryPermissions}
                       >
                         Tentar novamente
                       </Button>
