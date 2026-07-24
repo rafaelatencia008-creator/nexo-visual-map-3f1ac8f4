@@ -630,34 +630,83 @@ function AssignmentSelect(props: {
   assignments: AssignmentsState;
   disabled: boolean;
   id: string;
+  fieldError?: string;
+  errorMessageId: string;
+  loadErrorMessageId: string;
+  onRetry: () => void;
 }): React.ReactElement {
-  const { value, onChange, assignments, disabled, id } = props;
+  const {
+    value,
+    onChange,
+    assignments,
+    disabled,
+    id,
+    fieldError,
+    errorMessageId,
+    loadErrorMessageId,
+    onRetry,
+  } = props;
+  const loading = assignments.kind === "loading";
+  const loadError = assignments.kind === "error";
+  const describedBy = [
+    loadError ? loadErrorMessageId : null,
+    fieldError ? errorMessageId : null,
+  ]
+    .filter((x): x is string => !!x)
+    .join(" ") || undefined;
   return (
-    <Select
-      value={value === "" ? "none" : value}
-      onValueChange={(v) => onChange(v === "none" ? "" : v)}
-      disabled={disabled || assignments.kind === "loading"}
-    >
-      <SelectTrigger id={id}>
-        <SelectValue
-          placeholder={
-            assignments.kind === "loading"
-              ? "Carregando responsáveis…"
-              : "Sem responsável específico"
-          }
-        />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="none">Sem responsável específico</SelectItem>
-        {assignments.kind === "ready" &&
-          assignments.items.map((a: Assignment) => (
-            <SelectItem key={a.id} value={a.id}>
-              {assignmentLabel(a)}
-            </SelectItem>
-          ))}
-      </SelectContent>
-    </Select>
+    <div className="space-y-1.5">
+      <Select
+        value={value === "" ? "none" : value}
+        onValueChange={(v) => onChange(v === "none" ? "" : v)}
+        disabled={disabled || loading}
+      >
+        <SelectTrigger
+          id={id}
+          aria-invalid={!!fieldError || loadError}
+          aria-describedby={describedBy}
+          aria-busy={loading}
+        >
+          <SelectValue
+            placeholder={
+              loading
+                ? "Carregando responsáveis…"
+                : "Sem responsável específico"
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Sem responsável específico</SelectItem>
+          {assignments.kind === "ready" &&
+            assignments.items.map((a: Assignment) => (
+              <SelectItem key={a.id} value={a.id}>
+                {assignmentLabel(a)}
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
+      <span className="sr-only" aria-live="polite">
+        {loading ? "Carregando responsáveis" : ""}
+      </span>
+      {loadError && (
+        <p
+          id={loadErrorMessageId}
+          role="alert"
+          className="flex flex-wrap items-center gap-2 text-xs text-destructive"
+        >
+          <span>{assignments.message}</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="underline underline-offset-2 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
+            Tentar novamente
+          </button>
+        </p>
+      )}
+    </div>
   );
+}
 }
 
 function DeadlineFields(props: {
