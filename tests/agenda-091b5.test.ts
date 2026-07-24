@@ -145,9 +145,9 @@ describe("LV-09.1B.5 — isoDateTimeToDatetimeLocal", () => {
   });
 
   it("3. lança erro para ISO inválido", () => {
-    expect(() =>
-      isoDateTimeToDatetimeLocal("nao-eh-iso" as unknown as IsoDateTime),
-    ).toThrow();
+    expect(() => isoDateTimeToDatetimeLocal("nao-eh-iso")).toThrow(
+      /invalid_iso/,
+    );
   });
 });
 
