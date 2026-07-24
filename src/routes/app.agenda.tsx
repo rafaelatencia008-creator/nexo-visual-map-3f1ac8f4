@@ -207,18 +207,38 @@ async function loadAll<T>(
 async function fetchAgenda(
   environment: MockDomainEnvironment,
   context: ServiceContext,
+  filters: AgendaFilters,
 ): Promise<AgendaData> {
-  const deadlines = await loadAll<Deadline>((cursor) =>
-    environment.services.deadlines.list(context, {
-      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-    }),
-  );
-  const appointments = await loadAll<Appointment>((cursor) =>
-    environment.services.appointments.list(context, {
-      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-    }),
-  );
+  const deadlinesBase = buildDeadlineListOptions(filters);
+  const appointmentsBase = buildAppointmentListOptions(filters);
+  const deadlines = shouldQueryDeadlines(filters)
+    ? await loadAll<Deadline>((cursor) =>
+        environment.services.deadlines.list(context, {
+          ...deadlinesBase,
+          page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+        }),
+      )
+    : [];
+  const appointments = shouldQueryAppointments(filters)
+    ? await loadAll<Appointment>((cursor) =>
+        environment.services.appointments.list(context, {
+          ...appointmentsBase,
+          page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+        }),
+      )
+    : [];
   return { deadlines, appointments };
+}
+
+async function fetchAccessibleCases(
+  environment: MockDomainEnvironment,
+  context: ServiceContext,
+): Promise<readonly Case[]> {
+  return loadAll<Case>((cursor) =>
+    environment.services.cases.list(context, {
+      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+    }),
+  );
 }
 
 // ---- Date helpers ---------------------------------------------------------
