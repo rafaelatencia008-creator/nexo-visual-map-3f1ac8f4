@@ -684,13 +684,12 @@ function AgendaPage() {
       if (ev?.currentTarget instanceof HTMLElement) {
         lastTriggerRef.current = ev.currentTarget;
       }
-      setSelected({
-        type: "appointment",
-        caseId: a.caseId,
-        id: a.id as AppointmentId,
+      navigate({
+        to: "/app/agenda/$appointmentId",
+        params: { appointmentId: String(a.id) },
       });
     },
-    [],
+    [navigate],
   );
   const closeDetail = React.useCallback(() => {
     setSelected(null);
