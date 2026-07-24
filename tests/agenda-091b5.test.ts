@@ -1638,3 +1638,531 @@ describe("LV-09.1B.5.2 — respostas obsoletas do detalhe", () => {
 
 // ---- Validade e erros progressivos (130–137) ----------------------------
 
+
+describe("LV-09.1B.5.2 — validade e erros progressivos", () => {
+  async function bd() {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    return { env, d, f: deadlineToEditForm(d) };
+  }
+
+  it("130. formulário inválido produz canSubmit = false", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "  " },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.canSubmit).toBe(false);
+  });
+
+  it("131. formulário válido e alterado produz canSubmit = true", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "novo" },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.canSubmit).toBe(true);
+  });
+
+  it("132. formulário sem mudanças produz canSubmit = false", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(d, f, d.metadata.version);
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.canSubmit).toBe(false);
+  });
+
+  it("133. erro de campo não tocado fica oculto antes de submit", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "  " },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.displayErrors.title).toBeUndefined();
+  });
+
+  it("134. erro aparece depois de touched", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "  " },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: { title: true },
+      attemptedSubmit: false,
+    });
+    expect(ui.displayErrors.title).toBeDefined();
+  });
+
+  it("135. todos os erros aparecem depois de attemptedSubmit", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "  ", kind: "xyz" },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: true,
+    });
+    expect(ui.displayErrors.title).toBeDefined();
+    expect(ui.displayErrors.kind).toBeDefined();
+  });
+
+  it("136. envio em andamento bloqueia novo envio (canSubmit = false)", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "novo" },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "allowed",
+      submitting: true,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.canSubmit).toBe(false);
+  });
+
+  it("137. permissão negada bloqueia salvamento", async () => {
+    const { d, f } = await bd();
+    const build = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "novo" },
+      d.metadata.version,
+    );
+    const ui = deriveEditUiState({
+      mode: "edit",
+      perm: "denied",
+      submitting: false,
+      build,
+      storedErrors: {},
+      touched: {},
+      attemptedSubmit: false,
+    });
+    expect(ui.canSubmit).toBe(false);
+  });
+});
+
+// ---- Conflito otimista (138–145) ---------------------------------------
+
+describe("LV-09.1B.5.2 — conflito otimista", () => {
+  it("138. receive_conflict registra expected/actual no estado", () => {
+    const s = reduceConflictAction(null, {
+      type: "receive_conflict",
+      expected: 3,
+      actual: 7,
+    });
+    expect(s).toEqual({ expected: 3, actual: 7 });
+  });
+
+  it("139. conflito preserva rascunho local (builder é puro)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const draft: EditDeadlineFormState = {
+      ...deadlineToEditForm(d),
+      title: "meu rascunho",
+    };
+    // Alguém adianta a versão.
+    ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "outra sessão",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    // Envio com expectedVersion antigo → conflict, rascunho intacto.
+    const built = buildUpdateDeadlineInput(d, draft, d.metadata.version);
+    if (!(built.ok && built.changed)) throw new Error("expected changed");
+    const err = fail(await env.services.deadlines.update(OWNER_ALFA, built.input));
+    expect(err.code).toBe("conflict");
+    expect(draft.title).toBe("meu rascunho");
+    expect(built.input.expectedVersion).toBe(d.metadata.version);
+  });
+
+  it("140. keep_reviewing preserva rascunho e limpa apenas o banner", () => {
+    const initial: ConflictState = { expected: 3, actual: 7 };
+    const next = reduceConflictAction(initial, { type: "keep_reviewing" });
+    expect(next).toBeNull();
+  });
+
+  it("141. nova tentativa com expectedVersion antigo continua sendo conflict", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "remoto",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    // Duas tentativas seguidas com expectedVersion antigo continuam falhando.
+    const e1 = fail(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "tentativa 1",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const e2 = fail(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "tentativa 2",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    expect(e1.code).toBe("conflict");
+    expect(e2.code).toBe("conflict");
+  });
+
+  it("142. resolveDiscardIntent('reload_after_conflict') com mudanças pede confirmação", () => {
+    const dec = resolveDiscardIntent("reload_after_conflict", {
+      mode: "edit",
+      hasChanges: true,
+      submitting: false,
+    });
+    expect(dec.action).toBe("confirm");
+    if (dec.action === "confirm") expect(dec.intent).toBe("reload_after_conflict");
+  });
+
+  it("143. reload_confirmed limpa o banner de conflito", () => {
+    const initial: ConflictState = { expected: 3, actual: 7 };
+    const next = reduceConflictAction(initial, { type: "reload_confirmed" });
+    expect(next).toBeNull();
+  });
+
+  it("144. recarga busca a entidade atual pelo serviço oficial", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const advanced = ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "atual",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const reloaded = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(reloaded.metadata.version).toBe(advanced.metadata.version);
+    expect(reloaded.title).toBe("atual");
+  });
+
+  it("145. nova edição após recarga usa a expectedVersion recarregada", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const advanced = ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "atual",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const f = deadlineToEditForm(advanced);
+    const built = buildUpdateDeadlineInput(
+      advanced,
+      { ...f, title: "após recarga" },
+      advanced.metadata.version,
+    );
+    if (!(built.ok && built.changed)) throw new Error("expected changed");
+    expect(built.input.expectedVersion).toBe(advanced.metadata.version);
+    const r = ok(await env.services.deadlines.update(OWNER_ALFA, built.input));
+    expect(r.title).toBe("após recarga");
+  });
+});
+
+// ---- Descarte (146–151) -------------------------------------------------
+
+describe("LV-09.1B.5.2 — descarte de alterações", () => {
+  it("146. fechar sem alterações roda imediatamente (sem confirmação)", () => {
+    const dec = resolveDiscardIntent("close", {
+      mode: "edit",
+      hasChanges: false,
+      submitting: false,
+    });
+    expect(dec).toEqual({ action: "run", intent: "close" });
+  });
+
+  it("147. fechar com alterações pede confirmação", () => {
+    const dec = resolveDiscardIntent("close", {
+      mode: "edit",
+      hasChanges: true,
+      submitting: false,
+    });
+    expect(dec).toEqual({ action: "confirm", intent: "close" });
+  });
+
+  it("148. cancelar edição com alterações pede confirmação", () => {
+    const dec = resolveDiscardIntent("cancel_edit", {
+      mode: "edit",
+      hasChanges: true,
+      submitting: false,
+    });
+    expect(dec).toEqual({ action: "confirm", intent: "cancel_edit" });
+  });
+
+  it("149. cancelar edição sem alterações roda imediatamente", () => {
+    const dec = resolveDiscardIntent("cancel_edit", {
+      mode: "edit",
+      hasChanges: false,
+      submitting: false,
+    });
+    expect(dec).toEqual({ action: "run", intent: "cancel_edit" });
+  });
+
+  it("150. fechar em modo view (sem edição) roda imediatamente mesmo com hasChanges spurious", () => {
+    // mode='view' com hasChanges=true é um estado impossível, mas o helper
+    // deve tratar o fechamento como imediato — não abre confirmação.
+    const dec = resolveDiscardIntent("close", {
+      mode: "view",
+      hasChanges: true,
+      submitting: false,
+    });
+    expect(dec).toEqual({ action: "run", intent: "close" });
+  });
+
+  it("151. durante submitting, fechamento e cancelamento e reload são bloqueados", () => {
+    for (const intent of ["close", "cancel_edit", "reload_after_conflict"] as const) {
+      const dec = resolveDiscardIntent(intent, {
+        mode: "edit",
+        hasChanges: true,
+        submitting: true,
+      });
+      expect(dec).toEqual({ action: "blocked" });
+    }
+  });
+});
+
+// ---- Pós-atualização por geração (152–161) ------------------------------
+
+describe("LV-09.1B.5.2 — decisão pós-atualização", () => {
+  it("152. buildPendingUpdateMarker cria marcador com a próxima geração", () => {
+    const marker = buildPendingUpdateMarker(4, {
+      type: "deadline",
+      item: { id: "deadline_abc" },
+    });
+    expect(marker.requiredGeneration).toBe(5);
+    expect(marker.type).toBe("deadline");
+    expect(marker.id).toBe("deadline_abc");
+  });
+
+  it("153. ready antigo (generation < required) resulta em wait", () => {
+    const marker: PendingCreatedItem = {
+      id: "x",
+      type: "deadline",
+      requiredGeneration: 10,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 9 },
+      new Set(),
+      new Set(),
+    );
+    expect(eff.kind).toBe("wait");
+  });
+
+  it("154. loading na geração exigida resulta em wait", () => {
+    const marker: PendingCreatedItem = {
+      id: "x",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "loading", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(eff.kind).toBe("wait");
+  });
+
+  it("155. erro na geração exigida resulta em wait (permite retry)", () => {
+    const marker: PendingCreatedItem = {
+      id: "x",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "error", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(eff.kind).toBe("wait");
+  });
+
+  it("156. ready correto com ID visível resulta em clear_silent", () => {
+    const marker: PendingCreatedItem = {
+      id: "deadline_1",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 3 },
+      new Set(["deadline_1"]),
+      new Set(),
+    );
+    expect(eff.kind).toBe("clear_silent");
+  });
+
+  it("157. ready correto sem ID visível resulta em clear_with_notice", () => {
+    const marker: PendingCreatedItem = {
+      id: "deadline_1",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(eff.kind).toBe("clear_with_notice");
+  });
+
+  it("158. decisão wait não limpa o marcador (o consumidor deve mantê-lo)", () => {
+    // Contrato: quando eff.kind === 'wait', o consumidor NÃO deve invocar
+    // setPendingUpdated(null). Testamos que 'wait' é o único que sinaliza
+    // ausência de limpeza — os outros produzem chamada de limpeza.
+    const marker: PendingCreatedItem = {
+      id: "x",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "loading", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(eff.kind).toBe("wait");
+    // Simula consumidor: ele testaria eff.kind !== 'wait' antes de limpar.
+    let cleared = false;
+    if (eff.kind !== "wait") cleared = true;
+    expect(cleared).toBe(false);
+  });
+
+  it("159. visible limpa sem aviso — simulação do consumidor", () => {
+    const marker: PendingCreatedItem = {
+      id: "a",
+      type: "appointment",
+      requiredGeneration: 2,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 2 },
+      new Set(),
+      new Set(["a"]),
+    );
+    // Consumidor limpa e NÃO emite toast.
+    let cleared = false;
+    let notified = false;
+    if (eff.kind !== "wait") {
+      cleared = true;
+      if (eff.kind === "clear_with_notice") notified = true;
+    }
+    expect(cleared).toBe(true);
+    expect(notified).toBe(false);
+  });
+
+  it("160. hidden limpa e produz exatamente um aviso", () => {
+    const marker: PendingCreatedItem = {
+      id: "a",
+      type: "appointment",
+      requiredGeneration: 2,
+    };
+    const eff = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 2 },
+      new Set(),
+      new Set(),
+    );
+    let notices = 0;
+    if (eff.kind === "clear_with_notice") notices++;
+    // Chamar a mesma decisão de novo depois de limpar não gera aviso extra:
+    // o consumidor limpa o marcador e o efeito não roda novamente.
+    expect(notices).toBe(1);
+  });
+
+  it("161. retry depois de erro consegue resolver quando a próxima geração completa", () => {
+    const marker: PendingCreatedItem = {
+      id: "d1",
+      type: "deadline",
+      requiredGeneration: 3,
+    };
+    const errored = resolvePendingUpdateAction(
+      marker,
+      { kind: "error", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(errored.kind).toBe("wait");
+    // Nova recarga bem-sucedida na geração posterior resolve.
+    const resolved = resolvePendingUpdateAction(
+      marker,
+      { kind: "ready", generation: 4 },
+      new Set(["d1"]),
+      new Set(),
+    );
+    expect(resolved.kind).toBe("clear_silent");
+  });
+});
