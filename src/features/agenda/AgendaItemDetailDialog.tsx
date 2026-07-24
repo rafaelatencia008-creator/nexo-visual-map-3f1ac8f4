@@ -1243,9 +1243,237 @@ export function AgendaItemDetailDialog(
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={pendingStatus !== null}
+        onOpenChange={(o) => {
+          if (!o && !mutationInFlightRef.current) {
+            setPendingStatus(null);
+            setMutationError(null);
+            setStatusConflict(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus?.kind === "deadline"
+                ? pendingStatus.action.confirmTitle
+                : pendingStatus?.kind === "appointment"
+                  ? pendingStatus.action.confirmTitle
+                  : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus &&
+                `Alterar status de ${pendingStatus.action.currentLabel} para ${pendingStatus.action.targetLabel}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {mutationError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{mutationError.message}</span>
+            </div>
+          )}
+          <AlertDialogFooter>
+            {statusConflict ? (
+              <>
+                <AlertDialogCancel disabled={mutating}>Fechar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    reloadAfterStatusConflict();
+                  }}
+                  disabled={mutating}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                  Recarregar dados
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmStatusChange();
+                  }}
+                  disabled={mutating || permChangeStatus !== "allowed"}
+                  aria-busy={mutating}
+                >
+                  {mutating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  )}
+                  Confirmar
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingRemoval}
+        onOpenChange={(o) => {
+          if (!o && !mutationInFlightRef.current) {
+            setPendingRemoval(false);
+            setMutationError(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selected?.type === "deadline"
+                ? "Excluir este prazo?"
+                : "Excluir este compromisso?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {mutationError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{mutationError.message}</span>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmRemoval();
+              }}
+              disabled={mutating || permRemove !== "allowed"}
+              aria-busy={mutating}
+            >
+              {mutating && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              )}
+              <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
+
+function ItemActionsSection({
+  loaded,
+  permChangeStatus,
+  permRemove,
+  mutating,
+  mutationError,
+  onSelectDeadlineAction,
+  onSelectAppointmentAction,
+  onRequestRemoval,
+}: {
+  loaded: Loaded;
+  permChangeStatus: PermState;
+  permRemove: PermState;
+  mutating: boolean;
+  mutationError: TranslatedMutationError | null;
+  onSelectDeadlineAction: (action: DeadlineStatusAction) => void;
+  onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
+  onRequestRemoval: () => void;
+}) {
+  const canStatus = permChangeStatus === "allowed";
+  const canRemove = permRemove === "allowed";
+  if (!canStatus && !canRemove) return null;
+  const statusActions =
+    loaded.type === "deadline"
+      ? getDeadlineStatusActions(loaded.item.status)
+      : getAppointmentStatusActions(loaded.item.status);
+
+  return (
+    <section
+      aria-label="Ações do item"
+      className="mt-4 rounded-md border border-border/70 bg-muted/20 p-3"
+    >
+      <div className="mb-2 text-xs font-medium text-foreground">
+        Ações do item
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {canStatus &&
+          statusActions.map((a) =>
+            loaded.type === "deadline" ? (
+              <Button
+                key={`d-${a.status}`}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={mutating}
+                onClick={() =>
+                  onSelectDeadlineAction(a as DeadlineStatusAction)
+                }
+              >
+                {a.status === (loaded.item.status === "completed"
+                  ? "pending"
+                  : "completed") ? (
+                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                ) : a.status === "cancelled" ? (
+                  <Ban className="mr-2 h-4 w-4" aria-hidden />
+                ) : (
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                )}
+                {a.actionLabel}
+              </Button>
+            ) : (
+              <Button
+                key={`a-${a.status}`}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={mutating}
+                onClick={() =>
+                  onSelectAppointmentAction(a as AppointmentStatusAction)
+                }
+              >
+                {a.status === "completed" ? (
+                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                ) : a.status === "cancelled" ? (
+                  <Ban className="mr-2 h-4 w-4" aria-hidden />
+                ) : (
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                )}
+                {a.actionLabel}
+              </Button>
+            ),
+          )}
+        {canRemove && (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={mutating}
+            onClick={onRequestRemoval}
+          >
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+            Excluir
+          </Button>
+        )}
+      </div>
+      {mutationError && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive"
+        >
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>{mutationError.message}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 
 // ---- Ícone de estado do prazo --------------------------------------------
 
