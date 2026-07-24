@@ -467,7 +467,7 @@ describe("LV-09.1B.7.2 · B · loadAvailabilityCases", () => {
 
 describe("LV-09.1B.7.2 · C · loadActiveAssignmentsForCase", () => {
   it("21. sem processo selecionado o componente não chama listByCase", () => {
-    expect(CONTENT_SRC).toMatch(/form\.caseId\.length === 0/);
+    expect(CONTENT_SRC).toMatch(/isCaseId\(rawCaseId\)/);
     expect(CONTENT_SRC).toMatch(/loadActiveAssignmentsForCase/);
   });
   it("22. primeira página usa PAGE_LIMIT_MAX", async () => {
