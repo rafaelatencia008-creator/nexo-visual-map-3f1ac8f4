@@ -901,9 +901,9 @@ describe("LV-09.1B.7.2 · escopo preservado", () => {
     expect(DEC_SRC).toMatch(/LV-09\.1B\.7\.2/);
     expect(DEC_SRC).toMatch(/\/app\/disponibilidade/);
   });
-  it("S10. nenhum dos três arquivos-chave contém `as never`", () => {
+  it("S10. nenhum dos três arquivos-chave contém `as never` fora de comentários", () => {
     for (const p of [FORM_PATH, CONTENT_PATH, SESSION_PATH]) {
-      const src = read(p);
+      const src = stripComments(read(p));
       expect(src).not.toMatch(/\bas\s+never\b/);
     }
   });
@@ -915,9 +915,10 @@ describe("LV-09.1B.7.2 · escopo preservado", () => {
     expect(src).not.toMatch(/@tanstack\/react-router/);
   });
   it("S12. availability-form.ts não usa casts inseguros", () => {
-    expect(FORM_SRC).not.toMatch(/\bas\s+never\b/);
-    expect(FORM_SRC).not.toMatch(/undefined\s+as\b/);
-    expect(FORM_SRC).not.toMatch(/\bas\s+AssignmentId\b/);
+    const src = stripComments(FORM_SRC);
+    expect(src).not.toMatch(/\bas\s+never\b/);
+    expect(src).not.toMatch(/undefined\s+as\b/);
+    expect(src).not.toMatch(/\bas\s+AssignmentId\b/);
   });
 });
 
