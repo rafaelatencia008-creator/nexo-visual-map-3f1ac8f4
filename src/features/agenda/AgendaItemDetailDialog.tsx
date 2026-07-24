@@ -744,6 +744,7 @@ export function AgendaItemDetailDialog(
                   loaded={detail.loaded}
                   caseLabel={currentCaseLabel}
                   perm={perm}
+                  referenceEpoch={referenceEpoch}
                 />
               )}
 
@@ -774,17 +775,25 @@ export function AgendaItemDetailDialog(
                   {detail.loaded.type === "deadline" && dForm && (
                     <DeadlineEditFields
                       form={dForm}
-                      errors={errors}
+                      errors={displayErrors}
                       onChange={(k, v) => {
                         setDForm((prev) => (prev ? { ...prev, [k]: v } : prev));
+                        const key = k === "dueAtLocal" ? "dueAt" : k;
+                        setTouched((prev) =>
+                          prev[key] ? prev : { ...prev, [key]: true },
+                        );
                         setErrors((prev) => {
-                          if (prev[k === "dueAtLocal" ? "dueAt" : k] === undefined)
-                            return prev;
-                          const key = k === "dueAtLocal" ? "dueAt" : k;
+                          if (prev[key] === undefined) return prev;
                           const { [key]: _o, ...rest } = prev;
                           return rest;
                         });
                         setGeneralError(null);
+                      }}
+                      onBlurField={(k) => {
+                        const key = k === "dueAtLocal" ? "dueAt" : k;
+                        setTouched((prev) =>
+                          prev[key] ? prev : { ...prev, [key]: true },
+                        );
                       }}
                       assignments={assignments}
                       originalAssignmentId={
@@ -797,7 +806,7 @@ export function AgendaItemDetailDialog(
                   {detail.loaded.type === "appointment" && aForm && (
                     <AppointmentEditFields
                       form={aForm}
-                      errors={errors}
+                      errors={displayErrors}
                       onChange={(k, v) => {
                         setAForm((prev) => (prev ? { ...prev, [k]: v } : prev));
                         const errKey =
@@ -806,12 +815,26 @@ export function AgendaItemDetailDialog(
                             : k === "endsAtLocal"
                               ? "endsAt"
                               : k;
+                        setTouched((prev) =>
+                          prev[errKey] ? prev : { ...prev, [errKey]: true },
+                        );
                         setErrors((prev) => {
                           if (prev[errKey] === undefined) return prev;
                           const { [errKey]: _o, ...rest } = prev;
                           return rest;
                         });
                         setGeneralError(null);
+                      }}
+                      onBlurField={(k) => {
+                        const errKey =
+                          k === "startsAtLocal"
+                            ? "startsAt"
+                            : k === "endsAtLocal"
+                              ? "endsAt"
+                              : k;
+                        setTouched((prev) =>
+                          prev[errKey] ? prev : { ...prev, [errKey]: true },
+                        );
                       }}
                       assignments={assignments}
                       originalAssignmentId={
