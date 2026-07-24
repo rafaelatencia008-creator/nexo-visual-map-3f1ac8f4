@@ -932,12 +932,13 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(slice).not.toMatch(/services\./);
   });
 
-  it("82. requestClose consulta getMutationLockDecisions()", () => {
+  it("82. requestClose consulta o gate canCloseDetail (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
+    expect(slice).toMatch(/if \(!canCloseDetail\) return;/);
   });
+
   it("83. Escape no diálogo principal bloqueia via getMutationLockDecisions", () => {
     expect(DETAIL_SRC).toMatch(
       /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/,
@@ -992,10 +993,11 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toContain("Tentar novamente");
     expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("93. handlers exigem permissionAllowsAction antes de chamar o serviço", () => {
-    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permChangeStatus\)\) return/);
-    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permRemove\)\) return/);
+  it("93. handlers exigem gates de permissão antes de chamar o serviço (LV-09.1B.6.3B.2.1.2)", () => {
+    expect(DETAIL_SRC).toMatch(/if \(!canConfirmStatusChange\) return;/);
+    expect(DETAIL_SRC).toMatch(/if \(!canConfirmRemoval\) return;/);
   });
+
 
   it("94. retryPermissions incrementa permAttempt", () => {
     expect(DETAIL_SRC).toMatch(/setPermAttempt\(\(n\) => n \+ 1\)/);
@@ -1082,14 +1084,15 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
       /setMutationError\(null\);\s*setMutationConflict\(null\);\s*setPendingRemoval\(true\)/,
     );
   });
-  it("105. remoção só executa quando pendingRemoval aberto e permRemove allowed", () => {
+  it("105. remoção só executa quando pendingRemoval aberto e gate canConfirmRemoval permite (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const confirmRemoval");
     expect(idx).toBeGreaterThan(-1);
-    const slice = DETAIL_SRC.slice(idx, idx + 900);
+    const slice = DETAIL_SRC.slice(idx, idx + 1200);
     expect(slice).toMatch(/mutationLock\.tryAcquire\(\)/);
-    expect(slice).toMatch(/permissionAllowsAction\(permRemove\)/);
+    expect(slice).toMatch(/if \(!canConfirmRemoval\) return;/);
     expect(slice).toMatch(/if \(!pendingRemoval\) return/);
   });
+
 });
 
 // =========================================================================
@@ -1441,17 +1444,18 @@ describe("LV-09.1B.6.2 — integração real dos helpers", () => {
   it("140. banner de retry é controlado por hasPermEvalError", () => {
     expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("141. enterEdit bloqueia via getMutationLockDecisions().canEnterEdit", () => {
+  it("141. enterEdit bloqueia via canEditItem (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const enterEdit = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canEnterEdit/);
+    expect(slice).toMatch(/if \(!canEditItem\) return;/);
   });
-  it("142. requestClose bloqueia via getMutationLockDecisions().canClose", () => {
+  it("142. requestClose bloqueia via canCloseDetail (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
+    expect(slice).toMatch(/if \(!canCloseDetail\) return;/);
   });
+
   it("143. callbacks dedicados de request de status/remoção existem", () => {
     expect(DETAIL_SRC).toMatch(/requestDeadlineStatusChange/);
     expect(DETAIL_SRC).toMatch(/requestAppointmentStatusChange/);
@@ -1544,39 +1548,44 @@ describe("LV-09.1B.6.2.1 — integração real do single-flight lock", () => {
 });
 
 describe("LV-09.1B.6.2.2 — unificação final dos gates da UI", () => {
-  it("159. botão Fechar usa canCloseDetail", () => {
-    expect(DETAIL_SRC).toMatch(/const canCloseDetail = lockDecisions\.canClose/);
+  it("159. botão Fechar usa canCloseDetail (composto com hasActiveSelection na LV-09.1B.6.3B.2.1.2)", () => {
+    expect(DETAIL_SRC).toMatch(
+      /const canCloseDetail = hasActiveSelection && rawLockDecisions\.canClose/,
+    );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canCloseDetail\}/);
   });
-  it("160. botão Editar usa canEditItem derivado de canEnterEdit + permissionAllowsAction(perm)", () => {
+  it("160. botão Editar usa canEditItem derivado de rawLockDecisions.canEnterEdit + permissionAllowsAction(perm)", () => {
     expect(DETAIL_SRC).toMatch(
-      /const canEditItem =\s*lockDecisions\.canEnterEdit && permissionAllowsAction\(perm\)/,
+      /const canEditItem =\s*isInteractiveReady &&\s*rawLockDecisions\.canEnterEdit &&\s*permissionAllowsAction\(perm\)/,
     );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canEditItem\}/);
   });
   it("161. retry de permissões usa canRetryPermissionEvaluation", () => {
     expect(DETAIL_SRC).toMatch(
-      /const canRetryPermissionEvaluation = lockDecisions\.canRetryPermissions/,
+      /const canRetryPermissionEvaluation =\s*isInteractiveReady && rawLockDecisions\.canRetryPermissions/,
     );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canRetryPermissionEvaluation\}/);
   });
   it("162. confirmação de status usa canConfirmStatusChange", () => {
     expect(DETAIL_SRC).toMatch(
-      /const canConfirmStatusChange =\s*lockDecisions\.canOpenConfirmation &&\s*permissionAllowsAction\(permChangeStatus\)/,
+      /const canConfirmStatusChange =\s*isInteractiveReady &&\s*rawLockDecisions\.canOpenConfirmation &&\s*permissionAllowsAction\(permChangeStatus\)/,
     );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canConfirmStatusChange\}/);
   });
   it("163. confirmação de exclusão usa canConfirmRemoval", () => {
     expect(DETAIL_SRC).toMatch(
-      /const canConfirmRemoval =\s*lockDecisions\.canOpenConfirmation && permissionAllowsAction\(permRemove\)/,
+      /const canConfirmRemoval =\s*isInteractiveReady &&\s*rawLockDecisions\.canOpenConfirmation &&\s*permissionAllowsAction\(permRemove\)/,
     );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canConfirmRemoval\}/);
   });
   it("164. ItemActionsSection recebe actionsDisabled derivado de canOpenItemAction", () => {
-    expect(DETAIL_SRC).toMatch(/const canOpenItemAction = lockDecisions\.canOpenConfirmation/);
+    expect(DETAIL_SRC).toMatch(
+      /const canOpenItemAction =\s*isInteractiveReady && rawLockDecisions\.canOpenConfirmation/,
+    );
     expect(DETAIL_SRC).toMatch(/actionsDisabled=\{!canOpenItemAction\}/);
     expect(DETAIL_SRC).not.toMatch(/<ItemActionsSection[\s\S]*?mutating=\{mutating\}/);
   });
+
   it("165. botões internos de ItemActionsSection usam actionsDisabled", () => {
     const section = DETAIL_SRC.slice(DETAIL_SRC.indexOf("function ItemActionsSection"));
     const matches = section.match(/disabled=\{actionsDisabled\}/g) ?? [];

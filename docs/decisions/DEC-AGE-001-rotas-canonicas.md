@@ -108,6 +108,38 @@ iniciada.
   `submit`, `confirmStatusChange` e `confirmRemoval` também verificam
   `activeRef.current` antes de acionar o serviço.
 
+### Entregue na parcela B (LV-09.1B.6.3B.2.1.2 — gates completos, invalidação síncrona e propriedade dos locks)
+
+- `activeRef` e `selectionKeyRef` passaram a ser sincronizados **durante
+  o render** (atribuição direta, sem `useEffect`). Fecha a janela em que
+  uma promessa antiga poderia aplicar `setState` após o pai já ter
+  desativado o detalhe.
+- Introduzida `buildAgendaDetailActivationKey(active, selectionKey)`, que
+  chaveia o efeito de reset. Mudança apenas de `referenceEpoch` ou
+  recriação equivalente de `selected` deixaram de resetar o formulário.
+- Separadas as noções de atividade e prontidão via
+  `deriveAgendaDetailActivityState`: `hasActiveSelection` permite
+  fechamento e retry mesmo em `loading` ou `error`; `isInteractiveReady`
+  só é verdadeiro depois de `detail.kind === "ready"`. Substituíram o
+  antigo `isInteractive`.
+- Os SEIS gates funcionais (`canCloseDetail`, `canEditItem`,
+  `canOpenItemAction`, `canConfirmStatusChange`, `canConfirmRemoval`,
+  `canRetryPermissionEvaluation`) são calculados no topo do render e
+  usados também nos handlers (`if (!canX) return;`). `retryDetail` foi
+  extraído e gateado por `hasActiveSelection`.
+- Introduzidos tokens monotônicos `submitOperationIdRef` /
+  `mutationOperationIdRef`. Cada operação é dona da sua trava até o
+  próprio `finally` — o reset **não** libera `mutationLock` nem zera
+  `submittingRef`, apenas reprojeta os estados visuais
+  (`setSubmitting(submittingRef.current)`,
+  `setMutating(mutationLock.isLocked())`). Finalizadores antigos não
+  conseguem desligar `setSubmitting`/`setMutating` de operações
+  posteriores porque o token corrente já é diferente.
+- `isAgendaDetailAsyncResultCurrent` centraliza a decisão de aplicar ou
+  descartar respostas assíncronas (`mounted`, `active`, `cancelled`,
+  identidade de seleção e request ID).
+
+
 ### Pendente da parcela B (LV-09.1B.6.3B.2.2)
 
 Ainda **não** foi realizada a conversão total do detalhe em página:
