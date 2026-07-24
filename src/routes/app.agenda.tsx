@@ -447,7 +447,7 @@ function AgendaPage() {
           error instanceof Error ? error.message : "Falha ao carregar agenda.";
         setState({ kind: "error", message });
       });
-  }, [environment, context, filters]);
+  }, [environment, context, filters, reloadKey]);
 
   const range = React.useMemo(() => rangeForView(anchor, mode), [anchor, mode]);
   const nowEpoch = React.useMemo(
