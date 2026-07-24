@@ -221,7 +221,7 @@ type DetailState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string };
 
-type PermState = "unknown" | "loading" | "allowed" | "denied";
+type PermState = PermissionEvalState;
 type AssignmentsState =
   | { kind: "idle" }
   | { kind: "loading" }
