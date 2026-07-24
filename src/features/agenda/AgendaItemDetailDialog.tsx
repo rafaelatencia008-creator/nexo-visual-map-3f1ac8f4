@@ -893,7 +893,7 @@ export function AgendaItemDetailDialog(
   }, [mutating]);
 
   const keepReviewingMutation = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     const eff = resolveMutationConflictAction("continue_reviewing");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
