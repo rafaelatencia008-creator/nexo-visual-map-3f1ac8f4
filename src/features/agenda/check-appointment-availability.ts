@@ -38,7 +38,7 @@ import {
 /**
  * Limite oficial da paginação (compatível com `PAGE_LIMIT_MAX`).
  */
-export const AVAILABILITY_PAGE_LIMIT = 100;
+export const AVAILABILITY_PAGE_LIMIT = PAGE_LIMIT_MAX;
 
 /**
  * Teto defensivo de páginas percorridas. Além disso a consulta é
