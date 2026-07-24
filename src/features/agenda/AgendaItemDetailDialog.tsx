@@ -591,12 +591,17 @@ export function AgendaItemDetailDialog(
     function handleUpdateError(err: ServiceError): void {
       const t: TranslatedUpdateError = translateAgendaUpdateError(err);
       if (t.kind === "conflict") {
-        setConflictState({
-          ...(t.expectedVersion !== undefined
-            ? { expected: t.expectedVersion }
-            : {}),
-          ...(t.actualVersion !== undefined ? { actual: t.actualVersion } : {}),
-        });
+        setConflictState((prev) =>
+          reduceConflictAction(prev, {
+            type: "receive_conflict",
+            ...(t.expectedVersion !== undefined
+              ? { expected: t.expectedVersion }
+              : {}),
+            ...(t.actualVersion !== undefined
+              ? { actual: t.actualVersion }
+              : {}),
+          }),
+        );
         return;
       }
       if (t.kind === "field") {
