@@ -85,7 +85,7 @@ iniciada.
 
 Ainda **não** foi realizada a conversão total do detalhe em página:
 
-- A rota `/app/agenda/$appointmentId` continua montando temporariamente
+- A rota `/app/agenda/$appointmentId` continua montando temporariamente (condição transitória)
   o `AgendaItemDetailDialog` (wrapper fino) até que a LV-09.1B.6.3B.2.2
   substitua esse uso por `AgendaItemDetailContent` com
   `surface="page"`. A LV-09.1B.6.3 permanece **aberta** até essa
