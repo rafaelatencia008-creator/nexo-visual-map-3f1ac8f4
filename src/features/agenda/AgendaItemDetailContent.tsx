@@ -357,16 +357,22 @@ export const AgendaItemDetailContent = React.forwardRef<
   // `selectionKeyRef.current` no momento da resolução; se divergiram (ou
   // o componente ficou inativo), o resultado é descartado sem tocar em
   // `setState`.
+  // LV-09.1B.6.3B.2.1.2 — refs de atividade sincronizadas DURANTE o render.
+  // Sem useEffect: qualquer resposta que resolva imediatamente após um
+  // render com `active=false` já encontra `activeRef.current === false` e
+  // é descartada, sem janela para tocar `setState`.
   const activeRef = React.useRef(active);
+  activeRef.current = active;
   const selectionKeyRef = React.useRef<AgendaDetailSelectionKey | null>(
     selectionKey,
   );
-  React.useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
-  React.useEffect(() => {
-    selectionKeyRef.current = selectionKey;
-  }, [selectionKey]);
+  selectionKeyRef.current = selectionKey;
+
+  // LV-09.1B.6.3B.2.1.2 — chave de ativação combinada.
+  // Reset depende apenas dela: mudança apenas de `referenceEpoch` ou
+  // recriação equivalente de `selected` não invalida o formulário.
+  const activationKey = buildAgendaDetailActivationKey(active, selectionKey);
+
 
   const mutationInFlightRef = React.useRef(false);
   const mutationLock = React.useMemo(
