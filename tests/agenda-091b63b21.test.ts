@@ -373,29 +373,21 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
     );
   });
   it("51e. deriveAgendaDetailRenderSession é pura e determinística", () => {
-    const { deriveAgendaDetailRenderSession, createAgendaDetailActivitySession } =
-      require("../src/features/agenda/detail-activity");
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
     const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
     const s0 = createAgendaDetailActivitySession(kA);
     const s1 = deriveAgendaDetailRenderSession(s0, kA);
-    expect(s1).toBe(s0); // idempotente
+    expect(s1).toBe(s0);
     const s2 = deriveAgendaDetailRenderSession(s0, kB);
     expect(s2.generation).toBe(s0.generation + 1);
-    // Renders abandonados: derivar B várias vezes a partir de s0 não avança
-    // além de +1, porque a base permanece confirmada.
     const s3 = deriveAgendaDetailRenderSession(s0, kB);
     expect(s3.generation).toBe(s0.generation + 1);
   });
   it("51f. A → B → A confirmado preserva geração maior que a primeira sessão A", () => {
-    const {
-      deriveAgendaDetailRenderSession,
-      createAgendaDetailActivitySession,
-    } = require("../src/features/agenda/detail-activity");
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
     const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
     let committed = createAgendaDetailActivitySession(kA);
-    committed = deriveAgendaDetailRenderSession(committed, kB); // confirma B
+    committed = deriveAgendaDetailRenderSession(committed, kB);
     const finalA = deriveAgendaDetailRenderSession(committed, kA);
     expect(finalA.generation).toBeGreaterThan(0);
     expect(finalA.generation).toBeGreaterThan(committed.generation - 1);
