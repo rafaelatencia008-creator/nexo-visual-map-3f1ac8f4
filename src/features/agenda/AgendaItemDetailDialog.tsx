@@ -1540,12 +1540,3 @@ function AppointmentEditFields({
     </div>
   );
 }
-
-function translateGenericError(e: ServiceError): string {
-  if (e.code === "offline") return "Sem conexão. Tente novamente.";
-  if (e.code === "unavailable")
-    return "Serviço indisponível. Tente novamente em instantes.";
-  if (e.code === "internal_error")
-    return "Erro interno. Tente novamente em instantes.";
-  return "Não foi possível carregar este item.";
-}
