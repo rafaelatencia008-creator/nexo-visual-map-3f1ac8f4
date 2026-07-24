@@ -123,7 +123,11 @@ function isReadOrListAction(action: PermissionAction): boolean {
 }
 
 function isAgendaAction(action: PermissionAction): boolean {
-  return action.startsWith("deadline.") || action.startsWith("appointment.");
+  return (
+    action.startsWith("deadline.") ||
+    action.startsWith("appointment.") ||
+    action.startsWith("communication.")
+  );
 }
 
 function expectedRolesFor(action: PermissionAction): readonly Role[] {
@@ -175,7 +179,7 @@ describe("LV-07.4 — matriz completa (ações × 6 papéis)", () => {
     for (const role of ROLES) {
       contexts.set(role, await setupRoleEnv(role));
     }
-    expect(PERMISSION_ACTIONS.length).toBe(66);
+    expect(PERMISSION_ACTIONS.length).toBe(69);
     expect(ROLES.length).toBe(6);
   });
 

@@ -18,6 +18,8 @@ import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
 import { AUDIT_SUMMARY, isAuditEvent, isCaseSnapshot } from "../core/case-audit";
 import type { Deadline, Appointment } from "../core/agenda";
 import { isDeadline, isAppointment } from "../core/agenda";
+import type { Communication } from "../core/communication";
+import { isCommunication } from "../core/communication";
 import {
   validateOrganization,
   validateUser,
@@ -882,6 +884,61 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       throw new Error(`Invalid seed appointment ${(a as Appointment).id}`);
   }
 
+  // ---- Communications (LV-09.2A) ------------------------------------------
+  const COMM_A2_1 = buildDomainId("communication", "seed_a2_conf_req");
+  const COMM_A2_2 = buildDomainId("communication", "seed_a2_conf_resp");
+  const COMM_A2_3 = buildDomainId("communication", "seed_a2_note");
+
+  const communications: Communication[] = [
+    {
+      id: COMM_A2_1,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "confirmation_request",
+      channel: "email",
+      outcome: "pending",
+      direction: "outbound",
+      subject: "Confirmação de reunião remota",
+      occurredAt: "2026-01-17T09:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A2_2,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "confirmation_response",
+      channel: "email",
+      outcome: "confirmed",
+      direction: "inbound",
+      subject: "Confirmado",
+      recipientLabel: "Parte contrária",
+      occurredAt: "2026-01-17T15:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A2_3,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "note",
+      channel: "system",
+      outcome: "informed",
+      direction: "internal",
+      note: "Sala virtual criada.",
+      occurredAt: "2026-01-18T09:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+  ];
+
+  for (const m of communications) {
+    if (!isCommunication(m))
+      throw new Error(`Invalid seed communication ${(m as Communication).id}`);
+  }
 
   return {
     organizations,
@@ -900,6 +957,7 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
     caseSnapshots,
     deadlines,
     appointments,
+    communications,
   };
 }
 

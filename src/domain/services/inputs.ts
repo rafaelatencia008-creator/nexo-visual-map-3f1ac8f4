@@ -23,6 +23,12 @@ import type {
   UserId,
 } from "../core/ids";
 import type {
+  CommunicationChannel,
+  CommunicationDirection,
+  CommunicationKind,
+  CommunicationOutcome,
+} from "../core/communication";
+import type {
   CaseStatus,
   ConfidentialityLevel,
   ConflictCheckStatus,
@@ -358,4 +364,19 @@ export type ChangeAppointmentStatusInput = Readonly<{
   appointmentId: AppointmentId;
   status: AppointmentStatus;
   expectedVersion: number;
+}>;
+
+// ---- Communication (LV-09.2A) ----------------------------------------------
+
+export type CreateCommunicationInput = Readonly<{
+  caseId: CaseId;
+  appointmentId: AppointmentId;
+  kind: CommunicationKind;
+  channel: CommunicationChannel;
+  outcome: CommunicationOutcome;
+  direction: CommunicationDirection;
+  subject?: string;
+  note?: string;
+  recipientLabel?: string;
+  occurredAt: IsoDateTime;
 }>;

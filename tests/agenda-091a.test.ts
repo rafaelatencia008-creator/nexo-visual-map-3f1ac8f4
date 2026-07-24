@@ -192,7 +192,7 @@ describe("LV-09.1A · permissões", () => {
     });
   }
   it("(28) catálogo agora tem 66 ações", () => {
-    expect(PERMISSION_ACTIONS.length).toBe(66);
+    expect(PERMISSION_ACTIONS.length).toBe(69);
   });
 });
 
@@ -1792,10 +1792,10 @@ describe("LV-09.1A.2 · catálogo e tipos", () => {
   it("(262) NON_ADMIN_ROLES são exatamente 4", () => {
     expect(NON_ADMIN_ROLES.length).toBe(4);
   });
-  it("(263) isAgendaAction cobre 12 ações da agenda", () => {
+  it("(263) isAgendaAction cobre 15 ações da agenda", () => {
     let count = 0;
     for (const a of PERMISSION_ACTIONS) if (isAgendaAction(a)) count += 1;
-    expect(count).toBe(12);
+    expect(count).toBe(15);
   });
 });
 

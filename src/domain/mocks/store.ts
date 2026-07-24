@@ -14,6 +14,7 @@ import type { CasePerson, Relationship, Assignment } from "../core/assignment";
 import type { CasePlanItem, CaseTimelineEntry } from "../core/case-plan";
 import type { AuditEvent, CaseSnapshot } from "../core/case-audit";
 import type { Deadline, Appointment } from "../core/agenda";
+import type { Communication } from "../core/communication";
 
 export type MockStore = {
   organizations: Map<string, Organization>;
@@ -32,6 +33,7 @@ export type MockStore = {
   caseSnapshots: Map<string, CaseSnapshot>;
   deadlines: Map<string, Deadline>;
   appointments: Map<string, Appointment>;
+  communications: Map<string, Communication>;
 };
 
 export function createEmptyStore(): MockStore {
@@ -52,5 +54,6 @@ export function createEmptyStore(): MockStore {
     caseSnapshots: new Map(),
     deadlines: new Map(),
     appointments: new Map(),
+    communications: new Map(),
   };
 }

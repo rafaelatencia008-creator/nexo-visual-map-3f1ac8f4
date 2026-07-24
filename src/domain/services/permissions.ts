@@ -90,6 +90,10 @@ export const PERMISSION_ACTIONS = [
   "appointment.update",
   "appointment.changeStatus",
   "appointment.remove",
+
+  "communication.read",
+  "communication.list",
+  "communication.create",
 ] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];

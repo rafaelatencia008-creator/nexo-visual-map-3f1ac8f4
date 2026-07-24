@@ -28,11 +28,11 @@ export const ID_PREFIX = {
   caseTimelineEntry: "timelineEntry_",
   auditEvent: "audit_",
   caseSnapshot: "caseSnapshot_",
+  communication: "comm_",
 
   // Entidades reservadas — apenas catalogadas nesta microetapa.
   deadline: "deadline_",
   appointment: "appt_",
-  communication: "comm_",
   sourceDocument: "srcdoc_",
   fileVersion: "filever_",
   interview: "interview_",
@@ -88,6 +88,7 @@ export type AuditEventId = Brand<string, "AuditEventId">;
 export type CaseSnapshotId = Brand<string, "CaseSnapshotId">;
 export type DeadlineId = Brand<string, "DeadlineId">;
 export type AppointmentId = Brand<string, "AppointmentId">;
+export type CommunicationId = Brand<string, "CommunicationId">;
 
 /**
  * Mapa dos tipos implementados — usado pelo overload de `buildDomainId`
@@ -110,6 +111,7 @@ export type ImplementedIdMap = {
   caseSnapshot: CaseSnapshotId;
   deadline: DeadlineId;
   appointment: AppointmentId;
+  communication: CommunicationId;
 };
 
 // ---- Validação de forma ----------------------------------------------------
@@ -176,6 +178,8 @@ export const isDeadlineId = (v: unknown): v is DeadlineId =>
   hasExpectedPrefix(v, "deadline");
 export const isAppointmentId = (v: unknown): v is AppointmentId =>
   hasExpectedPrefix(v, "appointment");
+export const isCommunicationId = (v: unknown): v is CommunicationId =>
+  hasExpectedPrefix(v, "communication");
 
 // ---- Builders determinísticos ---------------------------------------------
 
@@ -220,4 +224,8 @@ export function createDeadlineId(suffix: string): DeadlineId {
 
 export function createAppointmentId(suffix: string): AppointmentId {
   return buildDomainId("appointment", suffix);
+}
+
+export function createCommunicationId(suffix: string): CommunicationId {
+  return buildDomainId("communication", suffix);
 }

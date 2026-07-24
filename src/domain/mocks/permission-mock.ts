@@ -152,6 +152,11 @@ const PERMISSION_MATRIX = Object.freeze({
   "appointment.update": AGENDA_WRITE_ROLES,
   "appointment.changeStatus": AGENDA_WRITE_ROLES,
   "appointment.remove": AGENDA_REMOVE_ROLES,
+
+  // Comunicações — LV-09.2A (append-only)
+  "communication.read": ALL_ROLES,
+  "communication.list": ALL_ROLES,
+  "communication.create": AGENDA_WRITE_ROLES,
 }) satisfies PermissionMatrix;
 
 // ---- Consulta pura (não expõe a matriz) -----------------------------------
