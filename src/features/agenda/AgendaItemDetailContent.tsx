@@ -379,7 +379,9 @@ export const AgendaItemDetailContent = React.forwardRef<
     };
   }, []);
 
-  // Reset ao abrir/mudar seleção
+  // Reset ao abrir/mudar seleção. Chaveado por `selectionKey` (identidade
+  // semântica estável) — não reexecuta apenas porque o pai recriou o objeto
+  // `selected` sem trocar de item.
   React.useEffect(() => {
     if (!active || !selected) return;
     setDetail({ kind: "loading" });
@@ -404,7 +406,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     setConflictState(null);
     setSubmitting(false);
     submittingRef.current = false;
-  }, [selected]);
+  }, [selectionKey, active]);
 
   // Carrega o detalhe pelo serviço oficial. Ramifica pelo discriminante para
   // preservar a correlação entre `type` e o tipo da `response` (união
@@ -412,7 +414,17 @@ export const AgendaItemDetailContent = React.forwardRef<
   React.useEffect(() => {
     if (!active || !selected) return;
     const reqId = ++detailReqIdRef.current;
+    const reqSelectionKey = selectionKey;
     setDetail({ kind: "loading" });
+
+    // Invalidação assíncrona: só aplica o resultado se, no momento em que
+    // a promise resolveu, a seleção corrente ainda for a mesma que iniciou
+    // a chamada e o componente ainda estiver ativo.
+    const stillCurrent = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === reqSelectionKey &&
+      reqId === detailReqIdRef.current;
 
     const applyDecision = (
       decided: ReturnType<typeof resolveDetailLoadResponse>,
@@ -433,7 +445,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.deadlines
         .getById(context, selected.caseId, selected.id)
         .then((response) => {
-          if (!mountedRef.current) return;
+          if (!stillCurrent()) return;
           applyDecision(
             resolveDetailLoadResponse(detailReqIdRef.current, {
               requestId: reqId,
@@ -443,7 +455,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           );
         })
         .catch(() => {
-          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          if (!stillCurrent()) return;
           setDetail({
             kind: "error",
             message: "Não foi possível carregar este item.",
@@ -453,7 +465,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.appointments
         .getById(context, selected.caseId, selected.id)
         .then((response) => {
-          if (!mountedRef.current) return;
+          if (!stillCurrent()) return;
           applyDecision(
             resolveDetailLoadResponse(detailReqIdRef.current, {
               requestId: reqId,
@@ -463,14 +475,14 @@ export const AgendaItemDetailContent = React.forwardRef<
           );
         })
         .catch(() => {
-          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          if (!stillCurrent()) return;
           setDetail({
             kind: "error",
             message: "Não foi possível carregar este item.",
           });
         });
     }
-  }, [selected, environment, context, reload]);
+  }, [selectionKey, active, environment, context, reload]);
 
 
   // Avalia permissões de edição, mudança de status e exclusão em paralelo.
@@ -478,6 +490,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!active || !selected) return;
     if (detail.kind !== "ready") return;
     let cancelled = false;
+    const reqSelectionKey = selectionKey;
     setPerm("loading");
     setPermChangeStatus("loading");
     setPermRemove("loading");
@@ -489,6 +502,11 @@ export const AgendaItemDetailContent = React.forwardRef<
         : "appointment.changeStatus";
     const removeAction =
       selected.type === "deadline" ? "deadline.remove" : "appointment.remove";
+    const stillCurrent = (): boolean =>
+      !cancelled &&
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === reqSelectionKey;
     const evalOne = (
       action: typeof updateAction | typeof statusAction | typeof removeAction,
       setter: (v: PermState) => void,
@@ -496,13 +514,11 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.permissions
         .evaluate(context, { action, caseId: selected.caseId })
         .then((res) => {
-          if (cancelled || !mountedRef.current) return;
-          // Fonte única: helper puro. Preserva a mesma decisão testada.
-          // Regra estrutural: `res.data.allowed ? "allowed" : "denied"`.
+          if (!stillCurrent()) return;
           setter(resolvePermissionEvaluation({ kind: "resolved", result: res }));
         })
         .catch(() => {
-          if (cancelled || !mountedRef.current) return;
+          if (!stillCurrent()) return;
           setter(resolvePermissionEvaluation({ kind: "rejected" }));
         });
     };
@@ -512,7 +528,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     return () => {
       cancelled = true;
     };
-  }, [selected, detail, environment, context, permAttempt]);
+  }, [selectionKey, active, detail, environment, context, permAttempt]);
 
   // Carrega assignments do caso quando entrar em edição
   const currentCaseId = selected?.caseId;
@@ -521,7 +537,13 @@ export const AgendaItemDetailContent = React.forwardRef<
       return;
     }
     const reqId = ++assignReqIdRef.current;
+    const reqSelectionKey = selectionKey;
     setAssignments({ kind: "loading" });
+    const stillCurrent = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      reqId === assignReqIdRef.current &&
+      selectionKeyRef.current === reqSelectionKey;
     (async () => {
       const collected: Assignment[] = [];
       const seen = new Set<string>();
@@ -533,7 +555,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           cursor ? { cursor, limit: ASSIGN_LIMIT } : { limit: ASSIGN_LIMIT },
         );
         if (!res.ok) {
-          if (mountedRef.current && reqId === assignReqIdRef.current) {
+          if (stillCurrent()) {
             setAssignments({
               kind: "error",
               message: "Não foi possível carregar responsáveis.",
@@ -551,18 +573,19 @@ export const AgendaItemDetailContent = React.forwardRef<
         if (!res.data.nextCursor) break;
         cursor = res.data.nextCursor;
       }
-      if (mountedRef.current && reqId === assignReqIdRef.current) {
+      if (stillCurrent()) {
         setAssignments({ kind: "ready", items: collected });
       }
     })().catch(() => {
-      if (mountedRef.current && reqId === assignReqIdRef.current) {
+      if (stillCurrent()) {
         setAssignments({
           kind: "error",
           message: "Não foi possível carregar responsáveis.",
         });
       }
     });
-  }, [mode, currentCaseId, environment, context, assignAttempt]);
+  }, [active, mode, currentCaseId, selectionKey, environment, context, assignAttempt]);
+
 
   // ---- Handlers -----------------------------------------------------------
 
