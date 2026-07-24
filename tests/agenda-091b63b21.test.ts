@@ -299,3 +299,160 @@ describe("LV-09.1B.6.3B.2.1 · DEC-AGE-001 reflete o progresso", () => {
     expect(DEC_SRC).toContain("LV-09.1B.6.3B.2.1");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 7) LV-09.1B.6.3B.2.1.1 — Ciclo de atividade e invalidação assíncrona
+// ---------------------------------------------------------------------------
+
+const ACTIVITY_PATH = "src/features/agenda/detail-activity.ts";
+const ACTIVITY_SRC = read(ACTIVITY_PATH);
+
+describe("LV-09.1B.6.3B.2.1.1 · Identidade semântica estável", () => {
+  it("43. detail-activity.ts existe", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", ACTIVITY_PATH)),
+    ).toBe(true);
+  });
+
+  it("44. Exporta buildAgendaDetailSelectionKey", () => {
+    expect(ACTIVITY_SRC).toMatch(
+      /export function buildAgendaDetailSelectionKey/,
+    );
+  });
+
+  it("45. Chave concatena type, caseId e id em ordem", () => {
+    expect(ACTIVITY_SRC).toContain(
+      "`${selected.type}:${String(selected.caseId)}:${String(selected.id)}`",
+    );
+  });
+
+  it("46. Retorna null quando selected é null", () => {
+    expect(ACTIVITY_SRC).toMatch(/if \(!selected\) return null;/);
+  });
+
+  it("47. Não importa nada de React nem TanStack Router", () => {
+    expect(ACTIVITY_SRC).not.toMatch(/from\s+"react"/);
+    expect(ACTIVITY_SRC).not.toMatch(/@tanstack\/react-router/);
+  });
+
+  it("48. Content importa buildAgendaDetailSelectionKey", () => {
+    expect(CONTENT_SRC).toContain("buildAgendaDetailSelectionKey");
+    expect(CONTENT_SRC).toMatch(
+      /from\s+"\.\/detail-activity"/,
+    );
+  });
+
+  it("49. Content computa selectionKey via useMemo dependente de selected", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const selectionKey = React\.useMemo\(\s*\(\)\s*=>\s*buildAgendaDetailSelectionKey\(selected\)/,
+    );
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · Snapshots síncronos", () => {
+  it("50. Content declara activeRef e sincroniza via useEffect", () => {
+    expect(CONTENT_SRC).toContain("activeRef = React.useRef(active)");
+    expect(CONTENT_SRC).toMatch(/activeRef\.current\s*=\s*active;/);
+  });
+
+  it("51. Content declara selectionKeyRef e sincroniza via useEffect", () => {
+    expect(CONTENT_SRC).toMatch(
+      /selectionKeyRef\s*=\s*React\.useRef<AgendaDetailSelectionKey \| null>/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /selectionKeyRef\.current\s*=\s*selectionKey;/,
+    );
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · Efeitos chaveados por selectionKey", () => {
+  it("52. Efeito de reset depende de selectionKey e active", () => {
+    expect(CONTENT_SRC).toMatch(/}, \[selectionKey, active\]\);/);
+  });
+
+  it("53. Efeito de load depende de selectionKey", () => {
+    expect(CONTENT_SRC).toMatch(
+      /}, \[selectionKey, active, environment, context, reload\]\);/,
+    );
+  });
+
+  it("54. Efeito de permissões depende de selectionKey", () => {
+    expect(CONTENT_SRC).toMatch(
+      /}, \[selectionKey, active, detail, environment, context, permAttempt\]\);/,
+    );
+  });
+
+  it("55. Efeito de assignments depende de selectionKey e active", () => {
+    expect(CONTENT_SRC).toMatch(
+      /}, \[active, mode, currentCaseId, selectionKey, environment, context, assignAttempt\]\);/,
+    );
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · Invalidação assíncrona", () => {
+  it("56. Load compara reqSelectionKey com selectionKeyRef antes de aplicar", () => {
+    expect(CONTENT_SRC).toMatch(/const reqSelectionKey = selectionKey;/);
+    expect(CONTENT_SRC).toMatch(
+      /selectionKeyRef\.current === reqSelectionKey/,
+    );
+  });
+
+  it("57. Load usa activeRef.current no gate de aplicação", () => {
+    expect(CONTENT_SRC).toMatch(/activeRef\.current/);
+  });
+
+  it("58. Efeitos definem stillCurrent como função local", () => {
+    const matches = CONTENT_SRC.match(/const stillCurrent = \(\)/g);
+    expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · isInteractive e gates", () => {
+  it("59. Content declara isInteractive combinando active, selected e detail.ready", () => {
+    expect(CONTENT_SRC).toMatch(
+      /isInteractive\s*=\s*\n?\s*active && selected !== null && detail\.kind === "ready"/,
+    );
+  });
+
+  it("60. Seis gates de UI multiplicam isInteractive quando pertinente", () => {
+    expect(CONTENT_SRC).toMatch(/canEditItem\s*=\s*\n?\s*isInteractive/);
+    expect(CONTENT_SRC).toMatch(
+      /canOpenItemAction\s*=\s*\n?\s*isInteractive/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /canConfirmStatusChange\s*=\s*\n?\s*isInteractive/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /canConfirmRemoval\s*=\s*\n?\s*isInteractive/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /canRetryPermissionEvaluation\s*=\s*\n?\s*isInteractive/,
+    );
+    expect(CONTENT_SRC).toMatch(/canCloseDetail\s*=\s*active/);
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · Mutações assíncronas protegidas", () => {
+  it("61. submit captura startSelectionKey e usa stillSameSelection", () => {
+    expect(CONTENT_SRC).toMatch(/const startSelectionKey = selectionKeyRef\.current;/);
+    expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
+  });
+
+  it("62. Mutação de status/exclusão descarta resultados fora da seleção", () => {
+    const matches = CONTENT_SRC.match(/if \(!stillSameSelection\(\)\) return;/g);
+    expect((matches ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("63. confirmRemoval verifica activeRef.current antes de mutar", () => {
+    expect(CONTENT_SRC).toMatch(
+      /if \(!activeRef\.current\) return;\s*\n\s*if \(!mutationLock\.tryAcquire/,
+    );
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.1 · DEC-AGE-001 menciona a subetapa", () => {
+  it("64. DEC menciona LV-09.1B.6.3B.2.1.1", () => {
+    expect(DEC_SRC).toContain("LV-09.1B.6.3B.2.1.1");
+  });
+});
+
