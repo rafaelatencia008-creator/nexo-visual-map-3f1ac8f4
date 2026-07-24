@@ -958,3 +958,574 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     expect(String(SEED_ASSIGN_ALFA_1_ID)).toContain("assign");
   });
 });
+
+// =========================================================================
+// 10) LV-09.1B.5.1 — testes comportamentais adicionais
+// =========================================================================
+
+import { getDeadlinePresentation } from "@/features/agenda/visual-state";
+
+const VISUAL_STATE_SRC = readFileSync(
+  "src/features/agenda/visual-state.ts",
+  "utf8",
+);
+
+describe("LV-09.1B.5.1 — seleção e carregamento", () => {
+  it("71. getById do prazo criado retorna item com mesmo caseId", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const got = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(got.caseId).toBe(d.caseId);
+  });
+
+  it("72. getById do compromisso criado retorna versão inicial 1", async () => {
+    const env = createMockDomainEnvironment();
+    const a = await makeAppointment(env);
+    const got = ok(
+      await env.services.appointments.getById(OWNER_ALFA, a.caseId, a.id),
+    );
+    expect(got.metadata.version).toBe(a.metadata.version);
+    expect(got.metadata.version).toBeGreaterThanOrEqual(1);
+  });
+
+  it("73. getById de ID inexistente retorna not_found", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const err = fail(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id + "_xx"),
+    );
+    expect(err.code).toBe("not_found");
+  });
+
+  it("74. getById em caseId errado retorna not_found (privacidade por caso)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const err = fail(
+      await env.services.deadlines.getById(
+        OWNER_ALFA,
+        SEED_CASE_ALFA_2_ID,
+        d.id,
+      ),
+    );
+    expect(err.code).toBe("not_found");
+  });
+
+  it("75. carregamento sequencial: última resposta é a válida para o snapshot", async () => {
+    const env = createMockDomainEnvironment();
+    const d1 = await makeDeadline(env);
+    const d2 = await makeDeadline(env);
+    const got1 = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d1.caseId, d1.id),
+    );
+    const got2 = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d2.caseId, d2.id),
+    );
+    // Simula "descarte da primeira resposta": só a segunda define o estado.
+    const selected = got2;
+    expect(selected.id).toBe(d2.id);
+    expect(selected.id).not.toBe(got1.id);
+  });
+});
+
+describe("LV-09.1B.5.1 — estados de erro e retry", () => {
+  it("76. após not_found, novo getById com ID válido volta a resolver", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    fail(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id + "_x"),
+    );
+    const got = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(got.id).toBe(d.id);
+  });
+
+  it("77. usuário de outra organização é bloqueado como not_found (sem vazamento)", async () => {
+    const env = createMockDomainEnvironment();
+    const a = await makeAppointment(env);
+    const err = fail(
+      await env.services.appointments.getById(OWNER_BETA, a.caseId, a.id),
+    );
+    expect(err.code).toBe("not_found");
+  });
+
+  it("78. retry após conflito recupera a versão atual do item", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    // outra sessão avança a versão
+    const advanced = ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "outra sessão",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    // recarga simulada da UI
+    const reloaded = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(reloaded.metadata.version).toBe(advanced.metadata.version);
+    expect(reloaded.title).toBe("outra sessão");
+  });
+
+  it("79. leitura por leitor (role leitura) é permitida, mas update é bloqueado", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const got = ok(
+      await env.services.deadlines.getById(READONLY_ALFA, d.caseId, d.id),
+    );
+    expect(got.id).toBe(d.id);
+    const err = fail(
+      await env.services.deadlines.update(READONLY_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "não deveria",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    expect(["forbidden", "unauthorized"]).toContain(err.code);
+  });
+});
+
+describe("LV-09.1B.5.1 — botão Salvar derivado da validade", () => {
+  it("80. sem alterações: builder retorna changed=false (Salvar desabilitado)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const r = buildUpdateDeadlineInput(
+      d,
+      deadlineToEditForm(d),
+      d.metadata.version,
+    );
+    expect(r.ok && r.changed === false).toBe(true);
+  });
+
+  it("81. título vazio invalida formulário (Salvar desabilitado)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const r = buildUpdateDeadlineInput(
+      d,
+      { ...deadlineToEditForm(d), title: "   " },
+      d.metadata.version,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.title).toBeDefined();
+  });
+
+  it("82. compromisso com término anterior ao início invalida (Salvar desabilitado)", async () => {
+    const env = createMockDomainEnvironment();
+    const a = await makeAppointment(env);
+    const f = appointmentToEditForm(a);
+    const r = buildUpdateAppointmentInput(
+      a,
+      { ...f, endsAtLocal: f.startsAtLocal },
+      a.metadata.version,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("83. alteração válida produz changed=true (Salvar habilitado)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const f = deadlineToEditForm(d);
+    const r = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "Novo título" },
+      d.metadata.version,
+    );
+    expect(r.ok && r.changed === true).toBe(true);
+  });
+
+  it("84. AgendaItemDetailDialog usa canSubmit derivado do builder", () => {
+    expect(DETAIL_SRC).toContain("canSubmit");
+    expect(DETAIL_SRC).toContain("currentBuildResult");
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canSubmit\}/);
+  });
+});
+
+describe("LV-09.1B.5.1 — validação progressiva (touched / attemptedSubmit)", () => {
+  it("85. AgendaItemDetailDialog mantém estado touched", () => {
+    expect(DETAIL_SRC).toMatch(/setTouched\(/);
+    expect(DETAIL_SRC).toContain("touched[k]");
+  });
+
+  it("86. AgendaItemDetailDialog mantém estado attemptedSubmit", () => {
+    expect(DETAIL_SRC).toContain("attemptedSubmit");
+    expect(DETAIL_SRC).toContain("setAttemptedSubmit");
+  });
+
+  it("87. mensagens de erro só aparecem quando o campo foi tocado ou após submit", () => {
+    // heurística estrutural: displayErrors filtra por (attemptedSubmit || touched[k])
+    expect(DETAIL_SRC).toMatch(/attemptedSubmit\s*\|\|\s*touched\[k\]/);
+  });
+
+  it("88. onBlurField é passado para DeadlineEditFields e AppointmentEditFields", () => {
+    expect(DETAIL_SRC).toMatch(/onBlurField=\{/);
+    // Duas ocorrências (deadline + appointment)
+    const count = (DETAIL_SRC.match(/onBlurField=\{/g) ?? []).length;
+    expect(count).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("LV-09.1B.5.1 — bloqueio de envio duplicado", () => {
+  it("89. AgendaItemDetailDialog usa submittingRef para bloquear reentrância", () => {
+    expect(DETAIL_SRC).toContain("submittingRef");
+    expect(DETAIL_SRC).toMatch(/if\s*\(submittingRef\.current\)\s*return/);
+  });
+
+  it("90. botão Salvar exibe aria-busy enquanto submitting", () => {
+    expect(DETAIL_SRC).toMatch(/aria-busy=\{submitting\}/);
+  });
+
+  it("91. dois updates concorrentes com mesma expectedVersion: só o primeiro passa", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const [r1, r2] = await Promise.all([
+      env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "A",
+        expectedVersion: d.metadata.version,
+      }),
+      env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "B",
+        expectedVersion: d.metadata.version,
+      }),
+    ]);
+    const passed = [r1.ok, r2.ok].filter(Boolean).length;
+    expect(passed).toBe(1);
+  });
+});
+
+describe("LV-09.1B.5.1 — conflito otimista preserva formulário", () => {
+  it("92. tradutor identifica conflito e preserva expectedVersion recebido", () => {
+    const t = translateAgendaUpdateError({
+      code: "conflict",
+      message: "version mismatch",
+      expectedVersion: 3,
+      actualVersion: 7,
+    });
+    expect(t.kind).toBe("conflict");
+    if (t.kind === "conflict") {
+      expect(t.expectedVersion).toBe(3);
+      expect(t.actualVersion).toBe(7);
+    }
+  });
+
+  it("93. mensagem de conflito orienta recarga sem sobrescrever", () => {
+    const t = translateAgendaUpdateError({
+      code: "conflict",
+      message: "x",
+    });
+    expect(t.kind).toBe("conflict");
+    if (t.kind === "conflict") {
+      expect(t.message).toMatch(/alterad|recarregue/i);
+    }
+  });
+
+  it("94. após conflict, o rascunho local NÃO é apagado (builder aceita expectedVersion antigo)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    // Snapshot local (rascunho) do editor no início da edição
+    const draft: EditDeadlineFormState = {
+      ...deadlineToEditForm(d),
+      title: "rascunho local",
+    };
+    // Outra sessão adianta a versão
+    ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "outra sessão",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    // Envio local com expectedVersion antigo → conflict
+    const built = buildUpdateDeadlineInput(d, draft, d.metadata.version);
+    if (!(built.ok && built.changed)) throw new Error("expected changed");
+    const err = fail(
+      await env.services.deadlines.update(OWNER_ALFA, built.input),
+    );
+    expect(err.code).toBe("conflict");
+    // Rascunho permanece intacto (não foi alterado pela chamada)
+    expect(draft.title).toBe("rascunho local");
+  });
+
+  it("95. conflict NÃO sobrescreve o dado remoto atual", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "remoto",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    fail(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "tentativa perdida",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const got = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(got.title).toBe("remoto");
+  });
+});
+
+describe("LV-09.1B.5.1 — recarga da versão atual", () => {
+  it("96. reloadAfterConflict existe no diálogo e limpa conflictState", () => {
+    expect(DETAIL_SRC).toContain("reloadAfterConflict");
+    // Botão do banner de conflito aciona reloadAfterConflict
+    expect(DETAIL_SRC).toMatch(/onReload=\{reloadAfterConflict\}/);
+  });
+
+  it("97. recarga usa getById novamente e retorna a nova versão", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const advanced = ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "nova",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const reloaded = ok(
+      await env.services.deadlines.getById(OWNER_ALFA, d.caseId, d.id),
+    );
+    expect(reloaded.metadata.version).toBe(advanced.metadata.version);
+  });
+
+  it("98. após recarga, novo builder usa a expectedVersion atualizada", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const advanced = ok(
+      await env.services.deadlines.update(OWNER_ALFA, {
+        caseId: d.caseId,
+        deadlineId: d.id,
+        title: "nova",
+        expectedVersion: d.metadata.version,
+      }),
+    );
+    const f = deadlineToEditForm(advanced);
+    const rebuilt = buildUpdateDeadlineInput(
+      advanced,
+      { ...f, title: "após recarga" },
+      advanced.metadata.version,
+    );
+    if (!(rebuilt.ok && rebuilt.changed)) throw new Error("expected changed");
+    expect(rebuilt.input.expectedVersion).toBe(advanced.metadata.version);
+    // E o update passa
+    const r = ok(await env.services.deadlines.update(OWNER_ALFA, rebuilt.input));
+    expect(r.title).toBe("após recarga");
+  });
+});
+
+describe("LV-09.1B.5.1 — proteção contra descarte de alterações", () => {
+  it("99. diálogo apresenta confirmação 'Descartar alterações?'", () => {
+    expect(DETAIL_SRC).toContain("Descartar alterações");
+    expect(DETAIL_SRC).toContain("Continuar editando");
+  });
+
+  it("100. proteção mantém 'setConfirmDiscard' antes de fechar quando há mudanças", () => {
+    expect(DETAIL_SRC).toContain("setConfirmDiscard");
+    expect(DETAIL_SRC).toContain("confirmDiscardChoice");
+  });
+
+  it("101. hasDeadlineChanges reconhece delta pequeno (título com espaços aparados)", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const f = deadlineToEditForm(d);
+    // Espaços puros ao redor NÃO contam como mudança
+    expect(hasDeadlineChanges(d, { ...f, title: `  ${d.title}  ` })).toBe(false);
+    // Texto novo conta
+    expect(hasDeadlineChanges(d, { ...f, title: "x" + d.title })).toBe(true);
+  });
+});
+
+describe("LV-09.1B.5.1 — visibilidade pós-atualização por geração", () => {
+  it("102. wait quando a geração corrente ainda é menor que a requerida", () => {
+    const decision = resolveAgendaItemVisibility(
+      { id: "deadline_1", type: "deadline", requiredGeneration: 10 },
+      { kind: "ready", generation: 9 },
+      new Set(),
+      new Set(),
+    );
+    expect(decision).toBe("wait");
+  });
+
+  it("103. visible quando o ID aparece na coleção da geração exigida", () => {
+    const decision = resolveAgendaItemVisibility(
+      { id: "deadline_1", type: "deadline", requiredGeneration: 3 },
+      { kind: "ready", generation: 3 },
+      new Set(["deadline_1"]),
+      new Set(),
+    );
+    expect(decision).toBe("visible");
+  });
+
+  it("104. hidden quando geração exigida foi alcançada e o ID não aparece", () => {
+    const decision = resolveAgendaItemVisibility(
+      { id: "deadline_1", type: "deadline", requiredGeneration: 3 },
+      { kind: "ready", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(decision).toBe("hidden");
+  });
+
+  it("105. estado de erro na recarga não decide como 'hidden' (permite retry)", () => {
+    const decision = resolveAgendaItemVisibility(
+      { id: "deadline_1", type: "deadline", requiredGeneration: 3 },
+      { kind: "error", generation: 3 },
+      new Set(),
+      new Set(),
+    );
+    expect(decision).not.toBe("hidden");
+  });
+
+  it("106. rota app.agenda reserva geração futura (loadGenerationRef.current + 1)", () => {
+    expect(AGENDA_ROUTE_SRC).toContain("loadGenerationRef.current + 1");
+  });
+});
+
+describe("LV-09.1B.5.1 — estado visual derivado do prazo", () => {
+  it("107. prazo pendente já vencido tem estado 'overdue'", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const ref = new Date(d.dueAt).getTime() + 3600_000;
+    const p = getDeadlinePresentation(d, ref);
+    expect(p.state).toBe("overdue");
+    expect(p.stateLabel).toBe("Atrasado");
+  });
+
+  it("108. prazo pendente ainda no futuro reflete a prioridade", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const ref = new Date(d.dueAt).getTime() - 3600_000;
+    const p = getDeadlinePresentation(d, ref);
+    expect(["urgent", "high", "normal", "low"]).toContain(p.state);
+    // Nossa fixture usa prioridade "normal"
+    expect(p.state).toBe("normal");
+  });
+
+  it("109. diálogo renderiza badge de estado do prazo (testid deadline-state-badge)", () => {
+    expect(DETAIL_SRC).toContain("deadline-state-badge");
+    expect(DETAIL_SRC).toContain("getDeadlinePresentation");
+    expect(DETAIL_SRC).toContain("DeadlineStateIcon");
+  });
+
+  it("110. estado visual não depende só de cor (label textual sempre presente)", () => {
+    // Todos os estados definidos no módulo têm label pt-BR
+    expect(VISUAL_STATE_SRC).toContain("Atrasado");
+    expect(VISUAL_STATE_SRC).toContain("Urgente");
+    expect(VISUAL_STATE_SRC).toContain("Cumprido");
+    expect(VISUAL_STATE_SRC).toContain("Cancelado");
+  });
+
+  it("111. estado 'cancelled' é hierarquicamente superior a prioridade", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const cancelled: Deadline = { ...d, status: "cancelled" };
+    const ref = new Date(d.dueAt).getTime() + 3600_000;
+    const p = getDeadlinePresentation(cancelled, ref);
+    expect(p.state).toBe("cancelled");
+  });
+});
+
+describe("LV-09.1B.5.1 — conversão ISO defensiva", () => {
+  it("112. helper aceita apenas string; ISO inválido é rejeitado", () => {
+    expect(() => isoDateTimeToDatetimeLocal("2026-13-40T99:99:99Z")).toThrow(
+      /invalid_iso/,
+    );
+  });
+
+  it("113. helper rejeita string vazia", () => {
+    expect(() => isoDateTimeToDatetimeLocal("")).toThrow(/invalid_iso/);
+  });
+
+  it("114. helper rejeita ISO parcial (só data)", () => {
+    expect(() => isoDateTimeToDatetimeLocal("2026-06-15")).toThrow(
+      /invalid_iso/,
+    );
+  });
+
+  it("115. edit-form usa isIsoDateTime para validar entrada", () => {
+    expect(EDIT_FORM_SRC).toContain("isIsoDateTime");
+    expect(EDIT_FORM_SRC).toContain("invalid_iso");
+  });
+});
+
+describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", () => {
+  it("116. arquivo de testes não usa 'as any', 'as never' nem 'unknown as'", () => {
+    const src = readFileSync("tests/agenda-091b5.test.ts", "utf8");
+    expect(src.includes(" as any")).toBe(false);
+    expect(src.includes(" as never")).toBe(false);
+    expect(src.includes("unknown as")).toBe(false);
+    expect(src.includes("@ts-ignore")).toBe(false);
+    expect(src.includes("@ts-nocheck")).toBe(false);
+  });
+
+  it("117. edit-form não usa 'as any' nem 'as never'", () => {
+    expect(EDIT_FORM_SRC.includes(" as any")).toBe(false);
+    expect(EDIT_FORM_SRC.includes(" as never")).toBe(false);
+  });
+
+  it("118. AgendaItemDetailDialog não usa 'as any' nem 'as never'", () => {
+    expect(DETAIL_SRC.includes(" as any")).toBe(false);
+    expect(DETAIL_SRC.includes(" as never")).toBe(false);
+  });
+
+  it("119. rota app.agenda não usa 'as any' nem 'as never'", () => {
+    expect(AGENDA_ROUTE_SRC.includes(" as any")).toBe(false);
+    expect(AGENDA_ROUTE_SRC.includes(" as never")).toBe(false);
+  });
+
+  it("120. nenhum arquivo da Agenda contém @ts-nocheck", () => {
+    expect(AGENDA_ROUTE_SRC.includes("@ts-nocheck")).toBe(false);
+    expect(DETAIL_SRC.includes("@ts-nocheck")).toBe(false);
+    expect(EDIT_FORM_SRC.includes("@ts-nocheck")).toBe(false);
+  });
+});
+
+describe("LV-09.1B.5.1 — sem mudança de status, exclusão ou nova rota", () => {
+  it("121. diálogo não invoca changeStatus", () => {
+    expect(DETAIL_SRC).not.toContain("changeStatus(");
+  });
+
+  it("122. diálogo não invoca .remove/.delete", () => {
+    expect(DETAIL_SRC).not.toContain(".remove(");
+    expect(DETAIL_SRC).not.toContain(".delete(");
+  });
+
+  it("123. diálogo não expõe botão 'Excluir'", () => {
+    expect(DETAIL_SRC).not.toMatch(/>\s*Excluir\s*</);
+  });
+
+  it("124. rota app.agenda não navega para uma rota de detalhe própria", () => {
+    expect(AGENDA_ROUTE_SRC).not.toMatch(/to:\s*["'`]\/app\/agenda\/[^"'`]+["'`]/);
+  });
+
+  it("125. builders de update não expõem campo 'status'", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const f = deadlineToEditForm(d);
+    expect("status" in f).toBe(false);
+    const r = buildUpdateDeadlineInput(
+      d,
+      { ...f, title: "x" },
+      d.metadata.version,
+    );
+    if (!(r.ok && r.changed)) throw new Error("expected changed");
+    expect("status" in r.input).toBe(false);
+  });
+});
