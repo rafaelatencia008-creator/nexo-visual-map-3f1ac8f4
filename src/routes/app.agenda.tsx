@@ -427,6 +427,8 @@ function AgendaPage() {
   const [selected, setSelected] = React.useState<SelectedAgendaItem | null>(
     null,
   );
+  const [pendingRemoval, setPendingRemoval] =
+    React.useState<PendingRemovalItem | null>(null);
   const lastTriggerRef = React.useRef<HTMLElement | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
