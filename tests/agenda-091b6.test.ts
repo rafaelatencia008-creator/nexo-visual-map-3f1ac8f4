@@ -1084,14 +1084,15 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
       /setMutationError\(null\);\s*setMutationConflict\(null\);\s*setPendingRemoval\(true\)/,
     );
   });
-  it("105. remoção só executa quando pendingRemoval aberto e permRemove allowed", () => {
+  it("105. remoção só executa quando pendingRemoval aberto e gate canConfirmRemoval permite (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const confirmRemoval");
     expect(idx).toBeGreaterThan(-1);
-    const slice = DETAIL_SRC.slice(idx, idx + 900);
+    const slice = DETAIL_SRC.slice(idx, idx + 1200);
     expect(slice).toMatch(/mutationLock\.tryAcquire\(\)/);
-    expect(slice).toMatch(/permissionAllowsAction\(permRemove\)/);
+    expect(slice).toMatch(/if \(!canConfirmRemoval\) return;/);
     expect(slice).toMatch(/if \(!pendingRemoval\) return/);
   });
+
 });
 
 // =========================================================================
