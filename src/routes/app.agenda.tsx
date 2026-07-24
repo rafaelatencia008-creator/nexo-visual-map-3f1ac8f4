@@ -360,18 +360,8 @@ function AgendaPage() {
   }, [state, range]);
 
   const upcomingDeadlines = React.useMemo(() => {
-    if (state.kind !== "ready") return [] as Deadline[];
-    return state.data.deadlines
-      .filter(
-        (d) =>
-          d.status === "pending" && isoDateTimeToEpoch(d.dueAt) >= nowEpoch,
-      )
-      .slice()
-      .sort((a, b) => {
-        const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
-        return t !== 0 ? t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-      })
-      .slice(0, 5);
+    if (state.kind !== "ready") return [] as readonly Deadline[];
+    return selectUpcomingDeadlines(state.data.deadlines, nowEpoch, 5);
   }, [state, nowEpoch]);
 
   return (
