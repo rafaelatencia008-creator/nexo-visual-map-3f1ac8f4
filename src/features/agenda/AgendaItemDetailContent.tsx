@@ -458,11 +458,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     };
   }, []);
 
-  // Reset ao abrir/mudar seleção. Chaveado por `selectionKey` (identidade
-  // semântica estável) — não reexecuta apenas porque o pai recriou o objeto
-  // `selected` sem trocar de item.
+  // Reset ao ativar/mudar de item. Chaveado pela `activationKey` (LV-…2.1.2):
+  // - `null` → não-`null`: novo item ativo, reset completo;
+  // - chave A → chave B: mudança de item, reset completo;
+  // - referência recriada com mesma chave: sem reset;
+  // - mudança apenas de `referenceEpoch`: sem reset.
+  //
+  // O reset NÃO libera operações em andamento: preserva `submittingRef` /
+  // `mutationLock` — cada operação continua proprietária da sua trava até
+  // o próprio `finally`. Só reprojeta os estados visuais para refletir a
+  // realidade das travas.
   React.useEffect(() => {
-    if (!active || !selected) return;
+    if (activationKey === null) return;
     setDetail({ kind: "loading" });
     setMode("view");
     setPerm("unknown");
@@ -470,10 +477,8 @@ export const AgendaItemDetailContent = React.forwardRef<
     setPermRemove("unknown");
     setPendingStatus(null);
     setPendingRemoval(false);
-    setMutating(false);
     setMutationError(null);
     setMutationConflict(null);
-    mutationLock.release();
     setAssignments({ kind: "idle" });
     setDForm(null);
     setAForm(null);
@@ -483,9 +488,11 @@ export const AgendaItemDetailContent = React.forwardRef<
     setAttemptedSubmit(false);
     setGeneralError(null);
     setConflictState(null);
-    setSubmitting(false);
-    submittingRef.current = false;
-  }, [selectionKey, active]);
+    // Estado visual das travas reflete a realidade — não força liberação.
+    setMutating(mutationLock.isLocked());
+    setSubmitting(submittingRef.current);
+  }, [activationKey, mutationLock]);
+
 
   // Carrega o detalhe pelo serviço oficial. Ramifica pelo discriminante para
   // preservar a correlação entre `type` e o tipo da `response` (união
