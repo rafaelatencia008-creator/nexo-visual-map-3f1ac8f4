@@ -567,25 +567,47 @@ describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7 não iniciada)", () => {
 
 // ---- DEC-AGE-001 reflete o estado real -----------------------------------
 
-describe("LV-09.1B.6.3A.1 · DEC-AGE-001", () => {
+describe("LV-09.1B.6.3A.2 · DEC-AGE-001 (coerência final)", () => {
   const dec = readFileSync("docs/decisions/DEC-AGE-001-rotas-canonicas.md", "utf8");
+
   it("30. DEC menciona a condição transitória (diálogos montados diretamente)", () => {
     expect(dec).toMatch(/transit[óo]ri/i);
     expect(dec).toContain("AgendaCreateDialog");
     expect(dec).toContain("AgendaItemDetailDialog");
   });
+
   it("31. DEC menciona a parcela B como pendente", () => {
     expect(dec).toContain("LV-09.1B.6.3B");
     expect(dec).toMatch(/pendente|n[ãa]o iniciad/i);
   });
-  it("32. DEC não afirma que os componentes Content já existem", () => {
-    // Devem aparecer apenas como pendência (linhas com 'não'/'ainda não').
-    expect(dec).toMatch(
-      /ainda\s+n[ãa]o[^.]*AgendaCreateContent|AgendaCreateContent[^.]*ainda\s+n[ãa]o|n[ãa]o[^.]*criad[oa]s[^.]*AgendaCreateContent/i,
-    );
-  });
-  it("33. DEC informa que a LV-09.1B.7 não está iniciada", () => {
+
+  it("32. DEC informa que a LV-09.1B.7 não está iniciada", () => {
     expect(dec).toContain("LV-09.1B.7");
     expect(dec).toMatch(/n[ãa]o\s+(est[áa]|foi)\s+iniciad/i);
+  });
+
+  it("33. DEC NÃO afirma que os componentes Content já existem", () => {
+    expect(dec).not.toMatch(/foram\s+extra[íi]d[ao]s\s+em\s+dois\s+componentes/i);
+    expect(dec).not.toMatch(/j[áa]\s+(foi|foram|existe|existem)[^.]*AgendaCreateContent/i);
+    expect(dec).not.toMatch(/j[áa]\s+(foi|foram|existe|existem)[^.]*AgendaItemDetailContent/i);
+  });
+
+  it("34. DEC NÃO afirma que os diálogos já são wrappers finos", () => {
+    expect(dec).not.toMatch(/permanecem\s+como\s+wrappers\s+finos/i);
+    expect(dec).not.toMatch(/cada\s+wrapper\s+apenas\s+monta\s+o\s+Content/i);
+  });
+
+  it("35. DEC NÃO afirma que as regras já vivem exclusivamente no Content", () => {
+    expect(dec).not.toMatch(/regras\s+vivem\s+exclusivamente\s+no\s+Content/i);
+    expect(dec).not.toMatch(/essas\s+regras\s+vivem\s+exclusivamente\s+no\s+Content/i);
+  });
+
+  it("36. DEC afirma positivamente que a extração ocorrerá na parcela B", () => {
+    expect(dec).toMatch(/ser[ãa]o\s+extra[íi]d[ao]s/i);
+    expect(dec).toMatch(/ser[ãa]o\s+transformados\s+em\s+wrappers\s+finos/i);
+  });
+
+  it("37. DEC afirma que a LV-09.1B.6.3 permanece aberta", () => {
+    expect(dec).toMatch(/LV-09\.1B\.6\.3[^B]?[\s\S]{0,80}?(aberta|permanece\s+aberta)/i);
   });
 });
