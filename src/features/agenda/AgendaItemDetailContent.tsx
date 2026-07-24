@@ -339,6 +339,22 @@ export const AgendaItemDetailContent = React.forwardRef<
   const detailReqIdRef = React.useRef(0);
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
+  // LV-09.1B.6.3B.2.1.1 — snapshots síncronos para invalidação assíncrona.
+  // Respostas em voo comparam a chave capturada no início da chamada com
+  // `selectionKeyRef.current` no momento da resolução; se divergiram (ou
+  // o componente ficou inativo), o resultado é descartado sem tocar em
+  // `setState`.
+  const activeRef = React.useRef(active);
+  const selectionKeyRef = React.useRef<AgendaDetailSelectionKey | null>(
+    selectionKey,
+  );
+  React.useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+  React.useEffect(() => {
+    selectionKeyRef.current = selectionKey;
+  }, [selectionKey]);
+
   const mutationInFlightRef = React.useRef(false);
   const mutationLock = React.useMemo(
     () => bindSingleFlightLockToRef(mutationInFlightRef),
