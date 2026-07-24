@@ -105,8 +105,6 @@ import {
   resolveDiscardIntent,
 } from "./detail-reducers";
 import {
-  APPOINTMENT_STATUS_LABEL as MUT_APPOINTMENT_STATUS_LABEL,
-  DEADLINE_STATUS_LABEL as MUT_DEADLINE_STATUS_LABEL,
   buildChangeAppointmentStatusInput,
   buildChangeDeadlineStatusInput,
   getAppointmentStatusActions,
