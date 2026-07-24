@@ -569,6 +569,7 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
                   onChange={updateDeadline}
                   assignments={assignments}
                   disabled={submitting}
+                  onRetryAssignments={() => setAssignmentsAttempt((n) => n + 1)}
                 />
               ) : (
                 <AppointmentFields
@@ -577,6 +578,7 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
                   onChange={updateAppointment}
                   assignments={assignments}
                   disabled={submitting}
+                  onRetryAssignments={() => setAssignmentsAttempt((n) => n + 1)}
                 />
               )}
             </div>
