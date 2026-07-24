@@ -1,7 +1,9 @@
 /**
- * LV-09.1B.6.3B.2.1 — Identidade semântica estável do detalhe.
+ * LV-09.1B.6.3B.2.1   — Identidade semântica estável do detalhe.
  * LV-09.1B.6.3B.2.1.1 — Snapshots síncronos para invalidação assíncrona.
  * LV-09.1B.6.3B.2.1.2 — Gates completos e propriedade dos locks.
+ * LV-09.1B.6.3B.2.1.3 — Vinculação do detalhe à seleção e geração
+ *                        monotônica de atividade.
  *
  * Módulo puro. Não conhece React nem TanStack Router.
  *
@@ -21,12 +23,16 @@
  * um resultado assíncrono: só é considerado atual quando o componente
  * ainda está montado, a operação não foi cancelada, o detalhe segue
  * ativo, a chave semântica no momento da resolução é a mesma capturada
- * no início da requisição, e (quando aplicável) o request ID monotônico
- * também é o corrente.
+ * no início da requisição, a **geração de atividade** capturada é a
+ * corrente (LV-…2.1.3, para diferenciar A → B → A) e (quando aplicável)
+ * o request ID monotônico também é o corrente.
  *
  * `deriveAgendaDetailActivityState` deriva `hasActiveSelection` e
  * `isInteractiveReady` a partir dos estados observáveis do componente,
  * separando "temos seleção ativa" de "conteúdo pronto para interagir".
+ * A prontidão exige que o detalhe carregado pertença à geração de
+ * atividade atual (LV-…2.1.3): um snapshot órfão de uma sessão anterior
+ * é considerado "não pronto" mesmo que `detail.kind === "ready"`.
  */
 import type { AppointmentId, CaseId, DeadlineId } from "@/domain/core/ids";
 
@@ -69,6 +75,14 @@ export interface AgendaDetailAsyncGuard {
   readonly currentSelectionKey: AgendaDetailSelectionKey | null;
   readonly requestSelectionKey: AgendaDetailSelectionKey | null;
   /**
+   * LV-09.1B.6.3B.2.1.3 — identifica a sessão de atividade (monotônica).
+   * Distingue A → B → A: a segunda ocorrência de A tem geração maior que
+   * a primeira, e resultados capturados na primeira sessão não são
+   * aplicados na terceira, mesmo com a chave semântica coincidente.
+   */
+  readonly currentActivityGeneration?: number;
+  readonly requestActivityGeneration?: number;
+  /**
    * Quando informado, o resultado só é considerado corrente se este
    * request ID for o mesmo em vigor no momento da aplicação.
    */
@@ -85,6 +99,13 @@ export function isAgendaDetailAsyncResultCurrent(
   if (guard.currentSelectionKey === null) return false;
   if (guard.requestSelectionKey === null) return false;
   if (guard.currentSelectionKey !== guard.requestSelectionKey) return false;
+  if (
+    typeof guard.currentActivityGeneration === "number" &&
+    typeof guard.requestActivityGeneration === "number" &&
+    guard.currentActivityGeneration !== guard.requestActivityGeneration
+  ) {
+    return false;
+  }
   if (
     typeof guard.currentRequestId === "number" &&
     typeof guard.requestId === "number" &&
@@ -103,6 +124,12 @@ export interface AgendaDetailActivityInputs {
   readonly active: boolean;
   readonly hasSelection: boolean;
   readonly selectionKey: AgendaDetailSelectionKey | null;
+  /**
+   * LV-09.1B.6.3B.2.1.3 — o snapshot de detalhe pertence à geração de
+   * atividade atual? Um snapshot órfão (de sessão anterior) é apresentado
+   * como "não pronto" mesmo que `detailReady === true`.
+   */
+  readonly detailBelongsToCurrentActivity: boolean;
   readonly detailReady: boolean;
 }
 
@@ -116,6 +143,9 @@ export function deriveAgendaDetailActivityState(
 ): AgendaDetailActivityState {
   const hasActiveSelection =
     inputs.active && inputs.hasSelection && inputs.selectionKey !== null;
-  const isInteractiveReady = hasActiveSelection && inputs.detailReady;
+  const isInteractiveReady =
+    hasActiveSelection &&
+    inputs.detailBelongsToCurrentActivity &&
+    inputs.detailReady;
   return { hasActiveSelection, isInteractiveReady };
 }

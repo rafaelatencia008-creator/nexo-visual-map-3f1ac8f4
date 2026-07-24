@@ -268,6 +268,18 @@ type DetailState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string };
 
+// LV-09.1B.6.3B.2.1.3 — snapshot de detalhe vinculado à sessão de atividade.
+// Cada snapshot carrega a geração e a chave semântica capturadas no momento
+// em que foi produzido. Um snapshot cuja geração/chave não é a corrente é
+// considerado órfão e apresentado como "loading" — mesmo que carregue um
+// estado `ready`. Isso corrige o cenário A → B → A, em que a resposta lenta
+// de B poderia acender um "ready" alheio à sessão final.
+type DetailSnapshot = Readonly<{
+  activityGeneration: number;
+  selectionKey: AgendaDetailSelectionKey | null;
+  state: DetailState;
+}>;
+
 type PermState = PermissionEvalState;
 type AssignmentsState =
   | { kind: "idle" }
@@ -315,7 +327,11 @@ export const AgendaItemDetailContent = React.forwardRef<
 
 
 
-  const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
+  const [detailSnapshot, setDetailSnapshot] = React.useState<DetailSnapshot>({
+    activityGeneration: -1,
+    selectionKey: null,
+    state: { kind: "loading" },
+  });
   const [mode, setMode] = React.useState<Mode>("view");
   const [perm, setPerm] = React.useState<PermState>("unknown");
   const [assignments, setAssignments] = React.useState<AssignmentsState>({
@@ -389,6 +405,42 @@ export const AgendaItemDetailContent = React.forwardRef<
   // recriação equivalente de `selected` não invalida o formulário.
   const activationKey = buildAgendaDetailActivationKey(active, selectionKey);
 
+  // LV-09.1B.6.3B.2.1.3 — geração monotônica de atividade.
+  // Toda mudança da `activationKey` (ativação, troca de item, desativação)
+  // incrementa a geração DURANTE o render. Isso distingue o cenário
+  // A → B → A: a terceira sessão tem geração maior que a primeira, e
+  // resultados capturados na sessão inicial de A nunca contaminam a
+  // sessão final, mesmo com a chave semântica idêntica.
+  const previousActivationKeyRef = React.useRef<
+    AgendaDetailSelectionKey | null
+  >(activationKey);
+  const activityGenerationRef = React.useRef(0);
+  if (previousActivationKeyRef.current !== activationKey) {
+    previousActivationKeyRef.current = activationKey;
+    activityGenerationRef.current += 1;
+  }
+  const activityGeneration = activityGenerationRef.current;
+
+  // LV-09.1B.6.3B.2.1.3 — detalhe visível vinculado à sessão corrente.
+  // Um snapshot cuja geração/chave não é a corrente é órfão e apresentado
+  // como "loading" — mesmo que contenha um estado `ready` de outra sessão.
+  const detailIsCurrent =
+    detailSnapshot.activityGeneration === activityGeneration &&
+    detailSnapshot.selectionKey === selectionKey;
+  const detail: DetailState = detailIsCurrent
+    ? detailSnapshot.state
+    : { kind: "loading" };
+  // Setter estampado com a geração/chave correntes no momento da chamada.
+  // Chamado apenas após guardas assíncronos que já confirmam pertinência,
+  // ou pelo reset síncrono (que naturalmente estampa a sessão nova).
+  const setDetail = React.useCallback((state: DetailState): void => {
+    setDetailSnapshot({
+      activityGeneration: activityGenerationRef.current,
+      selectionKey: selectionKeyRef.current,
+      state,
+    });
+  }, []);
+
 
   const mutationInFlightRef = React.useRef(false);
   const mutationLock = React.useMemo(
@@ -417,12 +469,13 @@ export const AgendaItemDetailContent = React.forwardRef<
   // LV-09.1B.6.3B.2.1.2 — atividade/prontidão separadas do lock.
   // `hasActiveSelection` habilita fechamento e retry em qualquer detalhe
   // ativo (mesmo em loading/erro). `isInteractiveReady` só é verdadeiro
-  // após o carregamento bem-sucedido.
+  // após o carregamento bem-sucedido E vinculado à sessão corrente.
   const { hasActiveSelection, isInteractiveReady } =
     deriveAgendaDetailActivityState({
       active,
       hasSelection: selected !== null,
       selectionKey,
+      detailBelongsToCurrentActivity: detailIsCurrent,
       detailReady: detail.kind === "ready",
     });
 
@@ -518,9 +571,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     let cancelled = false;
     const reqId = ++detailReqIdRef.current;
     const reqSelectionKey = selectionKey;
+    // LV-09.1B.6.3B.2.1.3 — captura a geração da atividade no início da
+    // requisição para diferenciar A → B → A.
+    const reqActivityGeneration = activityGenerationRef.current;
     setDetail({ kind: "loading" });
 
-    // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2).
+    // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2 + .3).
     const stillCurrent = (): boolean =>
       isAgendaDetailAsyncResultCurrent({
         mounted: mountedRef.current,
@@ -528,6 +584,8 @@ export const AgendaItemDetailContent = React.forwardRef<
         cancelled,
         currentSelectionKey: selectionKeyRef.current,
         requestSelectionKey: reqSelectionKey,
+        currentActivityGeneration: activityGenerationRef.current,
+        requestActivityGeneration: reqActivityGeneration,
         currentRequestId: detailReqIdRef.current,
         requestId: reqId,
       });
@@ -602,6 +660,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     let cancelled = false;
     const reqSelectionKey = selectionKey;
+    const reqActivityGeneration = activityGenerationRef.current;
     setPerm("loading");
     setPermChangeStatus("loading");
     setPermRemove("loading");
@@ -617,7 +676,8 @@ export const AgendaItemDetailContent = React.forwardRef<
       !cancelled &&
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === reqSelectionKey;
+      selectionKeyRef.current === reqSelectionKey &&
+      activityGenerationRef.current === reqActivityGeneration;
     const evalOne = (
       action: typeof updateAction | typeof statusAction | typeof removeAction,
       setter: (v: PermState) => void,
@@ -650,13 +710,15 @@ export const AgendaItemDetailContent = React.forwardRef<
     let cancelled = false;
     const reqId = ++assignReqIdRef.current;
     const reqSelectionKey = selectionKey;
+    const reqActivityGeneration = activityGenerationRef.current;
     setAssignments({ kind: "loading" });
     const stillCurrent = (): boolean =>
       !cancelled &&
       mountedRef.current &&
       activeRef.current &&
       reqId === assignReqIdRef.current &&
-      selectionKeyRef.current === reqSelectionKey;
+      selectionKeyRef.current === reqSelectionKey &&
+      activityGenerationRef.current === reqActivityGeneration;
     (async () => {
       const collected: Assignment[] = [];
       const seen = new Set<string>();
@@ -831,13 +893,16 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(perm)) return;
-    // LV-…2.1.1 — captura chave da seleção para invalidar
-    // aplicação de resultados caso a seleção mude durante o submit.
+    // LV-…2.1.1 + 2.1.3 — captura chave da seleção e geração de atividade
+    // para invalidar aplicação de resultados caso mudem durante o submit
+    // (inclui A → B → A: a segunda A tem geração distinta da primeira).
     const startSelectionKey = selectionKeyRef.current;
+    const startActivityGeneration = activityGenerationRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === startSelectionKey;
+      selectionKeyRef.current === startSelectionKey &&
+      activityGenerationRef.current === startActivityGeneration;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
@@ -975,10 +1040,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!mutationLock.tryAcquire()) return;
     const operationId = ++mutationOperationIdRef.current;
     const startSelectionKey = selectionKeyRef.current;
+    const startActivityGeneration = activityGenerationRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === startSelectionKey;
+      selectionKeyRef.current === startSelectionKey &&
+      activityGenerationRef.current === startActivityGeneration;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
@@ -1068,10 +1135,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!mutationLock.tryAcquire()) return;
     const operationId = ++mutationOperationIdRef.current;
     const startSelectionKey = selectionKeyRef.current;
+    const startActivityGeneration = activityGenerationRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === startSelectionKey;
+      selectionKeyRef.current === startSelectionKey &&
+      activityGenerationRef.current === startActivityGeneration;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);

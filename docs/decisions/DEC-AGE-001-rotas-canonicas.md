@@ -139,6 +139,35 @@ iniciada.
   descartar respostas assíncronas (`mounted`, `active`, `cancelled`,
   identidade de seleção e request ID).
 
+### Entregue na parcela B (LV-09.1B.6.3B.2.1.3 — vinculação do detalhe à seleção e geração monotônica de atividade)
+
+- Introduzida uma **geração monotônica de atividade** em `AgendaItemDetailContent`.
+  A cada mudança da `activationKey` (ativação, troca de item ou desativação),
+  a geração é incrementada **durante o render** — via `previousActivationKeyRef`
+  e `activityGenerationRef`, sem `useEffect`. Isso diferencia o cenário
+  A → B → A: a terceira sessão tem geração maior que a primeira, e uma
+  resposta lenta da sessão inicial nunca é aplicada na sessão final,
+  mesmo com a chave semântica idêntica.
+- O estado de detalhe foi trocado por `DetailSnapshot` — carrega
+  `activityGeneration`, `selectionKey` e `state`. O detalhe **visível**
+  (`detail`) é derivado: quando o snapshot não é da sessão corrente
+  (`detailIsCurrent === false`), a UI mostra "loading" mesmo que o
+  snapshot contenha um `ready` de outra sessão. `setDetail` é um wrapper
+  que estampa o snapshot com `activityGenerationRef.current` e
+  `selectionKeyRef.current` no momento da chamada.
+- `AgendaDetailAsyncGuard` foi ampliado com `currentActivityGeneration` e
+  `requestActivityGeneration` (ambos opcionais para retrocompatibilidade).
+  `isAgendaDetailAsyncResultCurrent` rejeita respostas cuja geração
+  capturada difere da corrente. Os `stillCurrent`/`stillSameSelection`
+  do load, das permissões, dos assignments, do submit, do
+  `confirmStatusChange` e do `confirmRemoval` agora comparam também a
+  geração.
+- `AgendaDetailActivityInputs` passou a exigir
+  `detailBelongsToCurrentActivity: boolean`. `deriveAgendaDetailActivityState`
+  compõe `isInteractiveReady = hasActiveSelection && detailBelongsToCurrentActivity && detailReady`.
+  Snapshots órfãos não habilitam edição, mudança de status ou exclusão.
+
+
 
 ### Pendente da parcela B (LV-09.1B.6.3B.2.2)
 
