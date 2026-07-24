@@ -104,6 +104,18 @@ import {
   resolveDetailLoadResponse,
   resolveDiscardIntent,
 } from "./detail-reducers";
+import {
+  APPOINTMENT_STATUS_LABEL as MUT_APPOINTMENT_STATUS_LABEL,
+  DEADLINE_STATUS_LABEL as MUT_DEADLINE_STATUS_LABEL,
+  buildChangeAppointmentStatusInput,
+  buildChangeDeadlineStatusInput,
+  getAppointmentStatusActions,
+  getDeadlineStatusActions,
+  translateAgendaMutationError,
+  type AppointmentStatusAction,
+  type DeadlineStatusAction,
+  type TranslatedMutationError,
+} from "./item-mutations";
 
 // ---- Tipos públicos -----------------------------------------------------
 
