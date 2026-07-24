@@ -914,16 +914,17 @@ export function AgendaItemDetailDialog(
   // do botão.
   const requestDeadlineStatusChange = React.useCallback(
     (action: DeadlineStatusAction) => {
-      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      if (!getMutationLockDecisions().canOpenConfirmation) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "deadline", action });
     },
+    // getMutationLockDecisions is stable-by-inputs; include mutating for freshness
     [mutating],
   );
   const requestAppointmentStatusChange = React.useCallback(
     (action: AppointmentStatusAction) => {
-      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      if (!getMutationLockDecisions().canOpenConfirmation) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "appointment", action });
@@ -931,18 +932,24 @@ export function AgendaItemDetailDialog(
     [mutating],
   );
   const requestRemoval = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     setMutationError(null);
     setMutationConflict(null);
     setPendingRemoval(true);
   }, [mutating]);
 
-  // Decisão unificada de bloqueio síncrono, consumida pela UI real.
-  const lockDecisions = deriveMutationLockDecisions({
-    mutationRefLocked: mutationInFlightRef.current,
-    mutating,
-    submitting,
-  });
+  // Fonte única de verdade sobre bloqueio síncrono. Consulta o lock testado
+  // e o estado de submit/mutation em tempo real.
+  const getMutationLockDecisions = React.useCallback(
+    () =>
+      deriveMutationLockDecisions({
+        mutationRefLocked: mutationLock.isLocked(),
+        mutating,
+        submitting: submittingRef.current,
+      }),
+    [mutationLock, mutating],
+  );
+  const lockDecisions = getMutationLockDecisions();
   const hasPermEvalError = hasPermissionEvaluationError({
     update: perm,
     changeStatus: permChangeStatus,
