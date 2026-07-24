@@ -327,7 +327,11 @@ export const AgendaItemDetailContent = React.forwardRef<
 
 
 
-  const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
+  const [detailSnapshot, setDetailSnapshot] = React.useState<DetailSnapshot>({
+    activityGeneration: -1,
+    selectionKey: null,
+    state: { kind: "loading" },
+  });
   const [mode, setMode] = React.useState<Mode>("view");
   const [perm, setPerm] = React.useState<PermState>("unknown");
   const [assignments, setAssignments] = React.useState<AssignmentsState>({
