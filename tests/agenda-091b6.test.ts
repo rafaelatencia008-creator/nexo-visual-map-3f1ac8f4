@@ -1444,17 +1444,18 @@ describe("LV-09.1B.6.2 — integração real dos helpers", () => {
   it("140. banner de retry é controlado por hasPermEvalError", () => {
     expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("141. enterEdit bloqueia via getMutationLockDecisions().canEnterEdit", () => {
+  it("141. enterEdit bloqueia via canEditItem (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const enterEdit = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canEnterEdit/);
+    expect(slice).toMatch(/if \(!canEditItem\) return;/);
   });
-  it("142. requestClose bloqueia via getMutationLockDecisions().canClose", () => {
+  it("142. requestClose bloqueia via canCloseDetail (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
+    expect(slice).toMatch(/if \(!canCloseDetail\) return;/);
   });
+
   it("143. callbacks dedicados de request de status/remoção existem", () => {
     expect(DETAIL_SRC).toMatch(/requestDeadlineStatusChange/);
     expect(DETAIL_SRC).toMatch(/requestAppointmentStatusChange/);
