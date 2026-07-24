@@ -1350,7 +1350,7 @@ export function AgendaItemDetailDialog(
       >
         <AlertDialogContent
           onEscapeKeyDown={(e) => {
-            if (mutationInFlightRef.current || mutating) e.preventDefault();
+            if (!getMutationLockDecisions().canClose) e.preventDefault();
           }}
         >
           <AlertDialogHeader>
