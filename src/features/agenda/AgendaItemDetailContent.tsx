@@ -893,13 +893,16 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(perm)) return;
-    // LV-…2.1.1 — captura chave da seleção para invalidar
-    // aplicação de resultados caso a seleção mude durante o submit.
+    // LV-…2.1.1 + 2.1.3 — captura chave da seleção e geração de atividade
+    // para invalidar aplicação de resultados caso mudem durante o submit
+    // (inclui A → B → A: a segunda A tem geração distinta da primeira).
     const startSelectionKey = selectionKeyRef.current;
+    const startActivityGeneration = activityGenerationRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === startSelectionKey;
+      selectionKeyRef.current === startSelectionKey &&
+      activityGenerationRef.current === startActivityGeneration;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
