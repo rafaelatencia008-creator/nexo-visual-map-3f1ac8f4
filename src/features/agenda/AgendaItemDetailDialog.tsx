@@ -905,7 +905,7 @@ export function AgendaItemDetailDialog(
   }, [mutating]);
 
   const retryPermissions = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canRetryPermissions) return;
     setPermAttempt((n) => n + 1);
   }, [mutating]);
 
