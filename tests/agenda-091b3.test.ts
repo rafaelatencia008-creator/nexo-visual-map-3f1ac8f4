@@ -338,8 +338,8 @@ describe("LV-09.1B.3 — processos e permissões", () => {
   it("24. falha ao carregar processos é tratável (retorno estruturado)", async () => {
     const env = createMockDomainEnvironment();
     // Uma paginação inválida força retorno de erro em vez de exceção.
+    // `limit: 0` é válido no tipo (number) e é rejeitado apenas em runtime.
     const res = await env.services.cases.list(OWNER_ALFA, {
-      // @ts-expect-error validação em runtime
       page: { limit: 0 },
     });
     expect(res.ok).toBe(false);
