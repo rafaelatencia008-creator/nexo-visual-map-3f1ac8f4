@@ -757,9 +757,9 @@ describe("LV-09.1B.6.3B.2.1.2 · Propriedade das travas", () => {
 // ===========================================================================
 
 describe("LV-09.1B.6.3B.2.1.2 · Escopo intocado", () => {
-  it("80. Página definitiva de detalhe não foi iniciada (rota ainda monta o wrapper)", () => {
-    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailDialog");
-    expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailContent");
+  it("80. Página definitiva de detalhe concluída (LV-09.1B.6.3B.2.2): rota monta o Content", () => {
+    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailContent");
+    expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailDialog");
   });
   it("81. Não existe /app/disponibilidade nem availability.ts", () => {
     expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
