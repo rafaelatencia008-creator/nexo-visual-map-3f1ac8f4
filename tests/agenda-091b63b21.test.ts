@@ -19,6 +19,8 @@ import { resolve } from "node:path";
 import {
   buildAgendaDetailSelectionKey,
   buildAgendaDetailActivationKey,
+  createAgendaDetailActivitySession,
+  deriveAgendaDetailRenderSession,
   deriveAgendaDetailActivityState,
   isAgendaDetailAsyncResultCurrent,
   type AgendaDetailSelectionKey,
