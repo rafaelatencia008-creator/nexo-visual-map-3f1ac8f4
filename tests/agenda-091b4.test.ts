@@ -955,12 +955,12 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
       const res = cursor
         ? await env.services.assignments.listByCase(
             OWNER_ALFA,
-            SEED_CASE_ALFA_1_ID,
+            SEED_CASE_ALFA_2_ID,
             { cursor, limit: 1 },
           )
         : await env.services.assignments.listByCase(
             OWNER_ALFA,
-            SEED_CASE_ALFA_1_ID,
+            SEED_CASE_ALFA_2_ID,
             { limit: 1 },
           );
       expect(res.ok).toBe(true);
