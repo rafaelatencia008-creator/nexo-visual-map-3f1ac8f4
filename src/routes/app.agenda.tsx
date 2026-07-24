@@ -397,6 +397,10 @@ function AgendaPage() {
   const [showMore, setShowMore] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const [pendingCreated, setPendingCreated] = React.useState<{
+    id: string;
+    type: "deadline" | "appointment";
+  } | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
@@ -542,22 +546,33 @@ function AgendaPage() {
 
   const handleCreated = React.useCallback(
     (created: AgendaCreatedItem) => {
+      setPendingCreated({ id: String(created.item.id), type: created.type });
       setReloadKey((k) => k + 1);
-      const iso =
-        created.type === "deadline" ? created.item.dueAt : created.item.startsAt;
-      const inView = isInRange(iso, range.from, range.to);
-      if (!inView) {
-        toast.info(
-          "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
-        );
-      }
       // Retorna o foco ao botão que abriu o diálogo.
       window.setTimeout(() => {
         newItemButtonRef.current?.focus();
       }, 0);
     },
-    [range.from, range.to],
+    [],
   );
+
+  // Após a recarga concluir, avalia se o item criado aparece na visualização
+  // atual. Se não aparecer (filtros/período), sinaliza ao usuário.
+  React.useEffect(() => {
+    if (!pendingCreated) return;
+    if (state.kind !== "ready") return;
+    const list =
+      pendingCreated.type === "deadline"
+        ? visible.deadlines
+        : visible.appointments;
+    const found = list.some((it) => String(it.id) === pendingCreated.id);
+    if (!found) {
+      toast.info(
+        "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
+      );
+    }
+    setPendingCreated(null);
+  }, [pendingCreated, state, visible]);
 
   return (
     <div className="space-y-6">
