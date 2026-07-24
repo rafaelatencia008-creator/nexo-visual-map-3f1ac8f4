@@ -731,6 +731,7 @@ function AgendaPage() {
         context={context}
         cases={accessibleCases}
         onUpdated={handleUpdated}
+        onDeleted={handleDeleted}
         referenceEpoch={nowEpoch}
       />
 
