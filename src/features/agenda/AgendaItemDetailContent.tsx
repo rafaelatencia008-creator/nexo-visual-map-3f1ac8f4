@@ -1020,18 +1020,33 @@ export const AgendaItemDetailContent = React.forwardRef<
     remove: permRemove,
   });
 
+  // LV-09.1B.6.3B.2.1.1 — gate único de interatividade. Só permite ações
+  // funcionais quando o componente está ativo, há uma seleção definida e o
+  // item já foi carregado com sucesso. Botões dependentes de `detail.kind`
+  // são fechados aqui na fonte, não em cada consumidor.
+  const isInteractive =
+    active && selected !== null && detail.kind === "ready";
+
   // Gates unificados da UI (fonte única). Todos os botões e handlers
   // consomem estes valores em vez de recompor `submitting || mutating`.
-  const canCloseDetail = lockDecisions.canClose;
+  const canCloseDetail = active && lockDecisions.canClose;
   const canEditItem =
-    lockDecisions.canEnterEdit && permissionAllowsAction(perm);
-  const canOpenItemAction = lockDecisions.canOpenConfirmation;
+    isInteractive &&
+    lockDecisions.canEnterEdit &&
+    permissionAllowsAction(perm);
+  const canOpenItemAction =
+    isInteractive && lockDecisions.canOpenConfirmation;
   const canConfirmStatusChange =
+    isInteractive &&
     lockDecisions.canOpenConfirmation &&
     permissionAllowsAction(permChangeStatus);
   const canConfirmRemoval =
-    lockDecisions.canOpenConfirmation && permissionAllowsAction(permRemove);
-  const canRetryPermissionEvaluation = lockDecisions.canRetryPermissions;
+    isInteractive &&
+    lockDecisions.canOpenConfirmation &&
+    permissionAllowsAction(permRemove);
+  const canRetryPermissionEvaluation =
+    isInteractive && lockDecisions.canRetryPermissions;
+
 
 
 
