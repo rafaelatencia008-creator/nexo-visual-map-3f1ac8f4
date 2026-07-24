@@ -453,6 +453,7 @@ describe("LV-09.1B.6.3B.2.1.2 · deriveAgendaDetailActivityState", () => {
       active: false,
       hasSelection: true,
       selectionKey: key,
+      detailBelongsToCurrentActivity: true,
       detailReady: true,
     });
     expect(s.hasActiveSelection).toBe(false);
@@ -463,6 +464,7 @@ describe("LV-09.1B.6.3B.2.1.2 · deriveAgendaDetailActivityState", () => {
       active: true,
       hasSelection: true,
       selectionKey: key,
+      detailBelongsToCurrentActivity: true,
       detailReady: false,
     });
     expect(s.hasActiveSelection).toBe(true);
@@ -473,6 +475,7 @@ describe("LV-09.1B.6.3B.2.1.2 · deriveAgendaDetailActivityState", () => {
       active: true,
       hasSelection: true,
       selectionKey: key,
+      detailBelongsToCurrentActivity: true,
       detailReady: true,
     });
     expect(s.hasActiveSelection).toBe(true);
@@ -483,6 +486,7 @@ describe("LV-09.1B.6.3B.2.1.2 · deriveAgendaDetailActivityState", () => {
       active: true,
       hasSelection: false,
       selectionKey: null,
+      detailBelongsToCurrentActivity: true,
       detailReady: true,
     });
     expect(s.hasActiveSelection).toBe(false);
