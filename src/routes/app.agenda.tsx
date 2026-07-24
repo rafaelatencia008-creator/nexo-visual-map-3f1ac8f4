@@ -1627,7 +1627,14 @@ function DeadlineCard({
 }
 
 
-function AppointmentCard({ appointment }: { appointment: Appointment }) {
+function AppointmentCard({
+  appointment,
+  onOpen,
+}: {
+  appointment: Appointment;
+  onOpen?: (a: Appointment, ev?: React.SyntheticEvent) => void;
+}) {
+
   const presentation = getAppointmentPresentation(appointment);
   const ModeIcon = APPOINTMENT_MODE_ICON[appointment.mode];
   const StateIcon =
