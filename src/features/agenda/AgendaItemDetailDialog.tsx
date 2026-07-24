@@ -1261,27 +1261,47 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingStatus !== null}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current) {
+          if (!o && !mutationInFlightRef.current && !mutating) {
             setPendingStatus(null);
             setMutationError(null);
             setMutationConflict(null);
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(e) => {
+            if (mutationInFlightRef.current || mutating) e.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingStatus?.kind === "deadline"
-                ? pendingStatus.action.confirmTitle
-                : pendingStatus?.kind === "appointment"
-                  ? pendingStatus.action.confirmTitle
-                  : ""}
+              {pendingStatus ? pendingStatus.action.confirmTitle : ""}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingStatus &&
                 `Alterar status de ${pendingStatus.action.currentLabel} para ${pendingStatus.action.targetLabel}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pendingStatus && detail.kind === "ready" && (
+            <div className="grid gap-1 rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+              <div data-testid="status-confirm-title">
+                <span className="font-medium text-foreground">Item:</span>{" "}
+                <span className="text-muted-foreground">{detail.loaded.item.title}</span>
+              </div>
+              <div>
+                <span className="font-medium text-foreground">Estado atual:</span>{" "}
+                <span className="text-muted-foreground">{pendingStatus.action.currentLabel}</span>
+              </div>
+              <div>
+                <span className="font-medium text-foreground">Novo estado:</span>{" "}
+                <span className="text-muted-foreground">{pendingStatus.action.targetLabel}</span>
+              </div>
+              <div data-testid="status-confirm-version">
+                <span className="font-medium text-foreground">Versão atual:</span>{" "}
+                <span className="text-muted-foreground">v{detail.loaded.item.metadata.version}</span>
+              </div>
+            </div>
+          )}
           {mutationError && (
             <div
               role="alert"
@@ -1291,14 +1311,30 @@ export function AgendaItemDetailDialog(
               <span>{mutationError.message}</span>
             </div>
           )}
+          {mutationConflict &&
+            mutationConflict.operation === "change_status" &&
+            (mutationConflict.expected !== undefined ||
+              mutationConflict.actual !== undefined) && (
+              <p className="text-xs text-muted-foreground">
+                Versão esperada: {mutationConflict.expected !== undefined ? `v${mutationConflict.expected}` : "—"} · Versão atual no servidor: {mutationConflict.actual !== undefined ? `v${mutationConflict.actual}` : "—"}
+              </p>
+            )}
           <AlertDialogFooter>
-            {mutationConflict ? (
+            {mutationConflict && mutationConflict.operation === "change_status" ? (
               <>
-                <AlertDialogCancel disabled={mutating}>Fechar</AlertDialogCancel>
+                <AlertDialogCancel
+                  disabled={mutating}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    keepReviewingMutation();
+                  }}
+                >
+                  Continuar revisando
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
-                    reloadAfterStatusConflict();
+                    reloadAfterMutationConflict();
                   }}
                   disabled={mutating}
                 >
@@ -1331,23 +1367,40 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingRemoval}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current) {
+          if (!o && !mutationInFlightRef.current && !mutating) {
             setPendingRemoval(false);
             setMutationError(null);
+            setMutationConflict(null);
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(e) => {
+            if (mutationInFlightRef.current || mutating) e.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               {selected?.type === "deadline"
-                ? "Excluir este prazo?"
-                : "Excluir este compromisso?"}
+                ? "Excluir prazo?"
+                : "Excluir compromisso?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              Esta ação remove o item da Agenda e não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {detail.kind === "ready" && (
+            <div className="grid gap-1 rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+              <div data-testid="removal-confirm-title">
+                <span className="font-medium text-foreground">Item:</span>{" "}
+                <span className="text-muted-foreground">{detail.loaded.item.title}</span>
+              </div>
+              <div data-testid="removal-confirm-version">
+                <span className="font-medium text-foreground">Versão atual:</span>{" "}
+                <span className="text-muted-foreground">v{detail.loaded.item.metadata.version}</span>
+              </div>
+            </div>
+          )}
           {mutationError && (
             <div
               role="alert"
@@ -1357,22 +1410,61 @@ export function AgendaItemDetailDialog(
               <span>{mutationError.message}</span>
             </div>
           )}
+          {mutationConflict &&
+            mutationConflict.operation === "remove" &&
+            (mutationConflict.expected !== undefined ||
+              mutationConflict.actual !== undefined) && (
+              <p className="text-xs text-muted-foreground">
+                Versão esperada: {mutationConflict.expected !== undefined ? `v${mutationConflict.expected}` : "—"} · Versão atual no servidor: {mutationConflict.actual !== undefined ? `v${mutationConflict.actual}` : "—"}
+              </p>
+            )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmRemoval();
-              }}
-              disabled={mutating || permRemove !== "allowed"}
-              aria-busy={mutating}
-            >
-              {mutating && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              )}
-              <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-              Excluir
-            </AlertDialogAction>
+            {mutationConflict && mutationConflict.operation === "remove" ? (
+              <>
+                <AlertDialogCancel
+                  disabled={mutating}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    keepReviewingMutation();
+                  }}
+                >
+                  Continuar revisando
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    reloadAfterMutationConflict();
+                  }}
+                  disabled={mutating}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                  Recarregar dados
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={mutating} autoFocus>
+                  Manter item
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmRemoval();
+                  }}
+                  disabled={mutating || permRemove !== "allowed"}
+                  aria-busy={mutating}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {mutating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  )}
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                  {selected?.type === "deadline"
+                    ? "Excluir prazo"
+                    : "Excluir compromisso"}
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
