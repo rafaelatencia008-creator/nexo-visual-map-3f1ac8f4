@@ -34,40 +34,94 @@ export type DetailStateSnapshot =
   | Readonly<{ kind: "error"; message: string }>;
 
 /**
+ * Entrada discriminada: o `type` está correlacionado ao tipo genérico da
+ * resposta do serviço oficial, impedindo desacoplamento entre discriminante e
+ * carga útil. Como consequência, `resolveDetailLoadResponse` não precisa de
+ * casts para tratar o dado carregado.
+ */
+export type DetailLoadIncoming =
+  | Readonly<{
+      requestId: number;
+      type: "deadline";
+      response: ServiceResult<Deadline>;
+    }>
+  | Readonly<{
+      requestId: number;
+      type: "appointment";
+      response: ServiceResult<Appointment>;
+    }>;
+
+// ---- 1b) translateDetailLoadError ---------------------------------------
+
+/** Mensagens públicas por código de erro do serviço no carregamento do detalhe. */
+export const DETAIL_LOAD_ERROR_MESSAGES = Object.freeze({
+  offline: "Sem conexão. Tente novamente.",
+  unavailable: "Serviço indisponível. Tente novamente em instantes.",
+  internal_error: "Erro interno. Tente novamente em instantes.",
+  generic: "Não foi possível carregar este item.",
+} as const);
+
+export type DetailLoadFailureSnapshot =
+  | Readonly<{ kind: "not_found" }>
+  | Readonly<{ kind: "forbidden" }>
+  | Readonly<{ kind: "error"; message: string }>;
+
+/**
+ * Tradutor puro dos códigos de erro do serviço para o estado do detalhe.
+ * Preserva mensagens específicas de offline/unavailable/internal_error e
+ * usa a mensagem genérica para outros códigos de falha (validation_error,
+ * conflict — improvável no getById — ou qualquer outro futuro).
+ */
+export function translateDetailLoadError(
+  error: Readonly<{ code: string }>,
+): DetailLoadFailureSnapshot {
+  const code = error.code;
+  if (code === "not_found") return { kind: "not_found" };
+  if (code === "forbidden" || code === "unauthorized")
+    return { kind: "forbidden" };
+  if (code === "offline")
+    return { kind: "error", message: DETAIL_LOAD_ERROR_MESSAGES.offline };
+  if (code === "unavailable")
+    return { kind: "error", message: DETAIL_LOAD_ERROR_MESSAGES.unavailable };
+  if (code === "internal_error")
+    return {
+      kind: "error",
+      message: DETAIL_LOAD_ERROR_MESSAGES.internal_error,
+    };
+  return { kind: "error", message: DETAIL_LOAD_ERROR_MESSAGES.generic };
+}
+
+/**
  * Decide como uma resposta assíncrona de `getById` deve afetar o estado
  * do detalhe, considerando o `requestId` corrente. Respostas de requisições
  * anteriores retornam `"ignore"` para que o consumidor descarte sem efeito.
+ *
+ * A entrada é uma união discriminada por `type`, o que garante que
+ * `response.data` já é do tipo correto (`Deadline` ou `Appointment`) sem
+ * assertions.
  */
 export function resolveDetailLoadResponse(
   currentRequestId: number,
-  incoming: Readonly<{
-    requestId: number;
-    type: DetailReadyType;
-    response: ServiceResult<Deadline> | ServiceResult<Appointment>;
-  }>,
-  errorMessage = "Não foi possível carregar este item.",
+  incoming: DetailLoadIncoming,
 ): DetailStateSnapshot | "ignore" {
   if (incoming.requestId !== currentRequestId) return "ignore";
   if (!incoming.response.ok) {
-    const code = incoming.response.error.code;
-    if (code === "not_found") return { kind: "not_found" };
-    if (code === "forbidden" || code === "unauthorized")
-      return { kind: "forbidden" };
-    return { kind: "error", message: errorMessage };
+    return translateDetailLoadError(incoming.response.error);
   }
   if (incoming.type === "deadline") {
     return {
       kind: "ready",
       type: "deadline",
-      item: incoming.response.data as Deadline,
+      item: incoming.response.data,
     };
   }
   return {
     kind: "ready",
     type: "appointment",
-    item: incoming.response.data as Appointment,
+    item: incoming.response.data,
   };
 }
+
 
 // ---- 2) deriveEditUiState -----------------------------------------------
 
