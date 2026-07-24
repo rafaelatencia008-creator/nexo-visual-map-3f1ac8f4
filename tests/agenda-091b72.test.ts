@@ -1,9 +1,19 @@
 /**
- * LV-09.1B.7.2 — Página consultiva de disponibilidade da Agenda.
+ * LV-09.1B.7.2 / LV-09.1B.7.2.1 — Página consultiva de disponibilidade da Agenda.
  *
- * Cobertura: helper puro do formulário, carregamento paginado de
+ * Cobertura: helper puro do formulário, ciclo consultivo puro
+ * (`availability-consultation-state`), carregamento paginado de
  * processos e vínculos, consulta consultiva via motor aprovado,
  * estrutura da rota canônica e da interface visual.
+ *
+ * Correção LV-09.1B.7.2.1:
+ *   - Provas 35 e 45–54 tornam-se comportamentais sobre o helper puro
+ *     do ciclo consultivo.
+ *   - Provas 12b/12c preservam a checagem de formato de IDs.
+ *   - Nova prova estrutural garante ausência de `as never` nos três
+ *     arquivos-chave.
+ *   - Novas provas verificam o `SelectTrigger` único do Responsável e
+ *     o aria-linkage do erro de intervalo nos inputs de data.
  */
 
 import { describe, it, expect } from "bun:test";
@@ -27,15 +37,39 @@ import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
 import {
   checkAppointmentAvailability,
   type AvailabilityEnvironment,
+  type CheckAppointmentAvailabilityInput,
 } from "@/features/agenda/check-appointment-availability";
+import {
+  beginAvailabilityConsultation,
+  buildAvailabilityConsultationInputKey,
+  completeAvailabilityConsultation,
+  createAvailabilityConsultationSession,
+  invalidateAvailabilityConsultation,
+  isAvailabilityConsultationCurrent,
+} from "@/features/agenda/availability-consultation-state";
 
 import { buildDomainId } from "@/domain/core/ids";
-import type { AppointmentId, AssignmentId, CaseId } from "@/domain/core/ids";
+import type { AssignmentId } from "@/domain/core/ids";
+import { isIsoDate, isIsoDateTime, type IsoDate, type IsoDateTime } from "@/domain/core/common";
 import type { Assignment } from "@/domain/core/assignment";
 import type { Case } from "@/domain/core/case";
 import type { Appointment } from "@/domain/core/agenda";
+import type { CaseService } from "@/domain/services/case-service";
+import type { AssignmentService } from "@/domain/services/assignment-service";
+import type { AppointmentService } from "@/domain/services/appointment-service";
 import type { ServiceContext } from "@/domain/services/context";
 import { SEED_ORG_ALFA_ID, SEED_USER_1_ID, SEED_MEM_ALFA_OWNER_ID } from "@/domain/mocks/seed";
+
+// ---- Narrowing helpers (não são casts) -----------------------------------
+
+function isoDt(s: string): IsoDateTime {
+  if (!isIsoDateTime(s)) throw new Error(`iso datetime inválido em teste: ${s}`);
+  return s;
+}
+function isoD(s: string): IsoDate {
+  if (!isIsoDate(s)) throw new Error(`iso date inválido em teste: ${s}`);
+  return s;
+}
 
 // ---- Utilitários ----------------------------------------------------------
 
@@ -46,13 +80,14 @@ const CTX: ServiceContext = Object.freeze({
   role: "proprietario",
 });
 
-const CASE_A = buildDomainId("case", "avail_a") as CaseId;
-const CASE_B = buildDomainId("case", "avail_b") as CaseId;
-const ASSIGN_A = buildDomainId("assignment", "avail_a") as AssignmentId;
-const ASSIGN_B = buildDomainId("assignment", "avail_b") as AssignmentId;
+const CASE_A = buildDomainId("case", "avail_a");
+const CASE_B = buildDomainId("case", "avail_b");
+const ASSIGN_A = buildDomainId("assignment", "avail_a");
+const ASSIGN_B = buildDomainId("assignment", "avail_b");
+const PROFILE_ID = buildDomainId("professionalProfile", "seed");
 
-const START = "2028-04-10T09:00:00.000Z";
-const END = "2028-04-10T10:00:00.000Z";
+const START: IsoDateTime = isoDt("2028-04-10T09:00:00.000Z");
+const END: IsoDateTime = isoDt("2028-04-10T10:00:00.000Z");
 
 function read(rel: string): string {
   return readFileSync(resolve(__dirname, "..", rel), "utf8");
@@ -70,36 +105,64 @@ function validForm(overrides: Partial<AvailabilityFormState> = {}): Availability
 
 function makeCase(id: string, ref: string, title: string): Case {
   return Object.freeze({
-    id: buildDomainId("case", id) as CaseId,
+    id: buildDomainId("case", id),
     organizationId: SEED_ORG_ALFA_ID,
     reference: ref,
     title,
-    status: "in_progress",
-    natureCategory: "civel",
+    status: "active",
+    confidentiality: "standard",
+    conflictCheck: "not_reviewed",
+    objectDefined: false,
+    deadlineStatus: "not_reviewed",
     metadata: {
-      createdAt: "2028-01-01T00:00:00.000Z",
-      updatedAt: "2028-01-01T00:00:00.000Z",
+      createdAt: isoDt("2028-01-01T00:00:00.000Z"),
+      updatedAt: isoDt("2028-01-01T00:00:00.000Z"),
       version: 1,
     },
-  }) as unknown as Case;
+  });
 }
 
 function makeAssignment(id: string, overrides: Partial<Assignment> = {}): Assignment {
-  return Object.freeze({
-    id: buildDomainId("assignment", id) as AssignmentId,
+  const base: Assignment = {
+    id: buildDomainId("assignment", id),
     organizationId: SEED_ORG_ALFA_ID,
     caseId: CASE_A,
-    professionalProfileId: buildDomainId("professionalProfile", "seed") as unknown,
+    professionalProfileId: PROFILE_ID,
     role: "lead_professional",
     status: "active",
-    section: undefined,
+    startedOn: isoD("2028-01-01"),
     metadata: {
-      createdAt: "2028-01-01T00:00:00.000Z",
-      updatedAt: "2028-01-01T00:00:00.000Z",
+      createdAt: isoDt("2028-01-01T00:00:00.000Z"),
+      updatedAt: isoDt("2028-01-01T00:00:00.000Z"),
       version: 1,
     },
-    ...overrides,
-  }) as unknown as Assignment;
+  };
+  return Object.freeze({ ...base, ...overrides });
+}
+
+function makeAppointment(
+  id: string,
+  starts: IsoDateTime,
+  ends: IsoDateTime,
+  assignmentId: AssignmentId = ASSIGN_A,
+): Appointment {
+  return Object.freeze({
+    id: buildDomainId("appointment", id),
+    organizationId: SEED_ORG_ALFA_ID,
+    caseId: CASE_A,
+    kind: "meeting",
+    title: `A ${id}`,
+    startsAt: starts,
+    endsAt: ends,
+    mode: "remote",
+    status: "scheduled",
+    assignmentId,
+    metadata: {
+      createdAt: starts,
+      updatedAt: starts,
+      version: 1,
+    },
+  });
 }
 
 type CasesPage = Readonly<{ items: readonly Case[]; nextCursor?: string }>;
@@ -113,7 +176,7 @@ function fakeCasesEnv(
 } {
   const calls: Array<{ cursor: string | undefined; limit: number | undefined }> = [];
   let idx = 0;
-  const list = async (_ctx: ServiceContext, req: { page: { cursor?: string; limit: number } }) => {
+  const list: CaseService["list"] = async (_ctx, req) => {
     const cursor = req.page.cursor;
     calls.push({ cursor, limit: req.page.limit });
     if (opts.rejectOn === idx) {
@@ -122,29 +185,30 @@ function fakeCasesEnv(
     }
     if (opts.failOn === idx) {
       idx += 1;
-      return { ok: false as const, error: { code: "unavailable", message: "x" } };
+      return { ok: false, error: { code: "unavailable", message: "x" } };
     }
     let payload: CasesPage | { failure: true };
     if (typeof pages === "function") payload = pages(cursor);
     else payload = pages[idx] ?? { items: [] };
     idx += 1;
     if ("failure" in payload) {
-      return { ok: false as const, error: { code: "unavailable", message: "x" } };
+      return { ok: false, error: { code: "unavailable", message: "x" } };
     }
-    return {
-      ok: true as const,
-      data: {
-        items: payload.items,
-        nextCursor: payload.nextCursor,
-        total: undefined,
-      },
-    };
+    return { ok: true, data: { items: payload.items, nextCursor: payload.nextCursor } };
   };
+  const emptyAssignments: AssignmentService["listByCase"] = async () => ({
+    ok: true,
+    data: { items: [] },
+  });
+  const emptyAppointments: AppointmentService["list"] = async () => ({
+    ok: true,
+    data: { items: [] },
+  });
   const env: AvailabilityPageEnvironment = {
     services: {
-      cases: { list: list as never },
-      assignments: { listByCase: (async () => ({ ok: true, data: { items: [] } })) as never },
-      appointments: { list: (async () => ({ ok: true, data: { items: [] } })) as never },
+      cases: { list },
+      assignments: { listByCase: emptyAssignments },
+      appointments: { list: emptyAppointments },
     },
   };
   return { env, calls };
@@ -167,45 +231,48 @@ function fakeAssignmentsEnv(
     caseId: unknown;
   }> = [];
   let idx = 0;
-  const listByCase = async (
-    _ctx: ServiceContext,
-    caseId: unknown,
-    page: { cursor?: string; limit: number },
-  ) => {
-    const cursor = page.cursor;
-    calls.push({ cursor, limit: page.limit, caseId });
+  const listByCase: AssignmentService["listByCase"] = async (_ctx, caseId, page) => {
+    calls.push({ cursor: page.cursor, limit: page.limit, caseId });
     if (opts.rejectOn === idx) {
       idx += 1;
       throw new Error("boom");
     }
     if (opts.failOn === idx) {
       idx += 1;
-      return { ok: false as const, error: { code: "unavailable", message: "x" } };
+      return { ok: false, error: { code: "unavailable", message: "x" } };
     }
     let payload: AssignmentsPage | { failure: true };
-    if (typeof pages === "function") payload = pages(cursor);
+    if (typeof pages === "function") payload = pages(page.cursor);
     else payload = pages[idx] ?? { items: [] };
     idx += 1;
     if ("failure" in payload) {
-      return { ok: false as const, error: { code: "unavailable", message: "x" } };
+      return { ok: false, error: { code: "unavailable", message: "x" } };
     }
-    return {
-      ok: true as const,
-      data: {
-        items: payload.items,
-        nextCursor: payload.nextCursor,
-        total: undefined,
-      },
-    };
+    return { ok: true, data: { items: payload.items, nextCursor: payload.nextCursor } };
   };
+  const emptyCases: CaseService["list"] = async () => ({ ok: true, data: { items: [] } });
+  const emptyAppointments: AppointmentService["list"] = async () => ({
+    ok: true,
+    data: { items: [] },
+  });
   const env: AvailabilityPageEnvironment = {
     services: {
-      cases: { list: (async () => ({ ok: true, data: { items: [] } })) as never },
-      assignments: { listByCase: listByCase as never },
-      appointments: { list: (async () => ({ ok: true, data: { items: [] } })) as never },
+      cases: { list: emptyCases },
+      assignments: { listByCase },
+      appointments: { list: emptyAppointments },
     },
   };
   return { env, calls };
+}
+
+function motorEnv(pages: readonly (readonly Appointment[])[]): AvailabilityEnvironment {
+  let idx = 0;
+  const list: AppointmentService["list"] = async () => {
+    const items = pages[idx] ?? [];
+    idx += 1;
+    return { ok: true, data: { items } };
+  };
+  return { services: { appointments: { list } } };
 }
 
 // ---- Fontes lidas para provas estruturais --------------------------------
@@ -219,11 +286,14 @@ const DEC_PATH = "docs/decisions/DEC-AGE-001-rotas-canonicas.md";
 const CREATE_CONTENT_PATH = "src/features/agenda/AgendaCreateContent.tsx";
 const DETAIL_CONTENT_PATH = "src/features/agenda/AgendaItemDetailContent.tsx";
 const ROUTE_TREE_PATH = "src/routeTree.gen.ts";
+const FORM_PATH = "src/features/agenda/availability-form.ts";
+const SESSION_PATH = "src/features/agenda/availability-consultation-state.ts";
 
 const ROUTE_SRC = read(ROUTE_PATH);
 const CONTENT_SRC = read(CONTENT_PATH);
 const AGENDA_INDEX_SRC = read(AGENDA_INDEX_PATH);
 const DEC_SRC = read(DEC_PATH);
+const FORM_SRC = read(FORM_PATH);
 
 // =========================================================================
 // Grupo A — Formulário puro
@@ -473,7 +543,11 @@ describe("LV-09.1B.7.2 · C · loadActiveAssignmentsForCase", () => {
     const { env } = fakeAssignmentsEnv([{ items }]);
     const r = await loadActiveAssignmentsForCase(env, CTX, CASE_A);
     if (r.kind === "ready") {
-      expect(r.items.map((a) => a.role)).toEqual(["collaborator", "lead_professional", "reviewer"]);
+      expect(r.items.map((a) => a.role)).toEqual([
+        "collaborator",
+        "lead_professional",
+        "reviewer",
+      ]);
     }
   });
   it("31. erro do serviço retorna estado tipado", async () => {
@@ -517,52 +591,21 @@ describe("LV-09.1B.7.2 · C · loadActiveAssignmentsForCase", () => {
 });
 
 // =========================================================================
-// Grupo D — Consulta ao motor
+// Grupo D — Consulta ao motor e ciclo consultivo puro
 // =========================================================================
 
-function motorEnv(pages: readonly (readonly Appointment[])[]): AvailabilityEnvironment {
-  let idx = 0;
-  return {
-    services: {
-      appointments: {
-        list: (async () => {
-          const items = pages[idx] ?? [];
-          idx += 1;
-          return { ok: true, data: { items, nextCursor: undefined } };
-        }) as never,
-      },
-    },
-  };
-}
+const validInput: CheckAppointmentAvailabilityInput = Object.freeze({
+  startsAt: START,
+  endsAt: END,
+  assignmentId: ASSIGN_A,
+});
 
-function makeAppointment(
-  id: string,
-  starts: string,
-  ends: string,
-  assignmentId: AssignmentId = ASSIGN_A,
-): Appointment {
-  return Object.freeze({
-    id: buildDomainId("appointment", id) as AppointmentId,
-    organizationId: SEED_ORG_ALFA_ID,
-    caseId: CASE_A,
-    kind: "meeting",
-    title: `A ${id}`,
-    startsAt: starts as never,
-    endsAt: ends as never,
-    mode: "remote",
-    status: "scheduled",
-    assignmentId,
-    metadata: {
-      createdAt: starts as never,
-      updatedAt: starts as never,
-      version: 1,
-    },
-  }) as unknown as Appointment;
-}
-
-describe("LV-09.1B.7.2 · D · consulta ao motor", () => {
-  it("35. estado inicial é idle (source)", () => {
-    expect(CONTENT_SRC).toMatch(/kind:\s*"idle"/);
+describe("LV-09.1B.7.2 · D · consulta ao motor e ciclo consultivo", () => {
+  it("35. sessão inicial tem requestId=0, inFlight=false e inputKey=null", () => {
+    const s = createAvailabilityConsultationSession();
+    expect(s.requestId).toBe(0);
+    expect(s.inFlight).toBe(false);
+    expect(s.inputKey).toBeNull();
   });
   it("36. formulário inválido não chama o motor (builder rejeita)", async () => {
     const r = buildAvailabilityConsultationInput(validForm({ caseId: "" }));
@@ -582,107 +625,149 @@ describe("LV-09.1B.7.2 · D · consulta ao motor", () => {
   });
   it("39. available gera decisão disponível", async () => {
     const env = motorEnv([[]]);
-    const decision = await checkAppointmentAvailability(env, CTX, {
-      startsAt: START as never,
-      endsAt: END as never,
-      assignmentId: ASSIGN_A,
-    });
+    const decision = await checkAppointmentAvailability(env, CTX, validInput);
     expect(decision.kind).toBe("available");
   });
   it("40. conflict preserva os conflitos do motor", async () => {
     const env = motorEnv([[makeAppointment("c1", START, END)]]);
-    const d = await checkAppointmentAvailability(env, CTX, {
-      startsAt: START as never,
-      endsAt: END as never,
-      assignmentId: ASSIGN_A,
-    });
+    const d = await checkAppointmentAvailability(env, CTX, validInput);
     expect(d.kind).toBe("conflict");
     if (d.kind === "conflict") expect(d.conflicts.length).toBe(1);
   });
   it("41. assignment_required não vira disponível", async () => {
     const d = await checkAppointmentAvailability(motorEnv([[]]), CTX, {
-      startsAt: START as never,
-      endsAt: END as never,
+      startsAt: START,
+      endsAt: END,
     });
     expect(d.kind).toBe("indeterminate");
     if (d.kind === "indeterminate") expect(d.reason).toBe("assignment_required");
   });
   it("42. invalid_interval não vira disponível", async () => {
     const d = await checkAppointmentAvailability(motorEnv([[]]), CTX, {
-      startsAt: END as never,
-      endsAt: START as never,
+      startsAt: END,
+      endsAt: START,
       assignmentId: ASSIGN_A,
     });
     expect(d.kind).toBe("indeterminate");
     if (d.kind === "indeterminate") expect(d.reason).toBe("invalid_interval");
   });
   it("43. consultation_failed não vira disponível", async () => {
-    const env: AvailabilityEnvironment = {
-      services: {
-        appointments: {
-          list: (async () => ({ ok: false, error: { code: "x", message: "y" } })) as never,
-        },
-      },
-    };
-    const d = await checkAppointmentAvailability(env, CTX, {
-      startsAt: START as never,
-      endsAt: END as never,
-      assignmentId: ASSIGN_A,
+    const failing: AppointmentService["list"] = async () => ({
+      ok: false,
+      error: { code: "unavailable", message: "y" },
     });
+    const env: AvailabilityEnvironment = { services: { appointments: { list: failing } } };
+    const d = await checkAppointmentAvailability(env, CTX, validInput);
     expect(d.kind).toBe("indeterminate");
     if (d.kind === "indeterminate") expect(d.reason).toBe("consultation_failed");
   });
   it("44. pagination_limit não vira disponível", async () => {
-    const env: AvailabilityEnvironment = {
-      services: {
-        appointments: {
-          list: (async () => ({
-            ok: true,
-            data: { items: [], nextCursor: "keep-going" },
-          })) as never,
-        },
-      },
-    };
-    const d = await checkAppointmentAvailability(env, CTX, {
-      startsAt: START as never,
-      endsAt: END as never,
-      assignmentId: ASSIGN_A,
+    const looping: AppointmentService["list"] = async () => ({
+      ok: true,
+      data: { items: [], nextCursor: "keep-going" },
     });
+    const env: AvailabilityEnvironment = { services: { appointments: { list: looping } } };
+    const d = await checkAppointmentAvailability(env, CTX, validInput);
     expect(d.kind).toBe("indeterminate");
     if (d.kind === "indeterminate") expect(d.reason).toBe("pagination_limit");
   });
-  it("45. componente usa inFlightRef e checagem antes de nova submissão", () => {
-    expect(CONTENT_SRC).toMatch(/inFlightRef/);
-    expect(CONTENT_SRC).toMatch(/if\s*\(inFlightRef\.current\)/);
+  it("45. begin transiciona inFlight=true e retorna owner com requestId=1", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const r = beginAvailabilityConsultation(s0, validInput);
+    expect(r.kind).toBe("started");
+    if (r.kind === "started") {
+      expect(r.session.inFlight).toBe(true);
+      expect(r.session.requestId).toBe(1);
+      expect(r.owner.requestId).toBe(1);
+      expect(r.owner.inputKey).toBe(r.session.inputKey);
+    }
   });
-  it("46. alteração de campo limpa resultado anterior (invalidateResult)", () => {
-    expect(CONTENT_SRC).toMatch(/invalidateResult/);
-    expect(CONTENT_SRC).toMatch(/setView\(\{\s*kind:\s*"idle"\s*\}\)/);
+  it("46. begin durante inFlight retorna blocked e não altera a sessão", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error("primeira deve iniciar");
+    const second = beginAvailabilityConsultation(first.session, validInput);
+    expect(second.kind).toBe("blocked");
+    if (second.kind === "blocked") expect(second.session).toBe(first.session);
   });
-  it("47. troca de processo limpa responsável", () => {
-    expect(CONTENT_SRC).toMatch(/handleCaseChange[\s\S]{0,500}assignmentId:\s*""/);
+  it("47. invalidate zera inputKey, libera inFlight e incrementa requestId", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error();
+    const s2 = invalidateAvailabilityConsultation(first.session);
+    expect(s2.inFlight).toBe(false);
+    expect(s2.inputKey).toBeNull();
+    expect(s2.requestId).toBe(first.session.requestId + 1);
   });
-  it("48. troca de processo limpa resultado", () => {
-    expect(CONTENT_SRC).toMatch(/handleCaseChange[\s\S]{0,500}invalidateResult/);
+  it("48. begin após invalidate emite owner com requestId estritamente maior", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error();
+    const invalidated = invalidateAvailabilityConsultation(first.session);
+    const second = beginAvailabilityConsultation(invalidated, validInput);
+    if (second.kind !== "started") throw new Error();
+    expect(second.owner.requestId).toBeGreaterThan(first.owner.requestId);
   });
-  it("49. resposta antiga é ignorada após mudança (requestIdRef)", () => {
-    expect(CONTENT_SRC).toMatch(/reqId !== requestIdRef\.current/);
+  it("49. complete com o owner corrente libera o single-flight", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error();
+    const done = completeAvailabilityConsultation(first.session, first.owner);
+    expect(done.inFlight).toBe(false);
+    expect(done.requestId).toBe(first.session.requestId);
   });
-  it("50. nova consulta usa requestId monotônico", () => {
-    expect(CONTENT_SRC).toMatch(/\+\+requestIdRef\.current/);
+  it("50. complete com owner obsoleto é ignorado (sessão não regride)", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error();
+    const invalidated = invalidateAvailabilityConsultation(first.session);
+    const second = beginAvailabilityConsultation(invalidated, validInput);
+    if (second.kind !== "started") throw new Error();
+    // Owner obsoleto (da primeira consulta) chega tarde. Não deve mexer.
+    const ignored = completeAvailabilityConsultation(second.session, first.owner);
+    expect(ignored).toBe(second.session);
+    expect(ignored.inFlight).toBe(true);
   });
-  it("51. resposta após desmontagem é ignorada (mountedRef)", () => {
-    expect(CONTENT_SRC).toMatch(/mountedRef\.current/);
-    expect(CONTENT_SRC).toMatch(/if\s*\(!mountedRef\.current\)\s*return/);
+  it("51. isAvailabilityConsultationCurrent é falso quando desmontado", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const r = beginAvailabilityConsultation(s0, validInput);
+    if (r.kind !== "started") throw new Error();
+    expect(isAvailabilityConsultationCurrent(false, r.session, r.owner)).toBe(false);
   });
-  it("52. retry usa handleSubmit atual (mesmo callback)", () => {
-    expect(CONTENT_SRC).toMatch(/onClick=\{handleSubmit\}/);
+  it("52. isAvailabilityConsultationCurrent é falso após invalidate", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const r = beginAvailabilityConsultation(s0, validInput);
+    if (r.kind !== "started") throw new Error();
+    const invalidated = invalidateAvailabilityConsultation(r.session);
+    expect(isAvailabilityConsultationCurrent(true, invalidated, r.owner)).toBe(false);
   });
-  it("53. estado checking possui requestId", () => {
-    expect(CONTENT_SRC).toMatch(/kind:\s*"checking",\s*requestId:\s*reqId/);
+  it("53. isAvailabilityConsultationCurrent só é verdadeiro para o owner atual", () => {
+    const s0 = createAvailabilityConsultationSession();
+    const first = beginAvailabilityConsultation(s0, validInput);
+    if (first.kind !== "started") throw new Error();
+    expect(isAvailabilityConsultationCurrent(true, first.session, first.owner)).toBe(true);
+    const invalidated = invalidateAvailabilityConsultation(first.session);
+    const second = beginAvailabilityConsultation(invalidated, validInput);
+    if (second.kind !== "started") throw new Error();
+    // owner antigo contra sessão nova: falso
+    expect(isAvailabilityConsultationCurrent(true, second.session, first.owner)).toBe(false);
+    // owner novo contra sessão nova: verdadeiro
+    expect(isAvailabilityConsultationCurrent(true, second.session, second.owner)).toBe(true);
   });
-  it("54. conclusão libera o single-flight (inFlightRef = false)", () => {
-    expect(CONTENT_SRC).toMatch(/inFlightRef\.current\s*=\s*false/);
+  it("54. inputKey é determinística e sensível a mudanças de campo", () => {
+    const k1 = buildAvailabilityConsultationInputKey(validInput);
+    const k2 = buildAvailabilityConsultationInputKey({ ...validInput });
+    expect(k1).toBe(k2);
+    const k3 = buildAvailabilityConsultationInputKey({
+      ...validInput,
+      startsAt: END,
+    });
+    expect(k3).not.toBe(k1);
+    const k4 = buildAvailabilityConsultationInputKey({
+      ...validInput,
+      assignmentId: ASSIGN_B,
+    });
+    expect(k4).not.toBe(k1);
   });
 });
 
@@ -749,10 +834,22 @@ describe("LV-09.1B.7.2 · E · rota e interface", () => {
   it("68. página declara visualmente que a consulta não cria nem altera compromissos", () => {
     expect(CONTENT_SRC).toMatch(/n[ãa]o cria nem altera compromissos/);
   });
+  it("69. Responsável possui SelectTrigger único com id availability-assignment", () => {
+    const triggers = CONTENT_SRC.match(/id="availability-assignment"/g) ?? [];
+    expect(triggers.length).toBe(1);
+  });
+  it("70. Responsável fica desabilitado enquanto não há processo/lista", () => {
+    expect(CONTENT_SRC).toMatch(/assignmentDisabled/);
+    expect(CONTENT_SRC).toMatch(/disabled=\{assignmentDisabled\}/);
+  });
+  it("71. inputs de data associam aria-describedby ao erro de intervalo", () => {
+    expect(CONTENT_SRC).toMatch(/availability-interval-error/);
+    expect(CONTENT_SRC).toMatch(/intervalError/);
+  });
 });
 
 // =========================================================================
-// Provas adicionais de escopo
+// Provas adicionais de escopo e correção LV-09.1B.7.2.1
 // =========================================================================
 
 describe("LV-09.1B.7.2 · escopo preservado", () => {
@@ -777,10 +874,12 @@ describe("LV-09.1B.7.2 · escopo preservado", () => {
   });
   it("S5. domínio permanece intacto (arquivos-âncora existem)", () => {
     expect(existsSync(resolve(__dirname, "..", "src/domain/core/agenda.ts"))).toBe(true);
-    expect(existsSync(resolve(__dirname, "..", "src/domain/services/appointment-service.ts"))).toBe(
+    expect(
+      existsSync(resolve(__dirname, "..", "src/domain/services/appointment-service.ts")),
+    ).toBe(true);
+    expect(existsSync(resolve(__dirname, "..", "src/domain/mocks/appointment-mock.ts"))).toBe(
       true,
     );
-    expect(existsSync(resolve(__dirname, "..", "src/domain/mocks/appointment-mock.ts"))).toBe(true);
   });
   it("S6. componente não usa toast/notificações", () => {
     expect(CONTENT_SRC).not.toMatch(/from "sonner"/);
@@ -801,6 +900,24 @@ describe("LV-09.1B.7.2 · escopo preservado", () => {
   it("S9. DEC-AGE-001 registra a conclusão da LV-09.1B.7.2", () => {
     expect(DEC_SRC).toMatch(/LV-09\.1B\.7\.2/);
     expect(DEC_SRC).toMatch(/\/app\/disponibilidade/);
+  });
+  it("S10. nenhum dos três arquivos-chave contém `as never`", () => {
+    for (const p of [FORM_PATH, CONTENT_PATH, SESSION_PATH]) {
+      const src = read(p);
+      expect(src).not.toMatch(/\bas\s+never\b/);
+    }
+  });
+  it("S11. helper puro do ciclo consultivo existe", () => {
+    expect(existsSync(resolve(__dirname, "..", SESSION_PATH))).toBe(true);
+    // não importa React nem router
+    const src = read(SESSION_PATH);
+    expect(src).not.toMatch(/from "react"/);
+    expect(src).not.toMatch(/@tanstack\/react-router/);
+  });
+  it("S12. availability-form.ts não usa casts inseguros", () => {
+    expect(FORM_SRC).not.toMatch(/\bas\s+never\b/);
+    expect(FORM_SRC).not.toMatch(/undefined\s+as\b/);
+    expect(FORM_SRC).not.toMatch(/\bas\s+AssignmentId\b/);
   });
 });
 
