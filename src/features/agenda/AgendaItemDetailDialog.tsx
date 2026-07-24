@@ -1032,12 +1032,35 @@ export function AgendaItemDetailDialog(
               )}
 
               {detail.kind === "ready" && mode === "view" && (
-                <ViewPanel
-                  loaded={detail.loaded}
-                  caseLabel={currentCaseLabel}
-                  perm={perm}
-                  referenceEpoch={referenceEpoch}
-                />
+                <>
+                  <ViewPanel
+                    loaded={detail.loaded}
+                    caseLabel={currentCaseLabel}
+                    perm={perm}
+                    referenceEpoch={referenceEpoch}
+                  />
+                  <ItemActionsSection
+                    loaded={detail.loaded}
+                    permChangeStatus={permChangeStatus}
+                    permRemove={permRemove}
+                    mutating={mutating}
+                    mutationError={mutationError}
+                    onSelectDeadlineAction={(action) => {
+                      setMutationError(null);
+                      setStatusConflict(null);
+                      setPendingStatus({ kind: "deadline", action });
+                    }}
+                    onSelectAppointmentAction={(action) => {
+                      setMutationError(null);
+                      setStatusConflict(null);
+                      setPendingStatus({ kind: "appointment", action });
+                    }}
+                    onRequestRemoval={() => {
+                      setMutationError(null);
+                      setPendingRemoval(true);
+                    }}
+                  />
+                </>
               )}
 
               {detail.kind === "ready" && mode === "edit" && (
