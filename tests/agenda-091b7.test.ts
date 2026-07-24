@@ -587,9 +587,10 @@ describe("LV-09.1B.7.1 · checkAppointmentAvailability — múltiplos compromiss
     const extra = await createOverlapping(
       env,
       "Extra",
-      dt("2026-01-19T10:20:00.000Z"),
-      dt("2026-01-19T10:30:00.000Z"),
+      dt("2026-01-19T10:35:00.000Z"),
+      dt("2026-01-19T10:42:00.000Z"),
     );
+
     const r1 = await checkAppointmentAvailability({
       services,
       context: OWNER_ALFA,
