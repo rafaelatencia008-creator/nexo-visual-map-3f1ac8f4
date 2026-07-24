@@ -1172,6 +1172,7 @@ function DeadlineEditFields({
   form,
   errors,
   onChange,
+  onBlurField,
   assignments,
   originalAssignmentId,
   disabled,
@@ -1180,6 +1181,7 @@ function DeadlineEditFields({
   form: EditDeadlineFormState;
   errors: Readonly<Record<string, string>>;
   onChange: (k: keyof EditDeadlineFormState, v: string) => void;
+  onBlurField: (k: keyof EditDeadlineFormState) => void;
   assignments: AssignmentsState;
   originalAssignmentId: string | null;
   disabled: boolean;
