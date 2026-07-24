@@ -103,6 +103,8 @@ export interface AgendaItemDetailDialogProps {
   readonly context: ServiceContext;
   readonly cases: readonly Case[];
   readonly onUpdated: (updated: AgendaItemUpdated) => void;
+  /** Instante de referência para estado visual derivado (ex.: "Atrasado"). */
+  readonly referenceEpoch: number;
 }
 
 // ---- Rótulos ------------------------------------------------------------
