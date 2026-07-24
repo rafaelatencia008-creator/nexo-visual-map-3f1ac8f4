@@ -2309,9 +2309,7 @@ describe("LV-09.1B.5.3 — resolveDetailLoadResponse integra o tradutor", () => 
 describe("LV-09.1B.5.3 — DetailLoadIncoming é união discriminada por 'type'", () => {
   it("174. resposta 'deadline' bem-sucedida entrega item Deadline sem cast", async () => {
     const env = createMockDomainEnvironment();
-    const ctxs = ctxOfUser(env, SEED_USER_1_ID);
-    const ctx = ctxs.find((c) => c.organizationId === SEED_ORG_ALFA_ID);
-    if (!ctx) throw new Error("ctx alfa não encontrado");
+    const ctx = OWNER_ALFA;
     const list = ok(await env.services.deadlines.list(ctx));
     const d = list.items[0];
     if (!d) throw new Error("prazo esperado");
