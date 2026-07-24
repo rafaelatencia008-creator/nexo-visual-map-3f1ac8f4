@@ -279,49 +279,70 @@ export function AgendaItemDetailDialog(
     submittingRef.current = false;
   }, [selected]);
 
-  // Carrega o detalhe pelo serviço oficial
+  // Carrega o detalhe pelo serviço oficial. Ramifica pelo discriminante para
+  // preservar a correlação entre `type` e o tipo da `response` (união
+  // discriminada em `resolveDetailLoadResponse`), sem casts.
   React.useEffect(() => {
     if (!selected) return;
     const reqId = ++detailReqIdRef.current;
     setDetail({ kind: "loading" });
-    const call =
-      selected.type === "deadline"
-        ? environment.services.deadlines.getById(
-            context,
-            selected.caseId,
-            selected.id,
-          )
-        : environment.services.appointments.getById(
-            context,
-            selected.caseId,
-            selected.id,
+
+    const applyDecision = (
+      decided: ReturnType<typeof resolveDetailLoadResponse>,
+    ): void => {
+      if (decided === "ignore") return;
+      if (decided.kind === "ready") {
+        const loaded: Loaded =
+          decided.type === "deadline"
+            ? { type: "deadline", item: decided.item }
+            : { type: "appointment", item: decided.item };
+        setDetail({ kind: "ready", loaded });
+        return;
+      }
+      setDetail(decided);
+    };
+
+    if (selected.type === "deadline") {
+      environment.services.deadlines
+        .getById(context, selected.caseId, selected.id)
+        .then((response) => {
+          if (!mountedRef.current) return;
+          applyDecision(
+            resolveDetailLoadResponse(detailReqIdRef.current, {
+              requestId: reqId,
+              type: "deadline",
+              response,
+            }),
           );
-    call
-      .then((res) => {
-        if (!mountedRef.current) return;
-        const decided = resolveDetailLoadResponse(detailReqIdRef.current, {
-          requestId: reqId,
-          type: selected.type,
-          response: res,
+        })
+        .catch(() => {
+          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          setDetail({
+            kind: "error",
+            message: "Não foi possível carregar este item.",
+          });
         });
-        if (decided === "ignore") return;
-        if (decided.kind === "ready") {
-          const loaded: Loaded =
-            decided.type === "deadline"
-              ? { type: "deadline", item: decided.item }
-              : { type: "appointment", item: decided.item };
-          setDetail({ kind: "ready", loaded });
-          return;
-        }
-        setDetail(decided);
-      })
-      .catch(() => {
-        if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
-        setDetail({
-          kind: "error",
-          message: "Não foi possível carregar este item.",
+    } else {
+      environment.services.appointments
+        .getById(context, selected.caseId, selected.id)
+        .then((response) => {
+          if (!mountedRef.current) return;
+          applyDecision(
+            resolveDetailLoadResponse(detailReqIdRef.current, {
+              requestId: reqId,
+              type: "appointment",
+              response,
+            }),
+          );
+        })
+        .catch(() => {
+          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          setDetail({
+            kind: "error",
+            message: "Não foi possível carregar este item.",
+          });
         });
-      });
+    }
   }, [selected, environment, context, reload]);
 
 
