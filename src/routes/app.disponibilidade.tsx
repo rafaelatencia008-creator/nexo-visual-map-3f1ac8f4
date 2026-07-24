@@ -3,7 +3,7 @@
  *
  * Rota fina: obtém `environment`/`context` via `useMockDomain` e monta
  * `AgendaAvailabilityContent`. Não implementa paginação, validação,
- * regra de conflito ou chamada a `appointments.list`.
+ * regra de conflito nem chama o serviço de compromissos diretamente.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
