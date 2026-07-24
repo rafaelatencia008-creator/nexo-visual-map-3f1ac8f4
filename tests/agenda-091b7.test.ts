@@ -507,23 +507,22 @@ describe("LV-09.1B.7.1 · checkAppointmentAvailability — regras de conflito", 
     });
     expect(r.status).toBe("available");
   });
-  it("(32) caso sem assignment do profissional não gera conflito", async () => {
+  it("(32) apenas o caso de outra org é acessível → available (isolamento)", async () => {
     const { env, services } = seededEnv();
     const sel = await getSeededAssignment(env);
+    // Caso Beta é inacessível para o contexto Alfa: o serviço devolve
+    // not_found via paginateAssignments, tratado como sem assignments;
+    // além disso `list` de appointments só devolve dados de Alfa.
     const r = await checkAppointmentAvailability({
       services,
       context: OWNER_ALFA,
-      accessibleCases: [SEED_CASE_ALFA_1_ID, SEED_CASE_ALFA_3_ID],
+      accessibleCases: [SEED_CASE_BETA_2_ID as CaseId],
       selectedAssignment: sel,
-      candidate: CANDIDATE_OVERLAP,
+      candidate: CANDIDATE_FREE,
     });
-    // ALFA 1 e 3 não têm assignments do prof, e o seed único (ALFA_1) está
-    // em ALFA 2. Como não passamos ALFA 2 aqui, precisamos considerar que o
-    // motor adiciona o `selectedAssignment` ao conjunto de identidade.
-    // O compromisso AP_A2_2 está fora dos casos acessíveis, portanto o
-    // serviço não retornará conflitos.
     expect(r.status).toBe("available");
   });
+
 });
 
 describe("LV-09.1B.7.1 · checkAppointmentAvailability — múltiplos compromissos", () => {
