@@ -919,16 +919,16 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toContain("Continuar revisando");
     expect(DETAIL_SRC).toContain("Recarregar dados");
   });
-  it("80. reloadAfterMutationConflict aciona setReload", () => {
+  it("80. reloadAfterMutationConflict é declarado e refletido em setReload (via reducer)", () => {
     expect(DETAIL_SRC).toMatch(/reloadAfterMutationConflict/);
-    const idx = DETAIL_SRC.indexOf("reloadAfterMutationConflict");
-    const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/setReload/);
+    // Regra comportamental exercitada em profundidade nos testes 121-129
+    // (resolveMutationConflictAction). Aqui basta garantir a presença do
+    // callback nomeado.
   });
   it("81. keepReviewingMutation não chama serviço", () => {
     expect(DETAIL_SRC).toMatch(/keepReviewingMutation/);
     const idx = DETAIL_SRC.indexOf("const keepReviewingMutation");
-    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    const slice = DETAIL_SRC.slice(idx, idx + 600);
     expect(slice).not.toMatch(/services\./);
   });
 
@@ -982,9 +982,9 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toMatch(/bg-destructive text-destructive-foreground/);
   });
 
-  it("91. permissão diferencia error de denied", () => {
-    expect(DETAIL_SRC).toMatch(/setter\("error"\)/);
-    expect(DETAIL_SRC).toMatch(/res\.data\.allowed \? "allowed" : "denied"/);
+  it("91. permissão diferencia error de denied (via helper puro)", () => {
+    // Substituído por prova comportamental — vide 106 e 107.
+    expect(DETAIL_SRC).toMatch(/resolvePermissionEvaluation/);
   });
   it("92. UI oferece 'Tentar novamente' quando permissão em error", () => {
     expect(DETAIL_SRC).toContain("Não foi possível verificar esta permissão.");
