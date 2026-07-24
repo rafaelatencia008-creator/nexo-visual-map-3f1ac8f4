@@ -19,15 +19,33 @@ import {
   ArrowUp,
   CircleDot,
   FileClock,
+  Search,
+  X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { useMockDomain } from "@/components/app/MockDomainProvider";
+import type { Case } from "@/domain/core/case";
 import type {
   Appointment,
   AppointmentKind,
@@ -38,6 +56,13 @@ import type {
   DeadlinePriority,
   DeadlineStatus,
 } from "@/domain/core/agenda";
+import {
+  APPOINTMENT_KINDS,
+  APPOINTMENT_MODES,
+  DEADLINE_KINDS,
+  DEADLINE_PRIORITIES,
+} from "@/domain/core/agenda";
+import type { CaseId } from "@/domain/core/ids";
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
@@ -52,6 +77,24 @@ import {
   buildMonthCells,
   selectUpcomingDeadlines,
 } from "@/features/agenda/date-view";
+import {
+  EMPTY_AGENDA_FILTERS,
+  buildAppointmentListOptions,
+  buildDeadlineListOptions,
+  countActiveFilters,
+  hasActiveFilters,
+  removeFilter,
+  sanitizeForItemType,
+  shouldQueryAppointments,
+  shouldQueryDeadlines,
+  shouldShowUpcomingPanel,
+  summarizeFilters,
+  type AgendaFilterChip,
+  type AgendaFilterLabels,
+  type AgendaFilters,
+  type AgendaItemFilter,
+  type AgendaLifecycleFilter,
+} from "@/features/agenda/filters";
 
 // ============================================================================
 // Tela oficial /app/agenda.
@@ -164,18 +207,38 @@ async function loadAll<T>(
 async function fetchAgenda(
   environment: MockDomainEnvironment,
   context: ServiceContext,
+  filters: AgendaFilters,
 ): Promise<AgendaData> {
-  const deadlines = await loadAll<Deadline>((cursor) =>
-    environment.services.deadlines.list(context, {
-      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-    }),
-  );
-  const appointments = await loadAll<Appointment>((cursor) =>
-    environment.services.appointments.list(context, {
-      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-    }),
-  );
+  const deadlinesBase = buildDeadlineListOptions(filters);
+  const appointmentsBase = buildAppointmentListOptions(filters);
+  const deadlines = shouldQueryDeadlines(filters)
+    ? await loadAll<Deadline>((cursor) =>
+        environment.services.deadlines.list(context, {
+          ...deadlinesBase,
+          page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+        }),
+      )
+    : [];
+  const appointments = shouldQueryAppointments(filters)
+    ? await loadAll<Appointment>((cursor) =>
+        environment.services.appointments.list(context, {
+          ...appointmentsBase,
+          page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+        }),
+      )
+    : [];
   return { deadlines, appointments };
+}
+
+async function fetchAccessibleCases(
+  environment: MockDomainEnvironment,
+  context: ServiceContext,
+): Promise<readonly Case[]> {
+  return loadAll<Case>((cursor) =>
+    environment.services.cases.list(context, {
+      page: cursor ? { cursor, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+    }),
+  );
 }
 
 // ---- Date helpers ---------------------------------------------------------
@@ -298,12 +361,36 @@ const APPOINTMENT_MODE_ICON: Record<
 
 // ---- Página ---------------------------------------------------------------
 
+// ---- Labels dos filtros ---------------------------------------------------
+
+const ITEM_TYPE_LABEL: Record<AgendaItemFilter, string> = {
+  all: "Todos",
+  deadlines: "Prazos",
+  appointments: "Compromissos",
+};
+
+const LIFECYCLE_LABEL: Record<AgendaLifecycleFilter, string> = {
+  all: "Todas",
+  open: "Em aberto",
+  completed: "Concluídas",
+  cancelled: "Canceladas",
+};
+
+type CasesState =
+  | { kind: "loading" }
+  | { kind: "ready"; items: readonly Case[] }
+  | { kind: "error"; message: string };
+
 function AgendaPage() {
   const { environment, context } = useMockDomain();
+  const [filters, setFilters] = React.useState<AgendaFilters>(EMPTY_AGENDA_FILTERS);
   const [state, setState] = React.useState<LoadState>({ kind: "loading" });
+  const [casesState, setCasesState] = React.useState<CasesState>({ kind: "loading" });
   const [mode, setMode] = React.useState<ViewMode>("week");
   const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
+  const [showMore, setShowMore] = React.useState(false);
   const mountedRef = React.useRef(true);
+  const requestIdRef = React.useRef(0);
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -312,24 +399,46 @@ function AgendaPage() {
     };
   }, []);
 
+  // Carrega processos acessíveis (contexto/organização/permissões).
   React.useEffect(() => {
     let cancelled = false;
-    setState({ kind: "loading" });
-    fetchAgenda(environment, context)
-      .then((data) => {
+    setCasesState({ kind: "loading" });
+    fetchAccessibleCases(environment, context)
+      .then((items) => {
         if (cancelled || !mountedRef.current) return;
-        setState({ kind: "ready", data });
+        // Ordenação estável por referência.
+        const sorted = items.slice().sort((a, b) =>
+          a.reference < b.reference ? -1 : a.reference > b.reference ? 1 : 0,
+        );
+        setCasesState({ kind: "ready", items: sorted });
       })
-      .catch((error: unknown) => {
+      .catch((err: unknown) => {
         if (cancelled || !mountedRef.current) return;
         const message =
-          error instanceof Error ? error.message : "Falha ao carregar agenda.";
-        setState({ kind: "error", message });
+          err instanceof Error ? err.message : "Falha ao carregar processos.";
+        setCasesState({ kind: "error", message });
       });
     return () => {
       cancelled = true;
     };
   }, [environment, context]);
+
+  // Recarrega prazos/compromissos ao alterar filtros. Descarta respostas obsoletas.
+  React.useEffect(() => {
+    const id = ++requestIdRef.current;
+    setState({ kind: "loading" });
+    fetchAgenda(environment, context, filters)
+      .then((data) => {
+        if (!mountedRef.current || id !== requestIdRef.current) return;
+        setState({ kind: "ready", data });
+      })
+      .catch((error: unknown) => {
+        if (!mountedRef.current || id !== requestIdRef.current) return;
+        const message =
+          error instanceof Error ? error.message : "Falha ao carregar agenda.";
+        setState({ kind: "error", message });
+      });
+  }, [environment, context, filters]);
 
   const range = React.useMemo(() => rangeForView(anchor, mode), [anchor, mode]);
   const nowEpoch = React.useMemo(
@@ -364,6 +473,61 @@ function AgendaPage() {
     return selectUpcomingDeadlines(state.data.deadlines, nowEpoch, 5);
   }, [state, nowEpoch]);
 
+  const casesById = React.useMemo(() => {
+    const m = new Map<CaseId, Case>();
+    if (casesState.kind === "ready") {
+      for (const c of casesState.items) m.set(c.id, c);
+    }
+    return m;
+  }, [casesState]);
+
+  const caseLabelFor = React.useCallback(
+    (id: CaseId): string => {
+      const c = casesById.get(id);
+      if (!c) return String(id);
+      return `${c.reference} — ${c.title}`;
+    },
+    [casesById],
+  );
+
+  const filterLabels: AgendaFilterLabels = React.useMemo(
+    () => ({
+      itemType: ITEM_TYPE_LABEL,
+      lifecycle: LIFECYCLE_LABEL,
+      deadlineKind: DEADLINE_KIND_LABEL,
+      deadlinePriority: DEADLINE_PRIORITY_LABEL,
+      appointmentKind: APPOINTMENT_KIND_LABEL,
+      appointmentMode: APPOINTMENT_MODE_LABEL,
+      caseLabelFor,
+    }),
+    [caseLabelFor],
+  );
+
+  const chips = React.useMemo(
+    () => summarizeFilters(filters, filterLabels),
+    [filters, filterLabels],
+  );
+  const activeCount = countActiveFilters(filters);
+  const active = hasActiveFilters(filters);
+
+  const clearAll = React.useCallback(
+    () => setFilters(EMPTY_AGENDA_FILTERS),
+    [],
+  );
+  const removeChip = React.useCallback(
+    (key: AgendaFilterChip["key"]) =>
+      setFilters((f) => removeFilter(f, key)),
+    [],
+  );
+
+  const isEmptyResults =
+    state.kind === "ready" &&
+    visible.deadlines.length === 0 &&
+    visible.appointments.length === 0;
+
+  const showUpcoming = shouldShowUpcomingPanel(filters);
+  const totalVisible = visible.deadlines.length + visible.appointments.length;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -382,6 +546,49 @@ function AgendaPage() {
           </span>
         </div>
       </header>
+
+      <AgendaFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        cases={casesState}
+        activeCount={activeCount}
+        showMore={showMore}
+        onToggleMore={setShowMore}
+      />
+
+      {active && (
+        <div
+          role="region"
+          aria-label="Filtros ativos"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs"
+        >
+          <span aria-live="polite" className="font-medium text-foreground">
+            {activeCount} filtro{activeCount === 1 ? "" : "s"} ativo
+            {activeCount === 1 ? "" : "s"}
+          </span>
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => removeChip(chip.key)}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Remover filtro: ${chip.label}`}
+            >
+              <span>{chip.label}</span>
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={clearAll}
+            className="ml-auto h-7 text-xs"
+          >
+            Limpar filtros
+          </Button>
+        </div>
+      )}
 
       <Card className="border-border/70">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
@@ -432,7 +639,11 @@ function AgendaPage() {
 
       {state.kind === "loading" && (
         <Card className="border-border/70">
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+          <CardContent
+            role="status"
+            aria-live="polite"
+            className="py-16 text-center text-sm text-muted-foreground"
+          >
             Carregando agenda…
           </CardContent>
         </Card>
@@ -440,54 +651,426 @@ function AgendaPage() {
 
       {state.kind === "error" && (
         <Card className="border-destructive/40 bg-destructive/5">
-          <CardContent className="flex items-center gap-2 py-6 text-sm text-destructive">
+          <CardContent
+            role="alert"
+            className="flex flex-wrap items-center gap-2 py-6 text-sm text-destructive"
+          >
             <AlertTriangle className="h-4 w-4" aria-hidden />
-            {state.message}
+            <span>{state.message}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => setFilters((f) => ({ ...f }))}
+            >
+              Tentar novamente
+            </Button>
           </CardContent>
         </Card>
       )}
 
       {state.kind === "ready" && (
-        <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
-          <div className="space-y-4">
-            {mode === "day" && (
-              <DayView
-                anchor={anchor}
-                deadlines={visible.deadlines}
-                appointments={visible.appointments}
-                nowEpoch={nowEpoch}
+        <>
+          <div
+            aria-live="polite"
+            className="sr-only"
+          >{`${totalVisible} ${totalVisible === 1 ? "item" : "itens"} nesta visão.`}</div>
+          <div
+            className={
+              showUpcoming
+                ? "grid gap-6 lg:grid-cols-[1fr,320px]"
+                : "grid gap-6"
+            }
+          >
+            <div className="space-y-4">
+              {isEmptyResults ? (
+                <Card className="border-border/70">
+                  <CardContent className="space-y-3 py-12 text-center text-sm text-muted-foreground">
+                    <p>
+                      {active
+                        ? "Nenhum item encontrado com os filtros selecionados."
+                        : "Nenhum prazo ou compromisso para este período."}
+                    </p>
+                    {active && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={clearAll}
+                      >
+                        Limpar filtros
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {mode === "day" && (
+                    <DayView
+                      anchor={anchor}
+                      deadlines={visible.deadlines}
+                      appointments={visible.appointments}
+                      nowEpoch={nowEpoch}
+                    />
+                  )}
+                  {mode === "week" && (
+                    <WeekView
+                      anchor={anchor}
+                      deadlines={visible.deadlines}
+                      appointments={visible.appointments}
+                      nowEpoch={nowEpoch}
+                      onPickDay={(d) => {
+                        setAnchor(startOfDay(d));
+                        setMode("day");
+                      }}
+                    />
+                  )}
+                  {mode === "month" && (
+                    <MonthView
+                      anchor={anchor}
+                      deadlines={visible.deadlines}
+                      appointments={visible.appointments}
+                      nowEpoch={nowEpoch}
+                      onPickDay={(d) => {
+                        setAnchor(startOfDay(d));
+                        setMode("day");
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            {showUpcoming && <UpcomingDeadlines items={upcomingDeadlines} />}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---- Barra de filtros -----------------------------------------------------
+
+function AgendaFiltersBar({
+  filters,
+  onChange,
+  cases,
+  activeCount,
+  showMore,
+  onToggleMore,
+}: {
+  filters: AgendaFilters;
+  onChange: (next: AgendaFilters) => void;
+  cases: CasesState;
+  activeCount: number;
+  showMore: boolean;
+  onToggleMore: (next: boolean) => void;
+}) {
+  const showDeadlineFilters = filters.itemType !== "appointments";
+  const showAppointmentFilters = filters.itemType !== "deadlines";
+  const casesReady = cases.kind === "ready" ? cases.items : [];
+  const noCases = cases.kind === "ready" && casesReady.length === 0;
+
+  return (
+    <Card className="border-border/70">
+      <CardContent className="space-y-3 pt-6">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[1.4fr_180px_1fr_180px_auto]">
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="agenda-busca"
+              className="text-xs text-muted-foreground"
+            >
+              Pesquisar na agenda
+            </Label>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
               />
-            )}
-            {mode === "week" && (
-              <WeekView
-                anchor={anchor}
-                deadlines={visible.deadlines}
-                appointments={visible.appointments}
-                nowEpoch={nowEpoch}
-                onPickDay={(d) => {
-                  setAnchor(startOfDay(d));
-                  setMode("day");
+              <Input
+                id="agenda-busca"
+                value={filters.search}
+                onChange={(e) => onChange({ ...filters, search: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && filters.search.length > 0) {
+                    e.preventDefault();
+                    onChange({ ...filters, search: "" });
+                  }
                 }}
+                placeholder="Buscar por título ou descrição"
+                className="pl-9"
+                aria-label="Buscar por título ou descrição"
+                autoComplete="off"
+                spellCheck={false}
+                enterKeyHint="search"
               />
-            )}
-            {mode === "month" && (
-              <MonthView
-                anchor={anchor}
-                deadlines={visible.deadlines}
-                appointments={visible.appointments}
-                nowEpoch={nowEpoch}
-                onPickDay={(d) => {
-                  setAnchor(startOfDay(d));
-                  setMode("day");
-                }}
-              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="agenda-item-type"
+              className="text-xs text-muted-foreground"
+            >
+              Exibir
+            </Label>
+            <Select
+              value={filters.itemType}
+              onValueChange={(v) =>
+                onChange(sanitizeForItemType(filters, v as AgendaItemFilter))
+              }
+            >
+              <SelectTrigger id="agenda-item-type" aria-label="Exibir">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="deadlines">Prazos</SelectItem>
+                <SelectItem value="appointments">Compromissos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="agenda-processo"
+              className="text-xs text-muted-foreground"
+            >
+              Processo
+            </Label>
+            <Select
+              value={filters.caseId ?? "all"}
+              onValueChange={(v) =>
+                onChange({
+                  ...filters,
+                  caseId: v === "all" ? undefined : (v as CaseId),
+                })
+              }
+              disabled={cases.kind === "loading" || noCases}
+            >
+              <SelectTrigger id="agenda-processo" aria-label="Filtrar por processo">
+                <SelectValue placeholder="Todos os processos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os processos</SelectItem>
+                {casesReady.map((c) => {
+                  const full = `${c.reference} — ${c.title}`;
+                  return (
+                    <SelectItem key={c.id} value={c.id} title={full}>
+                      <span className="block max-w-[280px] truncate">{full}</span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            {cases.kind === "error" && (
+              <span className="text-[11px] text-destructive">
+                Não foi possível carregar processos.
+              </span>
             )}
           </div>
 
-          <UpcomingDeadlines items={upcomingDeadlines} />
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="agenda-situacao"
+              className="text-xs text-muted-foreground"
+            >
+              Situação
+            </Label>
+            <Select
+              value={filters.lifecycle}
+              onValueChange={(v) =>
+                onChange({ ...filters, lifecycle: v as AgendaLifecycleFilter })
+              }
+            >
+              <SelectTrigger id="agenda-situacao" aria-label="Filtrar por situação">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="open">Em aberto</SelectItem>
+                <SelectItem value="completed">Concluídas</SelectItem>
+                <SelectItem value="cancelled">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onToggleMore(!showMore)}
+              aria-expanded={showMore}
+              aria-controls="agenda-mais-filtros"
+              className="gap-2"
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              Mais filtros
+              {activeCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 min-w-5 justify-center px-1 text-[10px]"
+                  aria-label={`${activeCount} filtro(s) ativo(s)`}
+                >
+                  {activeCount}
+                </Badge>
+              )}
+            </Button>
+          </div>
         </div>
-      )}
-    </div>
+
+        <Collapsible open={showMore} onOpenChange={onToggleMore}>
+          <CollapsibleTrigger className="sr-only">Mais filtros</CollapsibleTrigger>
+          <CollapsibleContent id="agenda-mais-filtros">
+            <div className="grid gap-3 pt-2 md:grid-cols-2 lg:grid-cols-4">
+              {showDeadlineFilters && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor="agenda-prazo-tipo"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Tipo de prazo
+                    </Label>
+                    <Select
+                      value={filters.deadlineKind ?? "all"}
+                      onValueChange={(v) =>
+                        onChange({
+                          ...filters,
+                          deadlineKind:
+                            v === "all" ? undefined : (v as DeadlineKind),
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="agenda-prazo-tipo"
+                        aria-label="Tipo de prazo"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {DEADLINE_KINDS.map((k) => (
+                          <SelectItem key={k} value={k}>
+                            {DEADLINE_KIND_LABEL[k]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor="agenda-prazo-prioridade"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Prioridade
+                    </Label>
+                    <Select
+                      value={filters.deadlinePriority ?? "all"}
+                      onValueChange={(v) =>
+                        onChange({
+                          ...filters,
+                          deadlinePriority:
+                            v === "all" ? undefined : (v as DeadlinePriority),
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="agenda-prazo-prioridade"
+                        aria-label="Prioridade do prazo"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {DEADLINE_PRIORITIES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {DEADLINE_PRIORITY_LABEL[p]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {showAppointmentFilters && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor="agenda-compromisso-tipo"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Tipo de compromisso
+                    </Label>
+                    <Select
+                      value={filters.appointmentKind ?? "all"}
+                      onValueChange={(v) =>
+                        onChange({
+                          ...filters,
+                          appointmentKind:
+                            v === "all" ? undefined : (v as AppointmentKind),
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="agenda-compromisso-tipo"
+                        aria-label="Tipo de compromisso"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {APPOINTMENT_KINDS.map((k) => (
+                          <SelectItem key={k} value={k}>
+                            {APPOINTMENT_KIND_LABEL[k]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor="agenda-compromisso-modo"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Modalidade
+                    </Label>
+                    <Select
+                      value={filters.appointmentMode ?? "all"}
+                      onValueChange={(v) =>
+                        onChange({
+                          ...filters,
+                          appointmentMode:
+                            v === "all" ? undefined : (v as AppointmentMode),
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="agenda-compromisso-modo"
+                        aria-label="Modalidade do compromisso"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {APPOINTMENT_MODES.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {APPOINTMENT_MODE_LABEL[m]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
   );
 }
 
