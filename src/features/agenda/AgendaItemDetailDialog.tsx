@@ -478,6 +478,7 @@ export function AgendaItemDetailDialog(
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (perm !== "allowed") return;
+    setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
 
@@ -488,7 +489,7 @@ export function AgendaItemDetailDialog(
         expectedVersion,
       );
       if (!built.ok) {
-        setErrors(built.errors as Record<string, string>);
+        setErrors(built.errors);
         return;
       }
       if (!built.changed) return;
@@ -523,7 +524,7 @@ export function AgendaItemDetailDialog(
         expectedVersion,
       );
       if (!built.ok) {
-        setErrors(built.errors as Record<string, string>);
+        setErrors(built.errors);
         return;
       }
       if (!built.changed) return;
@@ -552,6 +553,7 @@ export function AgendaItemDetailDialog(
         submittingRef.current = false;
       }
     }
+
 
     function handleUpdateError(err: ServiceError): void {
       const t: TranslatedUpdateError = translateAgendaUpdateError(err);
