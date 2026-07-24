@@ -856,14 +856,18 @@ describe("LV-09.1B.7.1 · provas estruturais", () => {
   it("56. orquestrador usa apenas appointments.list", () => {
     expect(CHECK_SRC).toMatch(/appointments\.list/);
   });
-  it("57. nenhuma rota de disponibilidade foi criada", () => {
+  it("57. rota /app/disponibilidade foi criada (LV-09.1B.7.2) e não importa o motor em criação/detalhe", () => {
     let exists = true;
     try {
       readFileSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"), "utf8");
     } catch {
       exists = false;
     }
-    expect(exists).toBe(false);
+    expect(exists).toBe(true);
+    const createSrc = read("src/features/agenda/AgendaCreateContent.tsx");
+    const detailSrc = read("src/features/agenda/AgendaItemDetailContent.tsx");
+    expect(createSrc).not.toMatch(/check-appointment-availability/);
+    expect(detailSrc).not.toMatch(/check-appointment-availability/);
   });
   it("58. /app/agenda/$appointmentId permanece página canônica", () => {
     const src = read("src/routes/app.agenda.$appointmentId.tsx");
