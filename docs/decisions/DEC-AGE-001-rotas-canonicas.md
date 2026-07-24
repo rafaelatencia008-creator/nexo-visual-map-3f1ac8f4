@@ -50,10 +50,12 @@ Ainda **não** foi criado:
 - `AgendaItemDetailContent` — corpo do fluxo de detalhe/edição sem shell
   de diálogo.
 
-A rota `/app/agenda/$appointmentId` continua montando temporariamente o
-`AgendaItemDetailDialog` existente. A LV-09.1B.6.3 permanece **aberta**
-e só será encerrada quando a LV-09.1B.6.3B.2 extrair esse `Content` e
-transformar o diálogo de detalhe em wrapper fino.
+A rota `/app/agenda/$appointmentId` continua montando temporariamente
+(condição transitória) o `AgendaItemDetailDialog` existente — os diálogos
+ainda não foram convertidos em wrappers finos para o detalhe. A
+LV-09.1B.6.3 permanece **aberta** e só será encerrada quando a
+LV-09.1B.6.3B.2 extrair esse `Content` e transformar o diálogo de detalhe
+em wrapper fino.
 
 A LV-09.1B.7 (motor consultivo de disponibilidade) **não está iniciada**.
 Qualquer artefato antecipado dessa etapa foi removido na LV-09.1B.6.3A.1.
