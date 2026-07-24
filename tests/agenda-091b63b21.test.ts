@@ -841,24 +841,18 @@ describe("LV-09.1B.6.3B.2.1.3 · derive com detailBelongsToCurrentActivity", () 
 });
 
 describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () => {
-  it("93. Content declara previousActivationKeyRef", () => {
-    expect(CONTENT_SRC).toContain("previousActivationKeyRef");
-    expect(CONTENT_SRC).toMatch(
-      /previousActivationKeyRef\s*=\s*React\.useRef</,
-    );
+  it("93. Content NÃO usa previousActivationKeyRef (mutação de ref no render proibida)", () => {
+    expect(CONTENT_SRC).not.toContain("previousActivationKeyRef");
   });
-  it("94. Content declara activityGenerationRef inicializada em 0", () => {
-    expect(CONTENT_SRC).toMatch(
+  it("94. Content NÃO declara activityGenerationRef mutado no render", () => {
+    expect(CONTENT_SRC).not.toMatch(
       /activityGenerationRef\s*=\s*React\.useRef\(0\)/,
     );
   });
-  it("95. Content incrementa a geração DURANTE o render (sem useEffect)", () => {
+  it("95. Content NÃO incrementa a geração no render (avança via commit)", () => {
+    expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\.current\s*\+=\s*1;/);
     expect(CONTENT_SRC).toMatch(
-      /if \(previousActivationKeyRef\.current !== activationKey\)/,
-    );
-    expect(CONTENT_SRC).toMatch(/activityGenerationRef\.current \+= 1;/);
-    expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*activityGenerationRef\.current/,
+      /const activityGeneration = renderActivitySession\.generation;/,
     );
   });
   it("96. Content declara o tipo DetailSnapshot com geração e chave", () => {
