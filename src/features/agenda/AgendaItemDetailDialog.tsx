@@ -17,6 +17,8 @@ import {
   Flag,
   Loader2,
   Pencil,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -102,6 +104,16 @@ import {
   resolveDetailLoadResponse,
   resolveDiscardIntent,
 } from "./detail-reducers";
+import {
+  buildChangeAppointmentStatusInput,
+  buildChangeDeadlineStatusInput,
+  getAppointmentStatusActions,
+  getDeadlineStatusActions,
+  translateAgendaMutationError,
+  type AppointmentStatusAction,
+  type DeadlineStatusAction,
+  type TranslatedMutationError,
+} from "./item-mutations";
 
 // ---- Tipos públicos -----------------------------------------------------
 
@@ -113,6 +125,10 @@ export type AgendaItemUpdated =
   | Readonly<{ type: "deadline"; item: Deadline }>
   | Readonly<{ type: "appointment"; item: Appointment }>;
 
+export type AgendaItemDeleted =
+  | Readonly<{ type: "deadline"; caseId: CaseId; id: DeadlineId }>
+  | Readonly<{ type: "appointment"; caseId: CaseId; id: AppointmentId }>;
+
 export interface AgendaItemDetailDialogProps {
   readonly selected: SelectedAgendaItem | null;
   readonly onClose: () => void;
@@ -120,6 +136,7 @@ export interface AgendaItemDetailDialogProps {
   readonly context: ServiceContext;
   readonly cases: readonly Case[];
   readonly onUpdated: (updated: AgendaItemUpdated) => void;
+  readonly onDeleted: (deleted: AgendaItemDeleted) => void;
   /** Instante de referência para estado visual derivado (ex.: "Atrasado"). */
   readonly referenceEpoch: number;
 }
@@ -215,7 +232,16 @@ const ASSIGN_MAX_PAGES = 20;
 export function AgendaItemDetailDialog(
   props: AgendaItemDetailDialogProps,
 ): React.ReactElement {
-  const { selected, onClose, environment, context, cases, onUpdated, referenceEpoch } = props;
+  const {
+    selected,
+    onClose,
+    environment,
+    context,
+    cases,
+    onUpdated,
+    onDeleted,
+    referenceEpoch,
+  } = props;
   const open = selected !== null;
 
   const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
@@ -250,10 +276,29 @@ export function AgendaItemDetailDialog(
     "close" | "cancel_edit" | "reload_after_conflict" | null
   >(null);
 
+  // LV-09.1B.6 — status change / remove
+  const [permChangeStatus, setPermChangeStatus] =
+    React.useState<PermState>("unknown");
+  const [permRemove, setPermRemove] = React.useState<PermState>("unknown");
+  const [pendingStatus, setPendingStatus] = React.useState<
+    | Readonly<{ kind: "deadline"; action: DeadlineStatusAction }>
+    | Readonly<{ kind: "appointment"; action: AppointmentStatusAction }>
+    | null
+  >(null);
+  const [pendingRemoval, setPendingRemoval] = React.useState<boolean>(false);
+  const [mutating, setMutating] = React.useState<boolean>(false);
+  const [mutationError, setMutationError] =
+    React.useState<TranslatedMutationError | null>(null);
+  const [statusConflict, setStatusConflict] = React.useState<{
+    expected?: number;
+    actual?: number;
+  } | null>(null);
+
   const mountedRef = React.useRef(true);
   const detailReqIdRef = React.useRef(0);
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
+  const mutationInFlightRef = React.useRef(false);
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -268,6 +313,14 @@ export function AgendaItemDetailDialog(
     setDetail({ kind: "loading" });
     setMode("view");
     setPerm("unknown");
+    setPermChangeStatus("unknown");
+    setPermRemove("unknown");
+    setPendingStatus(null);
+    setPendingRemoval(false);
+    setMutating(false);
+    setMutationError(null);
+    setStatusConflict(null);
+    mutationInFlightRef.current = false;
     setAssignments({ kind: "idle" });
     setDForm(null);
     setAForm(null);
@@ -348,24 +401,40 @@ export function AgendaItemDetailDialog(
   }, [selected, environment, context, reload]);
 
 
-  // Avalia permissão de edição para o item carregado
+  // Avalia permissões de edição, mudança de status e exclusão em paralelo.
   React.useEffect(() => {
     if (!selected) return;
     if (detail.kind !== "ready") return;
     let cancelled = false;
     setPerm("loading");
-    const action =
+    setPermChangeStatus("loading");
+    setPermRemove("loading");
+    const updateAction =
       selected.type === "deadline" ? "deadline.update" : "appointment.update";
-    environment.services.permissions
-      .evaluate(context, { action, caseId: selected.caseId })
-      .then((res) => {
-        if (cancelled || !mountedRef.current) return;
-        setPerm(res.ok && res.data.allowed ? "allowed" : "denied");
-      })
-      .catch(() => {
-        if (cancelled || !mountedRef.current) return;
-        setPerm("denied");
-      });
+    const statusAction =
+      selected.type === "deadline"
+        ? "deadline.changeStatus"
+        : "appointment.changeStatus";
+    const removeAction =
+      selected.type === "deadline" ? "deadline.remove" : "appointment.remove";
+    const evalOne = (
+      action: typeof updateAction | typeof statusAction | typeof removeAction,
+      setter: (v: PermState) => void,
+    ) => {
+      environment.services.permissions
+        .evaluate(context, { action, caseId: selected.caseId })
+        .then((res) => {
+          if (cancelled || !mountedRef.current) return;
+          setter(res.ok && res.data.allowed ? "allowed" : "denied");
+        })
+        .catch(() => {
+          if (cancelled || !mountedRef.current) return;
+          setter("denied");
+        });
+    };
+    evalOne(updateAction, setPerm);
+    evalOne(statusAction, setPermChangeStatus);
+    evalOne(removeAction, setPermRemove);
     return () => {
       cancelled = true;
     };
@@ -645,6 +714,169 @@ export function AgendaItemDetailDialog(
     onUpdated,
   ]);
 
+  // ---- Mudança de status / exclusão (LV-09.1B.6) ------------------------
+
+  const confirmStatusChange = React.useCallback(async () => {
+    if (mutationInFlightRef.current) return;
+    if (!pendingStatus) return;
+    if (detail.kind !== "ready") return;
+    if (permChangeStatus !== "allowed") return;
+    mutationInFlightRef.current = true;
+    setMutating(true);
+    setMutationError(null);
+    setStatusConflict(null);
+    try {
+      if (
+        pendingStatus.kind === "deadline" &&
+        detail.loaded.type === "deadline"
+      ) {
+        const input = buildChangeDeadlineStatusInput(
+          detail.loaded.item,
+          pendingStatus.action.status,
+          detail.loaded.item.metadata.version,
+        );
+        const res =
+          await environment.services.deadlines.changeStatus(context, input);
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setStatusConflict({
+              ...(t.expectedVersion !== undefined
+                ? { expected: t.expectedVersion }
+                : {}),
+              ...(t.actualVersion !== undefined
+                ? { actual: t.actualVersion }
+                : {}),
+            });
+          }
+          return;
+        }
+        const updated = res.data;
+        setDetail({
+          kind: "ready",
+          loaded: { type: "deadline", item: updated },
+        });
+        setPendingStatus(null);
+        toast.success("Status do prazo atualizado.");
+        onUpdated({ type: "deadline", item: updated });
+      } else if (
+        pendingStatus.kind === "appointment" &&
+        detail.loaded.type === "appointment"
+      ) {
+        const input = buildChangeAppointmentStatusInput(
+          detail.loaded.item,
+          pendingStatus.action.status,
+          detail.loaded.item.metadata.version,
+        );
+        const res =
+          await environment.services.appointments.changeStatus(context, input);
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setStatusConflict({
+              ...(t.expectedVersion !== undefined
+                ? { expected: t.expectedVersion }
+                : {}),
+              ...(t.actualVersion !== undefined
+                ? { actual: t.actualVersion }
+                : {}),
+            });
+          }
+          return;
+        }
+        const updated = res.data;
+        setDetail({
+          kind: "ready",
+          loaded: { type: "appointment", item: updated },
+        });
+        setPendingStatus(null);
+        toast.success("Status do compromisso atualizado.");
+        onUpdated({ type: "appointment", item: updated });
+      }
+    } finally {
+      if (mountedRef.current) setMutating(false);
+      mutationInFlightRef.current = false;
+    }
+  }, [pendingStatus, detail, permChangeStatus, environment, context, onUpdated]);
+
+  const confirmRemoval = React.useCallback(async () => {
+    if (mutationInFlightRef.current) return;
+    if (!pendingRemoval) return;
+    if (detail.kind !== "ready") return;
+    if (permRemove !== "allowed") return;
+    if (!selected) return;
+    mutationInFlightRef.current = true;
+    setMutating(true);
+    setMutationError(null);
+    try {
+      const version = detail.loaded.item.metadata.version;
+      if (detail.loaded.type === "deadline") {
+        const res = await environment.services.deadlines.remove(
+          context,
+          detail.loaded.item.caseId,
+          detail.loaded.item.id,
+          version,
+        );
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          setMutationError(translateAgendaMutationError(res.error));
+          return;
+        }
+        setPendingRemoval(false);
+        toast.success("Prazo excluído.");
+        onDeleted({
+          type: "deadline",
+          caseId: detail.loaded.item.caseId,
+          id: detail.loaded.item.id,
+        });
+      } else {
+        const res = await environment.services.appointments.remove(
+          context,
+          detail.loaded.item.caseId,
+          detail.loaded.item.id,
+          version,
+        );
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          setMutationError(translateAgendaMutationError(res.error));
+          return;
+        }
+        setPendingRemoval(false);
+        toast.success("Compromisso excluído.");
+        onDeleted({
+          type: "appointment",
+          caseId: detail.loaded.item.caseId,
+          id: detail.loaded.item.id,
+        });
+      }
+    } finally {
+      if (mountedRef.current) setMutating(false);
+      mutationInFlightRef.current = false;
+    }
+  }, [
+    pendingRemoval,
+    detail,
+    permRemove,
+    selected,
+    environment,
+    context,
+    onDeleted,
+  ]);
+
+  const reloadAfterStatusConflict = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPendingStatus(null);
+    setMutationError(null);
+    setStatusConflict(null);
+    setReload((r) => r + 1);
+  }, []);
+
+
+
   const caseById = React.useMemo(() => {
     const m = new Map<string, Case>();
     for (const c of cases) m.set(String(c.id), c);
@@ -800,12 +1032,35 @@ export function AgendaItemDetailDialog(
               )}
 
               {detail.kind === "ready" && mode === "view" && (
-                <ViewPanel
-                  loaded={detail.loaded}
-                  caseLabel={currentCaseLabel}
-                  perm={perm}
-                  referenceEpoch={referenceEpoch}
-                />
+                <>
+                  <ViewPanel
+                    loaded={detail.loaded}
+                    caseLabel={currentCaseLabel}
+                    perm={perm}
+                    referenceEpoch={referenceEpoch}
+                  />
+                  <ItemActionsSection
+                    loaded={detail.loaded}
+                    permChangeStatus={permChangeStatus}
+                    permRemove={permRemove}
+                    mutating={mutating}
+                    mutationError={mutationError}
+                    onSelectDeadlineAction={(action) => {
+                      setMutationError(null);
+                      setStatusConflict(null);
+                      setPendingStatus({ kind: "deadline", action });
+                    }}
+                    onSelectAppointmentAction={(action) => {
+                      setMutationError(null);
+                      setStatusConflict(null);
+                      setPendingStatus({ kind: "appointment", action });
+                    }}
+                    onRequestRemoval={() => {
+                      setMutationError(null);
+                      setPendingRemoval(true);
+                    }}
+                  />
+                </>
               )}
 
               {detail.kind === "ready" && mode === "edit" && (
@@ -988,9 +1243,237 @@ export function AgendaItemDetailDialog(
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={pendingStatus !== null}
+        onOpenChange={(o) => {
+          if (!o && !mutationInFlightRef.current) {
+            setPendingStatus(null);
+            setMutationError(null);
+            setStatusConflict(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus?.kind === "deadline"
+                ? pendingStatus.action.confirmTitle
+                : pendingStatus?.kind === "appointment"
+                  ? pendingStatus.action.confirmTitle
+                  : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus &&
+                `Alterar status de ${pendingStatus.action.currentLabel} para ${pendingStatus.action.targetLabel}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {mutationError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{mutationError.message}</span>
+            </div>
+          )}
+          <AlertDialogFooter>
+            {statusConflict ? (
+              <>
+                <AlertDialogCancel disabled={mutating}>Fechar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    reloadAfterStatusConflict();
+                  }}
+                  disabled={mutating}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                  Recarregar dados
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmStatusChange();
+                  }}
+                  disabled={mutating || permChangeStatus !== "allowed"}
+                  aria-busy={mutating}
+                >
+                  {mutating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  )}
+                  Confirmar
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingRemoval}
+        onOpenChange={(o) => {
+          if (!o && !mutationInFlightRef.current) {
+            setPendingRemoval(false);
+            setMutationError(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selected?.type === "deadline"
+                ? "Excluir este prazo?"
+                : "Excluir este compromisso?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {mutationError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{mutationError.message}</span>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmRemoval();
+              }}
+              disabled={mutating || permRemove !== "allowed"}
+              aria-busy={mutating}
+            >
+              {mutating && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              )}
+              <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
+
+function ItemActionsSection({
+  loaded,
+  permChangeStatus,
+  permRemove,
+  mutating,
+  mutationError,
+  onSelectDeadlineAction,
+  onSelectAppointmentAction,
+  onRequestRemoval,
+}: {
+  loaded: Loaded;
+  permChangeStatus: PermState;
+  permRemove: PermState;
+  mutating: boolean;
+  mutationError: TranslatedMutationError | null;
+  onSelectDeadlineAction: (action: DeadlineStatusAction) => void;
+  onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
+  onRequestRemoval: () => void;
+}) {
+  const canStatus = permChangeStatus === "allowed";
+  const canRemove = permRemove === "allowed";
+  if (!canStatus && !canRemove) return null;
+  const statusActions =
+    loaded.type === "deadline"
+      ? getDeadlineStatusActions(loaded.item.status)
+      : getAppointmentStatusActions(loaded.item.status);
+
+  return (
+    <section
+      aria-label="Ações do item"
+      className="mt-4 rounded-md border border-border/70 bg-muted/20 p-3"
+    >
+      <div className="mb-2 text-xs font-medium text-foreground">
+        Ações do item
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {canStatus &&
+          statusActions.map((a) =>
+            loaded.type === "deadline" ? (
+              <Button
+                key={`d-${a.status}`}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={mutating}
+                onClick={() =>
+                  onSelectDeadlineAction(a as DeadlineStatusAction)
+                }
+              >
+                {a.status === (loaded.item.status === "completed"
+                  ? "pending"
+                  : "completed") ? (
+                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                ) : a.status === "cancelled" ? (
+                  <Ban className="mr-2 h-4 w-4" aria-hidden />
+                ) : (
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                )}
+                {a.actionLabel}
+              </Button>
+            ) : (
+              <Button
+                key={`a-${a.status}`}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={mutating}
+                onClick={() =>
+                  onSelectAppointmentAction(a as AppointmentStatusAction)
+                }
+              >
+                {a.status === "completed" ? (
+                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                ) : a.status === "cancelled" ? (
+                  <Ban className="mr-2 h-4 w-4" aria-hidden />
+                ) : (
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                )}
+                {a.actionLabel}
+              </Button>
+            ),
+          )}
+        {canRemove && (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={mutating}
+            onClick={onRequestRemoval}
+          >
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+            Excluir
+          </Button>
+        )}
+      </div>
+      {mutationError && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive"
+        >
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>{mutationError.message}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 
 // ---- Ícone de estado do prazo --------------------------------------------
 

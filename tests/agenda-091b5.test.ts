@@ -877,12 +877,12 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     expect(AGENDA_ROUTE_SRC).toContain("onUpdated={handleUpdated}");
   });
 
-  it("64. diálogo NÃO oferece exclusão nem mudança de status nesta etapa", () => {
-    // Não chama changeStatus/remove nesta etapa (LV-09.1B.5).
-    expect(DETAIL_SRC).not.toContain("changeStatus");
-    expect(DETAIL_SRC).not.toContain(".remove(");
-    // Também não expõe botão "Excluir" no diálogo.
-    expect(DETAIL_SRC).not.toMatch(/>\s*Excluir\s*</);
+  it("64. [OBSOLETO na LV-09.1B.6] mudança de status/exclusão agora existem", () => {
+    // Esta restrição valia apenas na LV-09.1B.5. Na LV-09.1B.6 o diálogo
+    // passou a oferecer changeStatus e remove — o teste vira asserção
+    // positiva mínima para preservar a numeração.
+    expect(DETAIL_SRC).toContain("changeStatus");
+    expect(DETAIL_SRC).toContain(".remove(");
   });
 
   it("65. builders usam expectedVersion vindo por parâmetro, não do metadata atual", () => {
@@ -1524,18 +1524,17 @@ describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", (
   });
 });
 
-describe("LV-09.1B.5.1 — sem mudança de status, exclusão ou nova rota", () => {
-  it("121. diálogo não invoca changeStatus", () => {
-    expect(DETAIL_SRC).not.toContain("changeStatus(");
+describe("LV-09.1B.5.1 — [OBSOLETO na LV-09.1B.6]", () => {
+  it("121. diálogo agora invoca changeStatus (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toContain("changeStatus(");
   });
 
-  it("122. diálogo não invoca .remove/.delete", () => {
-    expect(DETAIL_SRC).not.toContain(".remove(");
-    expect(DETAIL_SRC).not.toContain(".delete(");
+  it("122. diálogo agora invoca .remove (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toContain(".remove(");
   });
 
-  it("123. diálogo não expõe botão 'Excluir'", () => {
-    expect(DETAIL_SRC).not.toMatch(/>\s*Excluir\s*</);
+  it("123. diálogo agora expõe botão 'Excluir' (habilitado na LV-09.1B.6)", () => {
+    expect(DETAIL_SRC).toMatch(/>\s*Excluir\s*</);
   });
 
   it("124. rota app.agenda não navega para uma rota de detalhe própria", () => {
