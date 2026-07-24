@@ -1270,11 +1270,15 @@ function DayView({
   deadlines,
   appointments,
   nowEpoch,
+  onOpenDeadline,
+  onOpenAppointment,
 }: {
   anchor: Date;
   deadlines: readonly Deadline[];
   appointments: readonly Appointment[];
   nowEpoch: number;
+  onOpenDeadline: (d: Deadline, ev?: React.SyntheticEvent) => void;
+  onOpenAppointment: (a: Appointment, ev?: React.SyntheticEvent) => void;
 }) {
   const isEmpty = deadlines.length === 0 && appointments.length === 0;
   return (
@@ -1308,10 +1312,19 @@ function DayView({
         ) : (
           <>
             {deadlines.map((d) => (
-              <DeadlineCard key={d.id} deadline={d} nowEpoch={nowEpoch} />
+              <DeadlineCard
+                key={d.id}
+                deadline={d}
+                nowEpoch={nowEpoch}
+                onOpen={onOpenDeadline}
+              />
             ))}
             {appointments.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} />
+              <AppointmentCard
+                key={a.id}
+                appointment={a}
+                onOpen={onOpenAppointment}
+              />
             ))}
           </>
         )}
@@ -1326,12 +1339,16 @@ function WeekView({
   appointments,
   nowEpoch,
   onPickDay,
+  onOpenDeadline,
+  onOpenAppointment,
 }: {
   anchor: Date;
   deadlines: readonly Deadline[];
   appointments: readonly Appointment[];
   nowEpoch: number;
   onPickDay: (d: Date) => void;
+  onOpenDeadline: (d: Deadline, ev?: React.SyntheticEvent) => void;
+  onOpenAppointment: (a: Appointment, ev?: React.SyntheticEvent) => void;
 }) {
   const start = startOfWeek(anchor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -1351,35 +1368,43 @@ function WeekView({
             );
             const isToday = sameDay(d, new Date());
             return (
-              <button
-                type="button"
+              <section
                 key={d.toISOString()}
-                onClick={() => onPickDay(d)}
-                aria-label={`Abrir dia ${d.toLocaleDateString("pt-BR")}`}
-                className={`flex min-h-[120px] flex-col rounded-md border p-2 text-left transition hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                aria-label={`Dia ${d.toLocaleDateString("pt-BR")}`}
+                className={`flex min-h-[120px] flex-col rounded-md border p-2 ${
                   isToday
                     ? "border-primary/50 bg-primary/5"
                     : "border-border/70 bg-card"
                 }`}
               >
-                <div className="mb-2 flex items-baseline justify-between">
+                <button
+                  type="button"
+                  onClick={() => onPickDay(d)}
+                  aria-label={`Abrir dia ${d.toLocaleDateString("pt-BR")}`}
+                  className="mb-2 flex items-baseline justify-between rounded px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   <span className="text-xs font-medium uppercase text-muted-foreground">
                     {d.toLocaleDateString("pt-BR", { weekday: "short" })}
                   </span>
                   <span className="text-sm font-semibold text-foreground">
                     {d.getDate().toString().padStart(2, "0")}
                   </span>
-                </div>
+                </button>
                 <div className="space-y-1">
                   {dayDeadlines.slice(0, 2).map((x) => (
                     <WeekDeadlineItem
                       key={x.id}
                       deadline={x}
                       nowEpoch={nowEpoch}
+                      onOpen={onOpenDeadline}
                     />
                   ))}
                   {dayAppointments.slice(0, 2).map((x) => (
-                    <WeekAppointmentItem key={x.id} appointment={x} />
+                    <WeekAppointmentItem
+                      key={x.id}
+                      appointment={x}
+                      onOpen={onOpenAppointment}
+                    />
                   ))}
                   {dayDeadlines.length + dayAppointments.length > 4 && (
                     <div className="text-[11px] text-muted-foreground">
@@ -1387,7 +1412,7 @@ function WeekView({
                     </div>
                   )}
                 </div>
-              </button>
+              </section>
             );
           })}
         </div>
@@ -1395,6 +1420,7 @@ function WeekView({
     </Card>
   );
 }
+
 
 function MonthView({
   anchor,
