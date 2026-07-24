@@ -571,9 +571,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     let cancelled = false;
     const reqId = ++detailReqIdRef.current;
     const reqSelectionKey = selectionKey;
+    // LV-09.1B.6.3B.2.1.3 — captura a geração da atividade no início da
+    // requisição para diferenciar A → B → A.
+    const reqActivityGeneration = activityGenerationRef.current;
     setDetail({ kind: "loading" });
 
-    // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2).
+    // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2 + .3).
     const stillCurrent = (): boolean =>
       isAgendaDetailAsyncResultCurrent({
         mounted: mountedRef.current,
@@ -581,6 +584,8 @@ export const AgendaItemDetailContent = React.forwardRef<
         cancelled,
         currentSelectionKey: selectionKeyRef.current,
         requestSelectionKey: reqSelectionKey,
+        currentActivityGeneration: activityGenerationRef.current,
+        requestActivityGeneration: reqActivityGeneration,
         currentRequestId: detailReqIdRef.current,
         requestId: reqId,
       });
