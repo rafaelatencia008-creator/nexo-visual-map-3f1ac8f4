@@ -803,6 +803,7 @@ export function AgendaItemDetailDialog(
     mutationInFlightRef.current = true;
     setMutating(true);
     setMutationError(null);
+    setMutationConflict(null);
     try {
       const version = detail.loaded.item.metadata.version;
       if (detail.loaded.type === "deadline") {
@@ -814,7 +815,11 @@ export function AgendaItemDetailDialog(
         );
         if (!mountedRef.current) return;
         if (!res.ok) {
-          setMutationError(translateAgendaMutationError(res.error));
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setMutationConflict(buildMutationConflict("remove", t));
+          }
           return;
         }
         setPendingRemoval(false);
@@ -833,7 +838,11 @@ export function AgendaItemDetailDialog(
         );
         if (!mountedRef.current) return;
         if (!res.ok) {
-          setMutationError(translateAgendaMutationError(res.error));
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setMutationConflict(buildMutationConflict("remove", t));
+          }
           return;
         }
         setPendingRemoval(false);
@@ -858,12 +867,26 @@ export function AgendaItemDetailDialog(
     onDeleted,
   ]);
 
-  const reloadAfterStatusConflict = React.useCallback(() => {
+  const reloadAfterMutationConflict = React.useCallback(() => {
     if (mutationInFlightRef.current) return;
     setPendingStatus(null);
+    setPendingRemoval(false);
     setMutationError(null);
     setMutationConflict(null);
     setReload((r) => r + 1);
+  }, []);
+
+  const keepReviewingMutation = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPendingStatus(null);
+    setPendingRemoval(false);
+    setMutationError(null);
+    setMutationConflict(null);
+  }, []);
+
+  const retryPermissions = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPermAttempt((n) => n + 1);
   }, []);
 
 
