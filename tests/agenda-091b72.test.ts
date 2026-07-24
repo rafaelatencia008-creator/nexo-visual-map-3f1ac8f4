@@ -93,6 +93,10 @@ function read(rel: string): string {
   return readFileSync(resolve(__dirname, "..", rel), "utf8");
 }
 
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
 function validForm(overrides: Partial<AvailabilityFormState> = {}): AvailabilityFormState {
   return {
     caseId: String(CASE_A),
