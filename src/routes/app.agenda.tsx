@@ -1829,7 +1829,13 @@ function WeekAppointmentItem({
 
 // ---- Próximos prazos ------------------------------------------------------
 
-function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
+function UpcomingDeadlines({
+  items,
+  onOpenDeadline,
+}: {
+  items: readonly Deadline[];
+  onOpenDeadline?: (d: Deadline, ev?: React.SyntheticEvent) => void;
+}) {
   return (
     <Card className="h-fit border-border/70">
       <CardHeader>
@@ -1855,10 +1861,28 @@ function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
                       ? "normal"
                       : "low";
               const PriorityIcon = DEADLINE_STATE_ICON[priorityState];
+              const clickable = typeof onOpenDeadline === "function";
+              const activate = (ev: React.SyntheticEvent) => {
+                if (onOpenDeadline) onOpenDeadline(d, ev);
+              };
               return (
                 <li
                   key={d.id}
-                  className="rounded-md border border-border/70 bg-card p-3 text-sm"
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onClick={clickable ? activate : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.preventDefault();
+                            activate(ev);
+                          }
+                        }
+                      : undefined
+                  }
+                  aria-label={clickable ? `Abrir prazo ${d.title}` : undefined}
+                  className={`rounded-md border border-border/70 bg-card p-3 text-sm ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
                 >
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" aria-hidden />
@@ -1893,3 +1917,4 @@ function UpcomingDeadlines({ items }: { items: readonly Deadline[] }) {
     </Card>
   );
 }
+
