@@ -1531,7 +1531,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmRemoval();
                   }}
-                  disabled={mutating || permRemove !== "allowed"}
+                  disabled={mutating || !permissionAllowsAction(permRemove)}
                   aria-busy={mutating}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
