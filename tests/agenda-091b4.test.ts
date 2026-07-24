@@ -508,7 +508,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "internal",
         title: "Estudo",
-        dueAt: "2026-06-15T10:30:00.000Z" as never,
+        dueAt: dt("2026-06-15T10:30:00.000Z"),
         priority: "normal",
       }),
     );
@@ -524,7 +524,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "internal",
       title: "Estudo",
-      dueAt: "2026-06-15T10:30:00.000Z" as never,
+      dueAt: dt("2026-06-15T10:30:00.000Z"),
       priority: "normal",
     });
     expect(r.ok).toBe(false);
@@ -537,7 +537,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "internal",
       title: "Estudo",
-      dueAt: "2026-06-15T10:30:00.000Z" as never,
+      dueAt: dt("2026-06-15T10:30:00.000Z"),
       priority: "normal",
       assignmentId: SEED_ASSIGN_ALFA_1_ID as AssignmentId,
     });
@@ -551,7 +551,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
         caseId: SEED_CASE_ALFA_2_ID,
         kind: "internal",
         title: "Estudo",
-        dueAt: "2026-06-15T10:30:00.000Z" as never,
+        dueAt: dt("2026-06-15T10:30:00.000Z"),
         priority: "normal",
         assignmentId: SEED_ASSIGN_ALFA_1_ID as AssignmentId,
       }),
@@ -576,7 +576,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "internal",
       title: "Estudo",
-      dueAt: "2026-06-15T10:30:00.000Z" as never,
+      dueAt: dt("2026-06-15T10:30:00.000Z"),
       priority: "normal",
     });
     expect(r.ok).toBe(false);
@@ -593,7 +593,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
       caseId: SEED_CASE_BETA_1_ID,
       kind: "internal",
       title: "Estudo",
-      dueAt: "2026-06-15T10:30:00.000Z" as never,
+      dueAt: dt("2026-06-15T10:30:00.000Z"),
       priority: "normal",
     });
     expect(r.ok).toBe(false);
@@ -609,7 +609,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "internal",
         title: "NovoPrazoUnico123",
-        dueAt: "2026-07-15T10:30:00.000Z" as never,
+        dueAt: dt("2026-07-15T10:30:00.000Z"),
         priority: "high",
       }),
     );
@@ -629,7 +629,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "internal",
       title: "X",
-      dueAt: "2026-06-15T10:30:00.000Z" as never,
+      dueAt: dt("2026-06-15T10:30:00.000Z"),
       priority: "normal",
     });
     expect(env.snapshot().deadlines.length).toBe(before);
@@ -644,8 +644,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "meeting",
         title: "Reunião",
-        startsAt: "2026-06-15T10:00:00.000Z" as never,
-        endsAt: "2026-06-15T11:00:00.000Z" as never,
+        startsAt: dt("2026-06-15T10:00:00.000Z"),
+        endsAt: dt("2026-06-15T11:00:00.000Z"),
         mode: "in_person",
       }),
     );
@@ -660,8 +660,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "meeting",
       title: "X",
-      startsAt: "2026-06-15T10:00:00.000Z" as never,
-      endsAt: "2026-06-15T10:00:00.000Z" as never,
+      startsAt: dt("2026-06-15T10:00:00.000Z"),
+      endsAt: dt("2026-06-15T10:00:00.000Z"),
       mode: "in_person",
     });
     expect(r.ok).toBe(false);
@@ -673,8 +673,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "meeting",
       title: "X",
-      startsAt: "2026-06-15T10:00:00.000Z" as never,
-      endsAt: "2026-06-15T11:00:00.000Z" as never,
+      startsAt: dt("2026-06-15T10:00:00.000Z"),
+      endsAt: dt("2026-06-15T11:00:00.000Z"),
       mode: "in_person",
     });
     expect(r.ok).toBe(false);
@@ -686,8 +686,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
       caseId: SEED_CASE_BETA_1_ID,
       kind: "meeting",
       title: "X",
-      startsAt: "2026-06-15T10:00:00.000Z" as never,
-      endsAt: "2026-06-15T11:00:00.000Z" as never,
+      startsAt: dt("2026-06-15T10:00:00.000Z"),
+      endsAt: dt("2026-06-15T11:00:00.000Z"),
       mode: "in_person",
       assignmentId: SEED_ASSIGN_BETA_1_ID as AssignmentId,
     });
@@ -702,8 +702,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "hearing",
         title: "ReuniaoTesteUnica789",
-        startsAt: "2026-06-15T10:00:00.000Z" as never,
-        endsAt: "2026-06-15T11:00:00.000Z" as never,
+        startsAt: dt("2026-06-15T10:00:00.000Z"),
+        endsAt: dt("2026-06-15T11:00:00.000Z"),
         mode: "remote",
       }),
     );
@@ -724,8 +724,8 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "meeting",
         title: "X",
-        startsAt: "2026-06-15T10:00:00.000Z" as never,
-        endsAt: "2026-06-15T11:00:00.000Z" as never,
+        startsAt: dt("2026-06-15T10:00:00.000Z"),
+        endsAt: dt("2026-06-15T11:00:00.000Z"),
         mode: "in_person",
       }),
     );
