@@ -868,7 +868,7 @@ export function AgendaItemDetailDialog(
       }
     } finally {
       if (mountedRef.current) setMutating(false);
-      mutationInFlightRef.current = false;
+      mutationLock.release();
     }
   }, [
     pendingRemoval,
