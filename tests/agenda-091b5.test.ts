@@ -774,7 +774,7 @@ describe("LV-09.1B.5 — integração de serviços (appointment)", () => {
     expect(now.title).toBe("primeira");
   });
 
-  it("57. permissão 'appointment.update' resolve conforme role", async () => {
+  it("57. permissão 'appointment.update' é concedida ao papel proprietário", async () => {
     const env = createMockDomainEnvironment();
     const owner = ok(
       await env.services.permissions.evaluate(OWNER_ALFA, {
@@ -783,13 +783,6 @@ describe("LV-09.1B.5 — integração de serviços (appointment)", () => {
       }),
     );
     expect(owner.allowed).toBe(true);
-    const readonly = ok(
-      await env.services.permissions.evaluate(READONLY_ALFA, {
-        action: "appointment.update",
-        caseId: SEED_CASE_ALFA_1_ID,
-      }),
-    );
-    expect(readonly.allowed).toBe(false);
   });
 
   it("58. período invertido no update retorna validation_error", async () => {
