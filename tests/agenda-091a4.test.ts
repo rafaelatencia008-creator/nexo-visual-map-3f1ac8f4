@@ -22,6 +22,7 @@ import {
   compareIsoDateTime,
 } from "@/domain/core/common";
 import { isAppointment } from "@/domain/core/agenda";
+import { createAppointmentId } from "@/domain/core/ids";
 import type {
   CreateDeadlineInput,
   CreateAppointmentInput,
