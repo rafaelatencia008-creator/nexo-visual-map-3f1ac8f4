@@ -1462,13 +1462,21 @@ describe("LV-09.1B.5.1 — conversão ISO defensiva", () => {
 });
 
 describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", () => {
-  it("116. arquivo de testes não usa 'as any', 'as never' nem 'unknown as'", () => {
+  it("116. arquivo de testes não usa casts inseguros nem @ts-ignore/@ts-nocheck", () => {
     const src = readFileSync("tests/agenda-091b5.test.ts", "utf8");
-    expect(src.includes(" as any")).toBe(false);
-    expect(src.includes(" as never")).toBe(false);
-    expect(src.includes("unknown as")).toBe(false);
-    expect(src.includes("@ts-ignore")).toBe(false);
-    expect(src.includes("@ts-nocheck")).toBe(false);
+    // Constrói tokens em runtime para que o próprio assertivo NÃO produza
+    // ocorrência literal do padrão no fonte deste arquivo.
+    const asWord = ["a", "s"].join("");
+    const forbidden = [
+      ` ${asWord} any`,
+      ` ${asWord} never`,
+      `unknown ${asWord}`,
+      "@" + "ts-ignore",
+      "@" + "ts-nocheck",
+    ];
+    for (const token of forbidden) {
+      expect(src.includes(token)).toBe(false);
+    }
   });
 
   it("117. edit-form não usa 'as any' nem 'as never'", () => {
