@@ -19,7 +19,7 @@ import {
   SEED_CASE_BETA_1_ID,
 } from "@/domain/mocks/seed";
 import type { ServiceContext } from "@/domain/services/context";
-import type { IsoDateTime } from "@/domain/core/common";
+import { compareIsoDateTime, type IsoDateTime } from "@/domain/core/common";
 import type { Case } from "@/domain/core/case";
 import {
   EMPTY_AGENDA_FILTERS,
@@ -338,8 +338,8 @@ describe("LV-09.1B.3 — processos e permissões", () => {
   it("24. falha ao carregar processos é tratável (retorno estruturado)", async () => {
     const env = createMockDomainEnvironment();
     // Uma paginação inválida força retorno de erro em vez de exceção.
+    // `limit: 0` é válido no tipo (number) e é rejeitado apenas em runtime.
     const res = await env.services.cases.list(OWNER_ALFA, {
-      // @ts-expect-error validação em runtime
       page: { limit: 0 },
     });
     expect(res.ok).toBe(false);
@@ -574,9 +574,9 @@ describe("LV-09.1B.3 — filtros aplicados aos serviços", () => {
     const d = ok(
       await env.services.deadlines.list(OWNER_ALFA, { page: { limit: 100 } }),
     );
-    const sorted = d.items.slice().sort((a, b) =>
-      a.dueAt < b.dueAt ? -1 : a.dueAt > b.dueAt ? 1 : 0,
-    );
+    const sorted = d.items
+      .slice()
+      .sort((a, b) => compareIsoDateTime(a.dueAt, b.dueAt));
     // Não impõe ordem específica do serviço; validamos que a Agenda ordena
     // cronologicamente ao consumir — helper puro:
     const upcoming = selectUpcomingDeadlines(
@@ -585,7 +585,7 @@ describe("LV-09.1B.3 — filtros aplicados aos serviços", () => {
       10,
     );
     const ts = upcoming.map((x) => x.dueAt);
-    expect(ts).toEqual([...ts].sort());
+    expect(ts).toEqual([...ts].sort(compareIsoDateTime));
     void sorted;
   });
 

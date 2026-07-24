@@ -22,7 +22,13 @@ import {
   Search,
   X,
   SlidersHorizontal,
+  Plus,
 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AgendaCreateDialog,
+  type AgendaCreatedItem,
+} from "@/features/agenda/AgendaCreateDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -389,8 +395,11 @@ function AgendaPage() {
   const [mode, setMode] = React.useState<ViewMode>("week");
   const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
   const [showMore, setShowMore] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [reloadKey, setReloadKey] = React.useState(0);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
+  const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -438,7 +447,7 @@ function AgendaPage() {
           error instanceof Error ? error.message : "Falha ao carregar agenda.";
         setState({ kind: "error", message });
       });
-  }, [environment, context, filters]);
+  }, [environment, context, filters, reloadKey]);
 
   const range = React.useMemo(() => rangeForView(anchor, mode), [anchor, mode]);
   const nowEpoch = React.useMemo(
@@ -528,6 +537,28 @@ function AgendaPage() {
   const showUpcoming = shouldShowUpcomingPanel(filters);
   const totalVisible = visible.deadlines.length + visible.appointments.length;
 
+  const accessibleCases: readonly Case[] =
+    casesState.kind === "ready" ? casesState.items : [];
+
+  const handleCreated = React.useCallback(
+    (created: AgendaCreatedItem) => {
+      setReloadKey((k) => k + 1);
+      const iso =
+        created.type === "deadline" ? created.item.dueAt : created.item.startsAt;
+      const inView = isInRange(iso, range.from, range.to);
+      if (!inView) {
+        toast.info(
+          "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
+        );
+      }
+      // Retorna o foco ao botão que abriu o diálogo.
+      window.setTimeout(() => {
+        newItemButtonRef.current?.focus();
+      }, 0);
+    },
+    [range.from, range.to],
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -539,13 +570,35 @@ function AgendaPage() {
             Prazos e compromissos oficiais em visão diária, semanal e mensal.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-md border border-border/70 bg-card px-3 py-2 text-sm">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
-          <span className="capitalize text-muted-foreground">
-            {formatHeading(anchor, mode)}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-border/70 bg-card px-3 py-2 text-sm">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <span className="capitalize text-muted-foreground">
+              {formatHeading(anchor, mode)}
+            </span>
+          </div>
+          <Button
+            ref={newItemButtonRef}
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            disabled={casesState.kind !== "ready" || accessibleCases.length === 0}
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Novo item
+          </Button>
         </div>
       </header>
+
+      <AgendaCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        environment={environment}
+        context={context}
+        cases={accessibleCases}
+        initialCaseId={filters.caseId ?? undefined}
+        onCreated={handleCreated}
+      />
+
 
       <AgendaFiltersBar
         filters={filters}
