@@ -318,7 +318,7 @@ export function createAppointmentServiceMock(
       if (!isIsoDateTime(raw.startsAt))
         return invalid<Appointment>("invalid_starts_at");
       if (!isIsoDateTime(raw.endsAt)) return invalid<Appointment>("invalid_ends_at");
-      if (raw.startsAt >= raw.endsAt)
+      if (isoDateTimeToEpoch(raw.startsAt) >= isoDateTimeToEpoch(raw.endsAt))
         return invalid<Appointment>("period_inverted");
       const title = validateTitle(raw.title);
       if (title === null) return invalid<Appointment>("invalid_title");
