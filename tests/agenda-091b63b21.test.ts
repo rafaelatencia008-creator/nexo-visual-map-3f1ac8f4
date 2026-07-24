@@ -883,15 +883,12 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
       /const detail: DetailState = detailIsCurrent\s*\?\s*detailSnapshot\.state\s*:\s*\{\s*kind:\s*"loading"\s*\}/,
     );
   });
-  it("100. setDetail estampa o snapshot com a geração/chave correntes", () => {
+  it("100. setDetail estampa o snapshot com o detailOwner do render (memo)", () => {
     expect(CONTENT_SRC).toMatch(
-      /setDetail\s*=\s*React\.useCallback\(\(state:\s*DetailState\)/,
+      /const detailOwner = React\.useMemo\(/,
     );
     expect(CONTENT_SRC).toMatch(
-      /activityGeneration:\s*activityGenerationRef\.current/,
-    );
-    expect(CONTENT_SRC).toMatch(
-      /selectionKey:\s*selectionKeyRef\.current/,
+      /setDetailSnapshot\(\{\s*\.\.\.detailOwner,\s*state\s*\}\)/,
     );
   });
   it("101. Content passa detailBelongsToCurrentActivity para o derive", () => {
@@ -899,32 +896,32 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
       /detailBelongsToCurrentActivity:\s*detailIsCurrent/,
     );
   });
-  it("102. Load captura reqActivityGeneration e propaga ao guard", () => {
+  it("102. Load captura reqActivityGeneration a partir de currentActivityRef e propaga ao guard", () => {
     expect(CONTENT_SRC).toMatch(
-      /const reqActivityGeneration = activityGenerationRef\.current;/,
+      /const reqActivityGeneration = currentActivityRef\.current\.activityGeneration;/,
     );
     expect(CONTENT_SRC).toMatch(
-      /currentActivityGeneration:\s*activityGenerationRef\.current/,
+      /currentActivityGeneration:\s*currentActivityRef\.current\.activityGeneration/,
     );
     expect(CONTENT_SRC).toMatch(
       /requestActivityGeneration:\s*reqActivityGeneration/,
     );
   });
-  it("103. Effects de permissão e assignments checam a geração", () => {
+  it("103. Effects de permissão e assignments checam a geração via currentActivityRef", () => {
     const matches = CONTENT_SRC.match(
-      /activityGenerationRef\.current === reqActivityGeneration/g,
+      /currentActivityRef\.current\.activityGeneration === reqActivityGeneration/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(2);
   });
-  it("104. Submit/mutação capturam startActivityGeneration", () => {
+  it("104. Submit/mutação capturam startActivityGeneration a partir de currentActivityRef", () => {
     const matches = CONTENT_SRC.match(
-      /const startActivityGeneration = activityGenerationRef\.current;/g,
+      /const startActivityGeneration = currentActivityRef\.current\.activityGeneration;/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
   });
-  it("105. stillSameSelection agora inclui a geração de atividade", () => {
+  it("105. stillSameSelection agora compara a geração corrente com a capturada", () => {
     const matches = CONTENT_SRC.match(
-      /activityGenerationRef\.current === startActivityGeneration/g,
+      /currentActivityRef\.current\.activityGeneration === startActivityGeneration/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
   });
