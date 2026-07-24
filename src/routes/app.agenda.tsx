@@ -390,19 +390,21 @@ type CasesState =
 function AgendaPage() {
   const { environment, context } = useMockDomain();
   const [filters, setFilters] = React.useState<AgendaFilters>(EMPTY_AGENDA_FILTERS);
-  const [state, setState] = React.useState<LoadState>({ kind: "loading" });
+  const [state, setState] = React.useState<LoadState>({
+    kind: "loading",
+    generation: 0,
+  });
   const [casesState, setCasesState] = React.useState<CasesState>({ kind: "loading" });
   const [mode, setMode] = React.useState<ViewMode>("week");
   const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
   const [showMore, setShowMore] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
-  const [pendingCreated, setPendingCreated] = React.useState<{
-    id: string;
-    type: "deadline" | "appointment";
-  } | null>(null);
+  const [pendingCreated, setPendingCreated] =
+    React.useState<PendingCreatedItem | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
+  const loadGenerationRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
@@ -438,18 +440,19 @@ function AgendaPage() {
 
   // Recarrega prazos/compromissos ao alterar filtros. Descarta respostas obsoletas.
   React.useEffect(() => {
-    const id = ++requestIdRef.current;
-    setState({ kind: "loading" });
+    const gen = ++loadGenerationRef.current;
+    requestIdRef.current = gen;
+    setState({ kind: "loading", generation: gen });
     fetchAgenda(environment, context, filters)
       .then((data) => {
-        if (!mountedRef.current || id !== requestIdRef.current) return;
-        setState({ kind: "ready", data });
+        if (!mountedRef.current || gen !== loadGenerationRef.current) return;
+        setState({ kind: "ready", generation: gen, data });
       })
       .catch((error: unknown) => {
-        if (!mountedRef.current || id !== requestIdRef.current) return;
+        if (!mountedRef.current || gen !== loadGenerationRef.current) return;
         const message =
           error instanceof Error ? error.message : "Falha ao carregar agenda.";
-        setState({ kind: "error", message });
+        setState({ kind: "error", generation: gen, message });
       });
   }, [environment, context, filters, reloadKey]);
 
