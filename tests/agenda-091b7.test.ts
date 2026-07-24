@@ -49,6 +49,7 @@ import {
   toConflict,
   type AppointmentAvailabilityConflict,
 } from "@/features/agenda/availability";
+import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
 
 const OWNER_ALFA: ServiceContext = Object.freeze({
   organizationId: SEED_ORG_ALFA_ID,
