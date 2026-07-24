@@ -737,11 +737,10 @@ export function AgendaItemDetailDialog(
   // ---- Mudança de status / exclusão (LV-09.1B.6) ------------------------
 
   const confirmStatusChange = React.useCallback(async () => {
-    if (mutationInFlightRef.current) return;
     if (!pendingStatus) return;
     if (detail.kind !== "ready") return;
-    if (permChangeStatus !== "allowed") return;
-    mutationInFlightRef.current = true;
+    if (!permissionAllowsAction(permChangeStatus)) return;
+    if (!mutationLock.tryAcquire()) return;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
