@@ -121,7 +121,6 @@ import {
   type TranslatedMutationError,
 } from "./item-mutations";
 import {
-  bindSingleFlightLockToRef,
   deriveMutationLockDecisions,
   hasPermissionEvaluationError,
   resolveMutationConflictAction,
