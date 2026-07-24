@@ -315,6 +315,17 @@ export function AgendaItemDetailDialog(
     () => bindSingleFlightLockToRef(mutationInFlightRef),
     [],
   );
+  // Fonte única de verdade sobre bloqueio síncrono. Consulta o lock testado
+  // e o estado de submit/mutation em tempo real.
+  const getMutationLockDecisions = React.useCallback(
+    () =>
+      deriveMutationLockDecisions({
+        mutationRefLocked: mutationLock.isLocked(),
+        mutating,
+        submitting: submittingRef.current,
+      }),
+    [mutationLock, mutating],
+  );
 
   React.useEffect(() => {
     mountedRef.current = true;
