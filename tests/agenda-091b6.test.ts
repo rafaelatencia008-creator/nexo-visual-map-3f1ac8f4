@@ -986,16 +986,14 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     // Substituído por prova comportamental — vide 106 e 107.
     expect(DETAIL_SRC).toMatch(/resolvePermissionEvaluation/);
   });
-  it("92. UI oferece 'Tentar novamente' quando permissão em error", () => {
+  it("92. UI oferece 'Tentar novamente' via hasPermEvalError", () => {
     expect(DETAIL_SRC).toContain("Não foi possível verificar esta permissão.");
     expect(DETAIL_SRC).toContain("Tentar novamente");
-    expect(DETAIL_SRC).toMatch(
-      /permChangeStatus === "error" \|\| permRemove === "error"/,
-    );
+    expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("93. handlers exigem 'allowed' antes de chamar o serviço", () => {
-    expect(DETAIL_SRC).toMatch(/if \(permChangeStatus !== "allowed"\) return;/);
-    expect(DETAIL_SRC).toMatch(/if \(permRemove !== "allowed"\) return;/);
+  it("93. handlers exigem permissionAllowsAction antes de chamar o serviço", () => {
+    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permChangeStatus\)\) return/);
+    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permRemove\)\) return/);
   });
 
   it("94. retryPermissions incrementa permAttempt", () => {
