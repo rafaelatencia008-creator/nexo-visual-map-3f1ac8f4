@@ -101,5 +101,9 @@ export function computeAgendaAccessibleCaseIds(
 }
 
 export function isAgendaAction(action: string): boolean {
-  return action.startsWith("deadline.") || action.startsWith("appointment.");
+  return (
+    action.startsWith("deadline.") ||
+    action.startsWith("appointment.") ||
+    action.startsWith("communication.")
+  );
 }

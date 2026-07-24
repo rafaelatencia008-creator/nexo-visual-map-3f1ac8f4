@@ -12,6 +12,7 @@ export * from "./person";
 export * from "./assignment";
 export * from "./case-plan";
 export * from "./case-audit";
+export * from "./communication";
 // `./agenda` exporta um `DeadlineStatus` diferente do exportado por `./case`
 // (situação da revisão de prazo do caso vs. situação de um prazo da Agenda).
 // Para evitar ambiguidade no barrel, reexportamos explicitamente os símbolos

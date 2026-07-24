@@ -22,3 +22,4 @@ export * from "./audit-service";
 export * from "./case-snapshot-service";
 export * from "./deadline-service";
 export * from "./appointment-service";
+export * from "./communication-service";
