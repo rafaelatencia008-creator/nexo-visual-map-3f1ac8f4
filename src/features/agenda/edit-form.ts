@@ -53,9 +53,14 @@ import {
  * Converte um `IsoDateTime` UTC em uma string aceita por
  * `<input type="datetime-local">`, representando o instante no fuso local
  * do navegador. Preserva minutos (segundos são omitidos por padrão).
+ * Aceita `string` para permitir defesa em profundidade: valores que não
+ * satisfazem `isIsoDateTime` são rejeitados com `Error("invalid_iso")`.
  * Não compara strings; usa `isoDateTimeToEpoch` internamente.
  */
-export function isoDateTimeToDatetimeLocal(iso: IsoDateTime): string {
+export function isoDateTimeToDatetimeLocal(iso: IsoDateTime | string): string {
+  if (!isIsoDateTime(iso)) {
+    throw new Error("invalid_iso");
+  }
   const epoch = isoDateTimeToEpoch(iso);
   const d = new Date(epoch);
   if (Number.isNaN(d.getTime())) {

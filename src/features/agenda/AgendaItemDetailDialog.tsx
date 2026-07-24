@@ -8,7 +8,16 @@
  */
 
 import * as React from "react";
-import { AlertCircle, Loader2, Pencil } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Flag,
+  Loader2,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -84,6 +93,7 @@ import {
   type EditDeadlineFormState,
   type TranslatedUpdateError,
 } from "./edit-form";
+import { getDeadlinePresentation } from "./visual-state";
 
 // ---- Tipos públicos -----------------------------------------------------
 
@@ -102,6 +112,8 @@ export interface AgendaItemDetailDialogProps {
   readonly context: ServiceContext;
   readonly cases: readonly Case[];
   readonly onUpdated: (updated: AgendaItemUpdated) => void;
+  /** Instante de referência para estado visual derivado (ex.: "Atrasado"). */
+  readonly referenceEpoch: number;
 }
 
 // ---- Rótulos ------------------------------------------------------------
@@ -195,7 +207,7 @@ const ASSIGN_MAX_PAGES = 20;
 export function AgendaItemDetailDialog(
   props: AgendaItemDetailDialogProps,
 ): React.ReactElement {
-  const { selected, onClose, environment, context, cases, onUpdated } = props;
+  const { selected, onClose, environment, context, cases, onUpdated, referenceEpoch } = props;
   const open = selected !== null;
 
   const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
@@ -216,6 +228,10 @@ export function AgendaItemDetailDialog(
   const [errors, setErrors] = React.useState<Readonly<Record<string, string>>>(
     {},
   );
+  const [touched, setTouched] = React.useState<Readonly<Record<string, boolean>>>(
+    {},
+  );
+  const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
   const [generalError, setGeneralError] = React.useState<string | null>(null);
   const [conflictState, setConflictState] = React.useState<{
     expected?: number;
@@ -249,6 +265,8 @@ export function AgendaItemDetailDialog(
     setAForm(null);
     setExpectedVersion(0);
     setErrors({});
+    setTouched({});
+    setAttemptedSubmit(false);
     setGeneralError(null);
     setConflictState(null);
     setSubmitting(false);
@@ -380,6 +398,8 @@ export function AgendaItemDetailDialog(
   const enterEdit = React.useCallback(() => {
     if (detail.kind !== "ready" || perm !== "allowed") return;
     setErrors({});
+    setTouched({});
+    setAttemptedSubmit(false);
     setGeneralError(null);
     setConflictState(null);
     if (detail.loaded.type === "deadline") {
@@ -467,6 +487,7 @@ export function AgendaItemDetailDialog(
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (perm !== "allowed") return;
+    setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
 
@@ -477,7 +498,7 @@ export function AgendaItemDetailDialog(
         expectedVersion,
       );
       if (!built.ok) {
-        setErrors(built.errors as Record<string, string>);
+        setErrors(built.errors);
         return;
       }
       if (!built.changed) return;
@@ -512,7 +533,7 @@ export function AgendaItemDetailDialog(
         expectedVersion,
       );
       if (!built.ok) {
-        setErrors(built.errors as Record<string, string>);
+        setErrors(built.errors);
         return;
       }
       if (!built.changed) return;
@@ -541,6 +562,7 @@ export function AgendaItemDetailDialog(
         submittingRef.current = false;
       }
     }
+
 
     function handleUpdateError(err: ServiceError): void {
       const t: TranslatedUpdateError = translateAgendaUpdateError(err);
@@ -583,8 +605,62 @@ export function AgendaItemDetailDialog(
     return c ? `${c.reference} — ${c.title}` : String(cid);
   }, [detail, caseById]);
 
+  // Avaliação derivada do builder oficial: fonte única de verdade para a
+  // validade do formulário. O botão "Salvar" e o `submit()` consomem esta
+  // mesma decisão.
+  const currentBuildResult = React.useMemo<
+    | { ok: true; changed: boolean }
+    | { ok: false; errors: Readonly<Record<string, string>> }
+    | null
+  >(() => {
+    if (mode !== "edit" || detail.kind !== "ready") return null;
+    if (detail.loaded.type === "deadline" && dForm) {
+      const built = buildUpdateDeadlineInput(
+        detail.loaded.item,
+        dForm,
+        expectedVersion,
+      );
+      if (!built.ok) return { ok: false, errors: built.errors };
+      return { ok: true, changed: built.changed };
+    }
+    if (detail.loaded.type === "appointment" && aForm) {
+      const built = buildUpdateAppointmentInput(
+        detail.loaded.item,
+        aForm,
+        expectedVersion,
+      );
+      if (!built.ok) return { ok: false, errors: built.errors };
+      return { ok: true, changed: built.changed };
+    }
+    return null;
+  }, [mode, detail, dForm, aForm, expectedVersion]);
+
   const canSubmit =
-    mode === "edit" && perm === "allowed" && hasLocalChanges && !submitting;
+    mode === "edit" &&
+    perm === "allowed" &&
+    currentBuildResult !== null &&
+    currentBuildResult.ok &&
+    currentBuildResult.changed &&
+    !submitting;
+
+  // Erros exibidos = união dos erros já persistidos (submit / retorno do
+  // serviço) + erros derivados apenas para campos "tocados" pelo usuário
+  // ou após tentativa de submit. Isso evita mostrar erros em todos os
+  // campos assim que a edição começa.
+  const displayErrors: Readonly<Record<string, string>> = React.useMemo(() => {
+    if (currentBuildResult && !currentBuildResult.ok) {
+      const merged: Record<string, string> = { ...errors };
+      for (const [k, v] of Object.entries(currentBuildResult.errors)) {
+        if (merged[k]) continue;
+        if (attemptedSubmit || touched[k]) {
+          merged[k] = v;
+        }
+      }
+      return merged;
+    }
+    return errors;
+  }, [currentBuildResult, errors, touched, attemptedSubmit]);
+
 
   const title =
     !selected
@@ -677,6 +753,7 @@ export function AgendaItemDetailDialog(
                   loaded={detail.loaded}
                   caseLabel={currentCaseLabel}
                   perm={perm}
+                  referenceEpoch={referenceEpoch}
                 />
               )}
 
@@ -707,17 +784,25 @@ export function AgendaItemDetailDialog(
                   {detail.loaded.type === "deadline" && dForm && (
                     <DeadlineEditFields
                       form={dForm}
-                      errors={errors}
+                      errors={displayErrors}
                       onChange={(k, v) => {
                         setDForm((prev) => (prev ? { ...prev, [k]: v } : prev));
+                        const key = k === "dueAtLocal" ? "dueAt" : k;
+                        setTouched((prev) =>
+                          prev[key] ? prev : { ...prev, [key]: true },
+                        );
                         setErrors((prev) => {
-                          if (prev[k === "dueAtLocal" ? "dueAt" : k] === undefined)
-                            return prev;
-                          const key = k === "dueAtLocal" ? "dueAt" : k;
+                          if (prev[key] === undefined) return prev;
                           const { [key]: _o, ...rest } = prev;
                           return rest;
                         });
                         setGeneralError(null);
+                      }}
+                      onBlurField={(k) => {
+                        const key = k === "dueAtLocal" ? "dueAt" : k;
+                        setTouched((prev) =>
+                          prev[key] ? prev : { ...prev, [key]: true },
+                        );
                       }}
                       assignments={assignments}
                       originalAssignmentId={
@@ -730,7 +815,7 @@ export function AgendaItemDetailDialog(
                   {detail.loaded.type === "appointment" && aForm && (
                     <AppointmentEditFields
                       form={aForm}
-                      errors={errors}
+                      errors={displayErrors}
                       onChange={(k, v) => {
                         setAForm((prev) => (prev ? { ...prev, [k]: v } : prev));
                         const errKey =
@@ -739,12 +824,26 @@ export function AgendaItemDetailDialog(
                             : k === "endsAtLocal"
                               ? "endsAt"
                               : k;
+                        setTouched((prev) =>
+                          prev[errKey] ? prev : { ...prev, [errKey]: true },
+                        );
                         setErrors((prev) => {
                           if (prev[errKey] === undefined) return prev;
                           const { [errKey]: _o, ...rest } = prev;
                           return rest;
                         });
                         setGeneralError(null);
+                      }}
+                      onBlurField={(k) => {
+                        const errKey =
+                          k === "startsAtLocal"
+                            ? "startsAt"
+                            : k === "endsAtLocal"
+                              ? "endsAt"
+                              : k;
+                        setTouched((prev) =>
+                          prev[errKey] ? prev : { ...prev, [errKey]: true },
+                        );
                       }}
                       assignments={assignments}
                       originalAssignmentId={
@@ -842,23 +941,61 @@ export function AgendaItemDetailDialog(
   );
 }
 
-// ---- Painel de visualização -----------------------------------------------
+// ---- Ícone de estado do prazo --------------------------------------------
+
+function DeadlineStateIcon({
+  state,
+}: {
+  state: ReturnType<typeof getDeadlinePresentation>["state"];
+}) {
+  const cls = "h-3.5 w-3.5" as const;
+  switch (state) {
+    case "cancelled":
+      return <Ban className={cls} aria-hidden />;
+    case "completed":
+      return <CheckCircle2 className={cls} aria-hidden />;
+    case "overdue":
+      return <AlertTriangle className={cls} aria-hidden />;
+    case "urgent":
+      return <AlertCircle className={cls} aria-hidden />;
+    case "high":
+      return <Flag className={cls} aria-hidden />;
+    case "normal":
+    case "low":
+    default:
+      return <Clock className={cls} aria-hidden />;
+  }
+}
+
 
 function ViewPanel({
   loaded,
   caseLabel,
   perm,
+  referenceEpoch,
 }: {
   loaded: Loaded;
   caseLabel: string;
   perm: PermState;
+  referenceEpoch: number;
 }) {
   if (loaded.type === "deadline") {
     const d = loaded.item;
+    const presentation = getDeadlinePresentation(d, referenceEpoch);
     return (
       <dl className="grid gap-3 text-sm">
         <Row label="Item">
           <Badge variant="secondary">Prazo</Badge>
+        </Row>
+        <Row label="Estado atual">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${presentation.stateBadgeClass}`}
+            data-testid="deadline-state-badge"
+            data-state={presentation.state}
+          >
+            <DeadlineStateIcon state={presentation.state} />
+            {presentation.stateLabel}
+          </span>
         </Row>
         <Row label="Título">
           <span className="font-medium">{d.title}</span>
@@ -1060,6 +1197,7 @@ function DeadlineEditFields({
   form,
   errors,
   onChange,
+  onBlurField,
   assignments,
   originalAssignmentId,
   disabled,
@@ -1068,6 +1206,7 @@ function DeadlineEditFields({
   form: EditDeadlineFormState;
   errors: Readonly<Record<string, string>>;
   onChange: (k: keyof EditDeadlineFormState, v: string) => void;
+  onBlurField: (k: keyof EditDeadlineFormState) => void;
   assignments: AssignmentsState;
   originalAssignmentId: string | null;
   disabled: boolean;
@@ -1212,6 +1351,7 @@ function AppointmentEditFields({
   form,
   errors,
   onChange,
+  onBlurField,
   assignments,
   originalAssignmentId,
   disabled,
@@ -1220,6 +1360,7 @@ function AppointmentEditFields({
   form: EditAppointmentFormState;
   errors: Readonly<Record<string, string>>;
   onChange: (k: keyof EditAppointmentFormState, v: string) => void;
+  onBlurField: (k: keyof EditAppointmentFormState) => void;
   assignments: AssignmentsState;
   originalAssignmentId: string | null;
   disabled: boolean;

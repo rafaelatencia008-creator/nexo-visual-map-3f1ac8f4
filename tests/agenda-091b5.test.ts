@@ -145,9 +145,9 @@ describe("LV-09.1B.5 — isoDateTimeToDatetimeLocal", () => {
   });
 
   it("3. lança erro para ISO inválido", () => {
-    expect(() =>
-      isoDateTimeToDatetimeLocal("nao-eh-iso" as unknown as IsoDateTime),
-    ).toThrow();
+    expect(() => isoDateTimeToDatetimeLocal("nao-eh-iso")).toThrow(
+      /invalid_iso/,
+    );
   });
 });
 
@@ -831,7 +831,7 @@ describe("LV-09.1B.5 — item-visibility (reexport)", () => {
     };
     const decision = resolveAgendaItemVisibility(
       marker,
-      { kind: "ready", generation: 5, data: { deadlines: [], appointments: [] } as never },
+      { kind: "ready", generation: 5 },
       new Set(),
       new Set(["appointment_xyz"]),
     );
