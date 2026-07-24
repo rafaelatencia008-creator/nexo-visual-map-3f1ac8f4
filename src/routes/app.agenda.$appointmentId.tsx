@@ -69,11 +69,7 @@ function AgendaAppointmentPage() {
   React.useEffect(() => {
     let cancelled = false;
     setResolution({ kind: "loading" });
-    resolveAppointmentRoute(
-      environment.services.appointments,
-      context,
-      appointmentId,
-    ).then((r) => {
+    resolveAppointmentRoute(environment.services.appointments, context, appointmentId).then((r) => {
       if (cancelled) return;
       setResolution(r);
     });
@@ -103,9 +99,7 @@ function AgendaAppointmentPage() {
 
   const handleUpdated = React.useCallback(
     (updated: AgendaItemUpdated) => {
-      setPendingUpdated(
-        buildPendingUpdateMarker(loadGenerationRef.current, updated),
-      );
+      setPendingUpdated(buildPendingUpdateMarker(loadGenerationRef.current, updated));
       setReloadKey((k) => k + 1);
       if (updated.type === "appointment") {
         setResolution({ kind: "found", appointment: updated.item });
@@ -156,13 +150,8 @@ function AgendaAppointmentPage() {
       <div className="space-y-4">
         <div>{backButton}</div>
         <div className="mx-auto max-w-md space-y-3 rounded-md border border-border/60 bg-card p-6 text-center">
-          <AlertCircle
-            className="mx-auto h-6 w-6 text-muted-foreground"
-            aria-hidden
-          />
-          <h1 className="font-display text-xl font-semibold">
-            Compromisso não encontrado
-          </h1>
+          <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+          <h1 className="font-display text-xl font-semibold">Compromisso não encontrado</h1>
           <p className="text-sm text-muted-foreground">
             O compromisso solicitado não existe ou não está mais acessível.
           </p>
@@ -176,18 +165,14 @@ function AgendaAppointmentPage() {
       <div className="space-y-4">
         <div>{backButton}</div>
         <div className="mx-auto max-w-md space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-6 text-center">
-          <AlertCircle
-            className="mx-auto h-6 w-6 text-destructive"
-            aria-hidden
-          />
+          <AlertCircle className="mx-auto h-6 w-6 text-destructive" aria-hidden />
           <h1 className="font-display text-xl font-semibold text-destructive">
             Não foi possível carregar
           </h1>
           <p className="text-sm text-muted-foreground">
             {resolution.code === "forbidden"
               ? "Você não tem permissão para visualizar este compromisso."
-              : resolution.message ||
-                "Ocorreu um erro ao consultar o compromisso."}
+              : resolution.message || "Ocorreu um erro ao consultar o compromisso."}
           </p>
         </div>
       </div>

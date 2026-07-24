@@ -42,9 +42,7 @@ describe("LV-09.1B.6.3B.2.2 · Rota importa Content e não o wrapper", () => {
     expect(ROUTE_SRC).toMatch(/AgendaItemDetailContentHandle/);
   });
   it("3. rota NÃO importa AgendaItemDetailDialog", () => {
-    expect(ROUTE_SRC).not.toMatch(
-      /from\s+"@\/features\/agenda\/AgendaItemDetailDialog"/,
-    );
+    expect(ROUTE_SRC).not.toMatch(/from\s+"@\/features\/agenda\/AgendaItemDetailDialog"/);
   });
   it("4. rota NÃO renderiza <AgendaItemDetailDialog>", () => {
     expect(ROUTE_SRC).not.toMatch(/<AgendaItemDetailDialog\b/);
@@ -81,9 +79,7 @@ describe("LV-09.1B.6.3B.2.2 · Botão superior delega ao handle", () => {
     expect(ROUTE_SRC).toMatch(/onClick=\{handleBackRequest\}/);
   });
   it("12. handleBackRequest usa variável local para contentRef.current", () => {
-    expect(ROUTE_SRC).toMatch(
-      /const\s+handle\s*=\s*contentRef\.current;/,
-    );
+    expect(ROUTE_SRC).toMatch(/const\s+handle\s*=\s*contentRef\.current;/);
   });
   it("13. handle existente chama requestClose()", () => {
     expect(ROUTE_SRC).toMatch(/handle\.requestClose\(\);/);
@@ -118,7 +114,7 @@ describe("LV-09.1B.6.3B.2.2 · Rota não duplica gates/locks do Content", () => 
 });
 
 describe("LV-09.1B.6.3B.2.2 · Fechamento e mutações", () => {
-  it('21. onRequestClose navega para /app/agenda', () => {
+  it("21. onRequestClose navega para /app/agenda", () => {
     expect(ROUTE_SRC).toMatch(
       /handleRequestClose[\s\S]*navigate\(\{\s*to:\s*"\/app\/agenda"\s*\}\)/,
     );
@@ -131,9 +127,7 @@ describe("LV-09.1B.6.3B.2.2 · Fechamento e mutações", () => {
     expect(ROUTE_SRC).toMatch(/loadGenerationRef\.current/);
   });
   it("24. update permanece na rota (não navega em handleUpdated)", () => {
-    const m = ROUTE_SRC.match(
-      /const\s+handleUpdated\s*=\s*React\.useCallback\(([\s\S]*?)\},\s*\[/,
-    );
+    const m = ROUTE_SRC.match(/const\s+handleUpdated\s*=\s*React\.useCallback\(([\s\S]*?)\},\s*\[/);
     expect(m).not.toBeNull();
     expect(m![1]).not.toMatch(/navigate\(/);
   });
@@ -141,9 +135,7 @@ describe("LV-09.1B.6.3B.2.2 · Fechamento e mutações", () => {
     expect(ROUTE_SRC).toMatch(/buildPendingRemovalMarker\(/);
   });
   it("26. delete navega para /app/agenda", () => {
-    const m = ROUTE_SRC.match(
-      /const\s+handleDeleted\s*=\s*React\.useCallback\(([\s\S]*?)\},\s*\[/,
-    );
+    const m = ROUTE_SRC.match(/const\s+handleDeleted\s*=\s*React\.useCallback\(([\s\S]*?)\},\s*\[/);
     expect(m).not.toBeNull();
     expect(m![1]).toMatch(/navigate\(\{\s*to:\s*"\/app\/agenda"\s*\}\)/);
   });
@@ -158,9 +150,7 @@ describe("LV-09.1B.6.3B.2.2 · Estados prévios preservados", () => {
   });
   it("29. forbidden/error permanece", () => {
     expect(ROUTE_SRC).toMatch(/Não foi possível carregar/);
-    expect(ROUTE_SRC).toMatch(
-      /resolution\.code\s*===\s*"forbidden"/,
-    );
+    expect(ROUTE_SRC).toMatch(/resolution\.code\s*===\s*"forbidden"/);
   });
 });
 
@@ -203,9 +193,7 @@ describe("LV-09.1B.6.3B.2.2 · Wrapper e escopo intocado", () => {
   it("35. wrapper continua fino (sem lógica de submit/lock)", () => {
     expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
     expect(DIALOG_SRC).toMatch(/handle\.requestClose\(\)/);
-    expect(DIALOG_SRC).not.toMatch(
-      /mutationInFlightRef|writeOperationRef|SingleFlightLock/,
-    );
+    expect(DIALOG_SRC).not.toMatch(/mutationInFlightRef|writeOperationRef|SingleFlightLock/);
   });
   it("36. AgendaItemDetailContent permanece existente", () => {
     expect(existsSync(resolve(__dirname, "..", CONTENT_PATH))).toBe(true);
@@ -214,29 +202,19 @@ describe("LV-09.1B.6.3B.2.2 · Wrapper e escopo intocado", () => {
     expect(existsSync(resolve(__dirname, "..", ACTIVITY_PATH))).toBe(true);
   });
   it("38. criação permanece inalterada (Content + Dialog existem)", () => {
-    expect(existsSync(resolve(__dirname, "..", CREATE_CONTENT_PATH))).toBe(
-      true,
-    );
+    expect(existsSync(resolve(__dirname, "..", CREATE_CONTENT_PATH))).toBe(true);
     expect(existsSync(resolve(__dirname, "..", CREATE_DIALOG_PATH))).toBe(true);
   });
   it("39. resolvedor permanece inalterado (arquivo existe)", () => {
     expect(existsSync(resolve(__dirname, "..", RESOLVE_PATH))).toBe(true);
   });
   it("40. disponibilidade continua ausente", () => {
-    expect(
-      existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
-    ).toBe(false);
-    expect(
-      existsSync(
-        resolve(__dirname, "..", "src/features/agenda/availability.ts"),
-      ),
-    ).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(false);
   });
   it("41. domínio, serviços e mocks permanecem inalterados (pastas existem)", () => {
     expect(existsSync(resolve(__dirname, "..", "src/domain/core"))).toBe(true);
-    expect(existsSync(resolve(__dirname, "..", "src/domain/services"))).toBe(
-      true,
-    );
+    expect(existsSync(resolve(__dirname, "..", "src/domain/services"))).toBe(true);
     expect(existsSync(resolve(__dirname, "..", "src/domain/mocks"))).toBe(true);
   });
 });
