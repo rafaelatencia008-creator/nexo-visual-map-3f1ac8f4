@@ -631,10 +631,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!active || mode !== "edit" || !currentCaseId) {
       return;
     }
+    let cancelled = false;
     const reqId = ++assignReqIdRef.current;
     const reqSelectionKey = selectionKey;
     setAssignments({ kind: "loading" });
     const stillCurrent = (): boolean =>
+      !cancelled &&
       mountedRef.current &&
       activeRef.current &&
       reqId === assignReqIdRef.current &&
@@ -679,7 +681,11 @@ export const AgendaItemDetailContent = React.forwardRef<
         });
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [active, mode, currentCaseId, selectionKey, environment, context, assignAttempt]);
+
 
 
   // ---- Handlers -----------------------------------------------------------
