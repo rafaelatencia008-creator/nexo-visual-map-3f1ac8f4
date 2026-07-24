@@ -288,15 +288,15 @@ describe("LV-09.1B.6.3B.1 · Sem duplicação funcional e escopo intocado", () =
   });
 
 
-  it("41. disponibilidade continua ausente (LV-09.1B.7)", () => {
+  it("41. motor consultivo criado (LV-09.1B.7.1) mas rota /app/disponibilidade ausente", () => {
     expect(
       existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts")),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       existsSync(
         resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
     ).toBe(false);

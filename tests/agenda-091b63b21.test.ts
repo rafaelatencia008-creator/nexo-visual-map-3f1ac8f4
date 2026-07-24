@@ -475,9 +475,8 @@ describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
     );
     expect(existsSync(resolve(__dirname, "..", "src/domain/mocks/appointment-mock.ts"))).toBe(true);
   });
-  it("S8. Rota /app/disponibilidade continua ausente", () => {
+  it("S8. Rota /app/disponibilidade continua ausente (LV-09.1B.7.2 não iniciada)", () => {
     expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
-    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(false);
   });
 });
 
@@ -761,9 +760,9 @@ describe("LV-09.1B.6.3B.2.1.2 · Escopo intocado", () => {
     expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailContent");
     expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailDialog");
   });
-  it("81. Não existe /app/disponibilidade nem availability.ts", () => {
+  it("81. /app/disponibilidade ausente; motor availability.ts existe (LV-09.1B.7.1)", () => {
     expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
-    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(true);
   });
 });
 

@@ -138,28 +138,28 @@ describe("Escopo — parcela B pendente (só criação extraída) e LV-09.1B.7 a
   });
 
 
-  it("availability.ts continua ausente (LV-09.1B.7)", () => {
+  it("availability.ts existe (LV-09.1B.7.1 iniciada)", () => {
     expect(
       existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("check-appointment-availability.ts continua ausente", () => {
+  it("check-appointment-availability.ts existe", () => {
     expect(
       existsSync(
         resolve(__dirname, "..", "src/features/agenda/check-appointment-availability.ts"),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("/app/disponibilidade não existe", () => {
+  it("/app/disponibilidade não existe (LV-09.1B.7.2 pendente)", () => {
     expect(
       existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
     ).toBe(false);
   });
 
-  it("tests/agenda-091b7.test.ts não existe", () => {
-    expect(existsSync(resolve(__dirname, "..", "tests/agenda-091b7.test.ts"))).toBe(false);
+  it("tests/agenda-091b7.test.ts existe", () => {
+    expect(existsSync(resolve(__dirname, "..", "tests/agenda-091b7.test.ts"))).toBe(true);
   });
 });
 
