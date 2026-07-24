@@ -594,8 +594,62 @@ export function AgendaItemDetailDialog(
     return c ? `${c.reference} — ${c.title}` : String(cid);
   }, [detail, caseById]);
 
+  // Avaliação derivada do builder oficial: fonte única de verdade para a
+  // validade do formulário. O botão "Salvar" e o `submit()` consomem esta
+  // mesma decisão.
+  const currentBuildResult = React.useMemo<
+    | { ok: true; changed: boolean }
+    | { ok: false; errors: Readonly<Record<string, string>> }
+    | null
+  >(() => {
+    if (mode !== "edit" || detail.kind !== "ready") return null;
+    if (detail.loaded.type === "deadline" && dForm) {
+      const built = buildUpdateDeadlineInput(
+        detail.loaded.item,
+        dForm,
+        expectedVersion,
+      );
+      if (!built.ok) return { ok: false, errors: built.errors };
+      return { ok: true, changed: built.changed };
+    }
+    if (detail.loaded.type === "appointment" && aForm) {
+      const built = buildUpdateAppointmentInput(
+        detail.loaded.item,
+        aForm,
+        expectedVersion,
+      );
+      if (!built.ok) return { ok: false, errors: built.errors };
+      return { ok: true, changed: built.changed };
+    }
+    return null;
+  }, [mode, detail, dForm, aForm, expectedVersion]);
+
   const canSubmit =
-    mode === "edit" && perm === "allowed" && hasLocalChanges && !submitting;
+    mode === "edit" &&
+    perm === "allowed" &&
+    currentBuildResult !== null &&
+    currentBuildResult.ok &&
+    currentBuildResult.changed &&
+    !submitting;
+
+  // Erros exibidos = união dos erros já persistidos (submit / retorno do
+  // serviço) + erros derivados apenas para campos "tocados" pelo usuário
+  // ou após tentativa de submit. Isso evita mostrar erros em todos os
+  // campos assim que a edição começa.
+  const displayErrors: Readonly<Record<string, string>> = React.useMemo(() => {
+    if (currentBuildResult && !currentBuildResult.ok) {
+      const merged: Record<string, string> = { ...errors };
+      for (const [k, v] of Object.entries(currentBuildResult.errors)) {
+        if (merged[k]) continue;
+        if (attemptedSubmit || touched[k] || touched[fieldToTouchKey(k)]) {
+          merged[k] = v;
+        }
+      }
+      return merged;
+    }
+    return errors;
+  }, [currentBuildResult, errors, touched, attemptedSubmit]);
+
 
   const title =
     !selected
