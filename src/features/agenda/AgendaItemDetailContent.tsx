@@ -906,12 +906,19 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(permRemove)) return;
     if (!active || !selected) return;
+    if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
     try {
       const version = detail.loaded.item.metadata.version;
+
       if (detail.loaded.type === "deadline") {
         const res = await environment.services.deadlines.remove(
           context,
