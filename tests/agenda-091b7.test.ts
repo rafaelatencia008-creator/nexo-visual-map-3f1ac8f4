@@ -26,10 +26,7 @@ import {
 import type { ServiceContext } from "@/domain/services/context";
 import type { AppointmentService } from "@/domain/services/appointment-service";
 import type { IsoDateTime } from "@/domain/core/common";
-import type {
-  Appointment,
-  AppointmentStatus,
-} from "@/domain/core/agenda";
+import type { Appointment, AppointmentStatus } from "@/domain/core/agenda";
 import type { AppointmentId } from "@/domain/core/ids";
 import { createAppointmentId } from "@/domain/core/ids";
 import type { CreateAppointmentInput } from "@/domain/services/inputs";
@@ -240,22 +237,12 @@ describe("LV-09.1B.7.1 · motor puro de intervalos", () => {
   });
   it("6. intervalos exatamente iguais conflitam", () => {
     expect(
-      intervalsOverlap(
-        Date.parse(D1_09),
-        Date.parse(D1_10),
-        Date.parse(D1_09),
-        Date.parse(D1_10),
-      ),
+      intervalsOverlap(Date.parse(D1_09), Date.parse(D1_10), Date.parse(D1_09), Date.parse(D1_10)),
     ).toBe(true);
   });
   it("7. término do existente == início do proposto NÃO conflita", () => {
     expect(
-      intervalsOverlap(
-        Date.parse(D1_10),
-        Date.parse(D1_11),
-        Date.parse(D1_09),
-        Date.parse(D1_10),
-      ),
+      intervalsOverlap(Date.parse(D1_10), Date.parse(D1_11), Date.parse(D1_09), Date.parse(D1_10)),
     ).toBe(false);
   });
   it("8. término do proposto == início do existente NÃO conflita", () => {
@@ -359,12 +346,14 @@ describe("LV-09.1B.7.1 · decisão consultiva (env real)", () => {
   it("21. completed não conflita", async () => {
     const env = createMockDomainEnvironment();
     const a = await seedAppointment(env, OWNER_ALFA);
-    ok(await env.services.appointments.changeStatus(OWNER_ALFA, {
-      caseId: a.caseId,
-      appointmentId: a.id,
-      status: "completed",
-      expectedVersion: a.metadata.version,
-    }));
+    ok(
+      await env.services.appointments.changeStatus(OWNER_ALFA, {
+        caseId: a.caseId,
+        appointmentId: a.id,
+        status: "completed",
+        expectedVersion: a.metadata.version,
+      }),
+    );
     const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
       startsAt: D1_09,
       endsAt: D1_10,
@@ -375,12 +364,14 @@ describe("LV-09.1B.7.1 · decisão consultiva (env real)", () => {
   it("22. cancelled não conflita", async () => {
     const env = createMockDomainEnvironment();
     const a = await seedAppointment(env, OWNER_ALFA);
-    ok(await env.services.appointments.changeStatus(OWNER_ALFA, {
-      caseId: a.caseId,
-      appointmentId: a.id,
-      status: "cancelled",
-      expectedVersion: a.metadata.version,
-    }));
+    ok(
+      await env.services.appointments.changeStatus(OWNER_ALFA, {
+        caseId: a.caseId,
+        appointmentId: a.id,
+        status: "cancelled",
+        expectedVersion: a.metadata.version,
+      }),
+    );
     const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
       startsAt: D1_09,
       endsAt: D1_10,
@@ -530,7 +521,12 @@ describe("LV-09.1B.7.1 · paginação e falhas", () => {
   });
   it("34. conflito na última página é detectado", async () => {
     const { env, calls } = buildFakeEnv([
-      { items: [makeFakeAppointment("p1", dt("2027-03-11T09:00:00.000Z"), dt("2027-03-11T10:00:00.000Z"))], nextCursor: "c1" },
+      {
+        items: [
+          makeFakeAppointment("p1", dt("2027-03-11T09:00:00.000Z"), dt("2027-03-11T10:00:00.000Z")),
+        ],
+        nextCursor: "c1",
+      },
       { items: [makeFakeAppointment("p2", D1_0959, D1_11)], nextCursor: undefined },
     ]);
     const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
@@ -568,10 +564,7 @@ describe("LV-09.1B.7.1 · paginação e falhas", () => {
     if (d.kind === "indeterminate") expect(d.reason).toBe("consultation_failed");
   });
   it("37. erro em página posterior não retorna available", async () => {
-    const { env } = buildFakeEnv(
-      [{ items: [], nextCursor: "c1" }, { items: [] }],
-      { failOn: 1 },
-    );
+    const { env } = buildFakeEnv([{ items: [], nextCursor: "c1" }, { items: [] }], { failOn: 1 });
     const d = await checkAppointmentAvailability(env, OWNER_ALFA, {
       startsAt: D1_09,
       endsAt: D1_10,
@@ -629,9 +622,21 @@ describe("LV-09.1B.7.1 · dedupe e ordenação", () => {
     expect(out.length).toBe(1);
   });
   it("42. conflitos ordenados por startsAt crescente", () => {
-    const a = makeFakeAppointment("z", dt("2027-03-10T11:00:00.000Z"), dt("2027-03-10T12:00:00.000Z"));
-    const b = makeFakeAppointment("y", dt("2027-03-10T09:00:00.000Z"), dt("2027-03-10T10:00:00.000Z"));
-    const c = makeFakeAppointment("x", dt("2027-03-10T10:00:00.000Z"), dt("2027-03-10T11:00:00.000Z"));
+    const a = makeFakeAppointment(
+      "z",
+      dt("2027-03-10T11:00:00.000Z"),
+      dt("2027-03-10T12:00:00.000Z"),
+    );
+    const b = makeFakeAppointment(
+      "y",
+      dt("2027-03-10T09:00:00.000Z"),
+      dt("2027-03-10T10:00:00.000Z"),
+    );
+    const c = makeFakeAppointment(
+      "x",
+      dt("2027-03-10T10:00:00.000Z"),
+      dt("2027-03-10T11:00:00.000Z"),
+    );
     const out = dedupeAndSortConflicts([toConflict(a), toConflict(b), toConflict(c)]);
     expect(out.map((o) => o.appointmentId)).toEqual([b.id, c.id, a.id]);
   });

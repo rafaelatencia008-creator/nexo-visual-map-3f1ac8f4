@@ -86,9 +86,10 @@ export async function checkAppointmentAvailability(
     let result;
     try {
       result = await environment.services.appointments.list(context, {
-        page: cursor === undefined
-          ? { limit: AVAILABILITY_PAGE_LIMIT }
-          : { limit: AVAILABILITY_PAGE_LIMIT, cursor },
+        page:
+          cursor === undefined
+            ? { limit: AVAILABILITY_PAGE_LIMIT }
+            : { limit: AVAILABILITY_PAGE_LIMIT, cursor },
         statuses: ["scheduled"],
         assignmentIds: [assignmentId],
       });

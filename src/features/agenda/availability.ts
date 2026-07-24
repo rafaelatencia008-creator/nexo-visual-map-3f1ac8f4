@@ -54,10 +54,7 @@ export type NormalizedInterval = Readonly<{
  * Não conflita com valores encostados: apenas `endsAt === startsAt` é
  * inválido; `endsAt > startsAt` é válido.
  */
-export function isValidInterval(
-  startsAt: IsoDateTime,
-  endsAt: IsoDateTime,
-): boolean {
+export function isValidInterval(startsAt: IsoDateTime, endsAt: IsoDateTime): boolean {
   const s = isoDateTimeToEpoch(startsAt);
   const e = isoDateTimeToEpoch(endsAt);
   if (!Number.isFinite(s) || !Number.isFinite(e)) return false;
