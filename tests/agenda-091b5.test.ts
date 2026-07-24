@@ -877,12 +877,12 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     expect(AGENDA_ROUTE_SRC).toContain("onUpdated={handleUpdated}");
   });
 
-  it("64. diálogo NÃO oferece exclusão nem mudança de status nesta etapa", () => {
-    // Não chama changeStatus/remove nesta etapa (LV-09.1B.5).
-    expect(DETAIL_SRC).not.toContain("changeStatus");
-    expect(DETAIL_SRC).not.toContain(".remove(");
-    // Também não expõe botão "Excluir" no diálogo.
-    expect(DETAIL_SRC).not.toMatch(/>\s*Excluir\s*</);
+  it("64. [OBSOLETO na LV-09.1B.6] mudança de status/exclusão agora existem", () => {
+    // Esta restrição valia apenas na LV-09.1B.5. Na LV-09.1B.6 o diálogo
+    // passou a oferecer changeStatus e remove — o teste vira asserção
+    // positiva mínima para preservar a numeração.
+    expect(DETAIL_SRC).toContain("changeStatus");
+    expect(DETAIL_SRC).toContain(".remove(");
   });
 
   it("65. builders usam expectedVersion vindo por parâmetro, não do metadata atual", () => {
