@@ -1,21 +1,30 @@
 /**
- * LV-09.1B.6.3A — Rota canônica de detalhe de compromisso.
+ * LV-09.1B.6.3A   — Rota canônica de detalhe de compromisso.
+ * LV-09.1B.6.3B.2.2 — Página canônica definitiva. A rota agora monta
+ * diretamente `AgendaItemDetailContent` com `surface="page"` e delega o
+ * fechamento seguro (descarte, locks, mutação) ao handle imperativo
+ * exposto pelo Content. Não há mais diálogo nesta rota; o diálogo
+ * `AgendaItemDetailDialog` permanece em uso apenas em `/app/agenda`.
  *
- * Resolve o `appointmentId` via `resolveAppointmentRoute` (paginação
- * oficial de `appointments.list`) e monta o `AgendaItemDetailDialog`
- * existente. A parcela B extrai o corpo em `AgendaItemDetailContent`.
+ * A resolução do parâmetro continua sendo feita pelo helper puro
+ * `resolveAppointmentRoute` (paginação oficial de `appointments.list`).
+ * A rota se limita a decidir estados prévios (loading / not_found /
+ * error) e, quando a resolução for `found`, montar o Content — que
+ * concentra toda a lógica funcional (permissões, edição, conflitos,
+ * single-flight, seis gates, concorrência otimista).
  */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 
 import { useAgendaRouteState } from "@/features/agenda/route-state";
 import {
-  AgendaItemDetailDialog,
+  AgendaItemDetailContent,
+  type AgendaItemDetailContentHandle,
   type AgendaItemDeleted,
   type AgendaItemUpdated,
-} from "@/features/agenda/AgendaItemDetailDialog";
+} from "@/features/agenda/AgendaItemDetailContent";
 import {
   resolveAppointmentRoute,
   type AppointmentRouteResolution,
@@ -51,20 +60,16 @@ function AgendaAppointmentPage() {
   } = useAgendaRouteState();
   const navigate = useNavigate();
 
-  const [resolution, setResolution] =
-    React.useState<AppointmentRouteResolution | { kind: "loading" }>(
-      { kind: "loading" },
-    );
+  const [resolution, setResolution] = React.useState<
+    AppointmentRouteResolution | { kind: "loading" }
+  >({ kind: "loading" });
   const [nowEpoch, setNowEpoch] = React.useState<number>(() => Date.now());
+  const contentRef = React.useRef<AgendaItemDetailContentHandle | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     setResolution({ kind: "loading" });
-    resolveAppointmentRoute(
-      environment.services.appointments,
-      context,
-      appointmentId,
-    ).then((r) => {
+    resolveAppointmentRoute(environment.services.appointments, context, appointmentId).then((r) => {
       if (cancelled) return;
       setResolution(r);
     });
@@ -79,17 +84,23 @@ function AgendaAppointmentPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const goBack = React.useCallback(() => {
+  const handleRequestClose = React.useCallback(() => {
+    navigate({ to: "/app/agenda" });
+  }, [navigate]);
+
+  const handleBackRequest = React.useCallback(() => {
+    const handle = contentRef.current;
+    if (handle) {
+      handle.requestClose();
+      return;
+    }
     navigate({ to: "/app/agenda" });
   }, [navigate]);
 
   const handleUpdated = React.useCallback(
     (updated: AgendaItemUpdated) => {
-      setPendingUpdated(
-        buildPendingUpdateMarker(loadGenerationRef.current, updated),
-      );
+      setPendingUpdated(buildPendingUpdateMarker(loadGenerationRef.current, updated));
       setReloadKey((k) => k + 1);
-      // Atualiza a resolução localmente para refletir o novo estado.
       if (updated.type === "appointment") {
         setResolution({ kind: "found", appointment: updated.item });
       }
@@ -111,56 +122,59 @@ function AgendaAppointmentPage() {
     [setPendingRemoval, setReloadKey, loadGenerationRef, navigate],
   );
 
+  const backButton = (
+    <button
+      type="button"
+      className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+      onClick={handleBackRequest}
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden />
+      Voltar para a agenda
+    </button>
+  );
+
   if (resolution.kind === "loading") {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        Carregando compromisso…
+      <div className="space-y-4">
+        <div>{backButton}</div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Carregando compromisso…
+        </div>
       </div>
     );
   }
 
   if (resolution.kind === "not_found") {
     return (
-      <div className="mx-auto max-w-md space-y-3 rounded-md border border-border/60 bg-card p-6 text-center">
-        <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
-        <h1 className="font-display text-xl font-semibold">
-          Compromisso não encontrado
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          O compromisso solicitado não existe ou não está mais acessível.
-        </p>
-        <button
-          type="button"
-          className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
-          onClick={goBack}
-        >
-          Voltar para a agenda
-        </button>
+      <div className="space-y-4">
+        <div>{backButton}</div>
+        <div className="mx-auto max-w-md space-y-3 rounded-md border border-border/60 bg-card p-6 text-center">
+          <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+          <h1 className="font-display text-xl font-semibold">Compromisso não encontrado</h1>
+          <p className="text-sm text-muted-foreground">
+            O compromisso solicitado não existe ou não está mais acessível.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (resolution.kind === "error") {
     return (
-      <div className="mx-auto max-w-md space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-6 text-center">
-        <AlertCircle className="mx-auto h-6 w-6 text-destructive" aria-hidden />
-        <h1 className="font-display text-xl font-semibold text-destructive">
-          Não foi possível carregar
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {resolution.code === "forbidden"
-            ? "Você não tem permissão para visualizar este compromisso."
-            : resolution.message ||
-              "Ocorreu um erro ao consultar o compromisso."}
-        </p>
-        <button
-          type="button"
-          className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
-          onClick={goBack}
-        >
-          Voltar para a agenda
-        </button>
+      <div className="space-y-4">
+        <div>{backButton}</div>
+        <div className="mx-auto max-w-md space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-6 text-center">
+          <AlertCircle className="mx-auto h-6 w-6 text-destructive" aria-hidden />
+          <h1 className="font-display text-xl font-semibold text-destructive">
+            Não foi possível carregar
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {resolution.code === "forbidden"
+              ? "Você não tem permissão para visualizar este compromisso."
+              : resolution.message || "Ocorreu um erro ao consultar o compromisso."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -168,19 +182,25 @@ function AgendaAppointmentPage() {
   const appointment: Appointment = resolution.appointment;
 
   return (
-    <AgendaItemDetailDialog
-      selected={{
-        type: "appointment",
-        caseId: appointment.caseId,
-        id: appointment.id,
-      }}
-      onClose={goBack}
-      environment={environment}
-      context={context}
-      cases={accessibleCases}
-      onUpdated={handleUpdated}
-      onDeleted={handleDeleted}
-      referenceEpoch={nowEpoch}
-    />
+    <div className="space-y-4">
+      <div>{backButton}</div>
+      <AgendaItemDetailContent
+        ref={contentRef}
+        active
+        surface="page"
+        selected={{
+          type: "appointment",
+          caseId: appointment.caseId,
+          id: appointment.id,
+        }}
+        environment={environment}
+        context={context}
+        cases={accessibleCases}
+        onUpdated={handleUpdated}
+        onDeleted={handleDeleted}
+        onRequestClose={handleRequestClose}
+        referenceEpoch={nowEpoch}
+      />
+    </div>
   );
 }

@@ -244,9 +244,9 @@ describe("LV-09.1B.6.3B.2.1 · Comportamento com active=false", () => {
 // ---------------------------------------------------------------------------
 
 describe("LV-09.1B.6.3B.2.1 · Rotas e consumidores", () => {
-  it("40. Rota /app/agenda/$appointmentId continua montando o wrapper", () => {
-    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailDialog");
-    expect(ROUTE_DETAIL_SRC).toContain('from "@/features/agenda/AgendaItemDetailDialog"');
+  it("40. Rota /app/agenda/$appointmentId monta o Content (página canônica — LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailContent");
+    expect(ROUTE_DETAIL_SRC).toContain('from "@/features/agenda/AgendaItemDetailContent"');
   });
   it("41. Calendário /app/agenda continua montando o wrapper", () => {
     expect(ROUTE_INDEX_SRC).toContain("<AgendaItemDetailDialog");
@@ -439,13 +439,13 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
 // ===========================================================================
 
 describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
-  it("S1. Rota de detalhe importa AgendaItemDetailDialog", () => {
-    expect(ROUTE_DETAIL_SRC).toMatch(/from "@\/features\/agenda\/AgendaItemDetailDialog"/);
-    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailDialog\b/);
+  it("S1. Rota de detalhe importa AgendaItemDetailContent (LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).toMatch(/from "@\/features\/agenda\/AgendaItemDetailContent"/);
+    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailContent\b/);
   });
-  it("S2. Rota de detalhe NÃO importa AgendaItemDetailContent", () => {
-    expect(ROUTE_DETAIL_SRC).not.toMatch(/from "@\/features\/agenda\/AgendaItemDetailContent"/);
-    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailContent\b/);
+  it("S2. Rota de detalhe NÃO importa AgendaItemDetailDialog (LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/from "@\/features\/agenda\/AgendaItemDetailDialog"/);
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailDialog\b/);
   });
   it("S3. AgendaItemDetailDialog continua wrapper fino (delegação ao Content)", () => {
     expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
@@ -757,9 +757,9 @@ describe("LV-09.1B.6.3B.2.1.2 · Propriedade das travas", () => {
 // ===========================================================================
 
 describe("LV-09.1B.6.3B.2.1.2 · Escopo intocado", () => {
-  it("80. Página definitiva de detalhe não foi iniciada (rota ainda monta o wrapper)", () => {
-    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailDialog");
-    expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailContent");
+  it("80. Página definitiva de detalhe concluída (LV-09.1B.6.3B.2.2): rota monta o Content", () => {
+    expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailContent");
+    expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailDialog");
   });
   it("81. Não existe /app/disponibilidade nem availability.ts", () => {
     expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
