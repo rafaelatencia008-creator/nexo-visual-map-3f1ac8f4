@@ -848,7 +848,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(asAny.test(src)).toBe(false);
     expect(src.includes(tsIgnore)).toBe(false);
     // Permite ocorrências em nomes de teste (LV-09.1B.3 exige), mas nenhum diretivo real.
-    // Diretiva real começa em linha após espaços; procuramos "// @ts-expect-error".
+    // Diretiva real começa em linha após espaços; verificamos a forma de comentário.
     expect(src.includes("// " + tsExpect)).toBe(false);
   });
 
