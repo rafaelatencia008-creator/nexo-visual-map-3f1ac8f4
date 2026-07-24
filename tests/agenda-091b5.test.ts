@@ -2178,6 +2178,7 @@ describe("LV-09.1B.5.2 — decisão pós-atualização", () => {
       new Set(),
     );
     expect(resolved.kind).toBe("clear_silent");
+  });
 });
 
 // =========================================================================
