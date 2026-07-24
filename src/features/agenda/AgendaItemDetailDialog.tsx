@@ -1076,9 +1076,24 @@ export function AgendaItemDetailDialog(
                     }}
                     onRequestRemoval={() => {
                       setMutationError(null);
+                      setMutationConflict(null);
                       setPendingRemoval(true);
                     }}
                   />
+                  {(permChangeStatus === "error" || permRemove === "error") && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground">
+                      <span>Não foi possível verificar esta permissão.</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={retryPermissions}
+                        disabled={mutating}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
 
