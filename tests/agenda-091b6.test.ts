@@ -719,12 +719,12 @@ describe("LV-09.1B.6 — resolvePendingRemovalAction", () => {
   const pendingD = Object.freeze({
     type: "deadline" as const,
     id: "deadline-x",
-    generation: 3,
+    requiredGeneration: 3,
   });
   const pendingA = Object.freeze({
     type: "appointment" as const,
     id: "appointment-x",
-    generation: 3,
+    requiredGeneration: 3,
   });
 
   it("55. wait enquanto geração corrente < pendente", () => {
