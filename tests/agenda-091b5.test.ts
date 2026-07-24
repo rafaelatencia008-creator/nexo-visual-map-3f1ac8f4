@@ -2178,5 +2178,195 @@ describe("LV-09.1B.5.2 — decisão pós-atualização", () => {
       new Set(),
     );
     expect(resolved.kind).toBe("clear_silent");
+});
+
+// =========================================================================
+// 12) LV-09.1B.5.3 — Integração final dos reducers e tradutor de erros
+// =========================================================================
+
+import {
+  DETAIL_LOAD_ERROR_MESSAGES,
+  translateDetailLoadError,
+  type DetailLoadIncoming,
+} from "@/features/agenda/detail-reducers";
+import type { ServiceError } from "@/domain/services/result";
+
+describe("LV-09.1B.5.3 — translateDetailLoadError mapeia códigos específicos", () => {
+  it("162. not_found retorna kind:'not_found'", () => {
+    const r = translateDetailLoadError({ code: "not_found" });
+    expect(r.kind).toBe("not_found");
+  });
+
+  it("163. forbidden e unauthorized retornam kind:'forbidden'", () => {
+    expect(translateDetailLoadError({ code: "forbidden" }).kind).toBe("forbidden");
+    expect(translateDetailLoadError({ code: "unauthorized" }).kind).toBe("forbidden");
+  });
+
+  it("164. offline preserva mensagem específica", () => {
+    const r = translateDetailLoadError({ code: "offline" });
+    expect(r.kind).toBe("error");
+    if (r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.offline);
+      expect(r.message).not.toBe(DETAIL_LOAD_ERROR_MESSAGES.generic);
+    }
+  });
+
+  it("165. unavailable preserva mensagem específica", () => {
+    const r = translateDetailLoadError({ code: "unavailable" });
+    expect(r.kind).toBe("error");
+    if (r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.unavailable);
+      expect(r.message).not.toBe(DETAIL_LOAD_ERROR_MESSAGES.generic);
+    }
+  });
+
+  it("166. internal_error preserva mensagem específica", () => {
+    const r = translateDetailLoadError({ code: "internal_error" });
+    expect(r.kind).toBe("error");
+    if (r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.internal_error);
+      expect(r.message).not.toBe(DETAIL_LOAD_ERROR_MESSAGES.generic);
+    }
+  });
+
+  it("167. código desconhecido cai na mensagem genérica", () => {
+    const r = translateDetailLoadError({ code: "validation_error" });
+    expect(r.kind).toBe("error");
+    if (r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.generic);
+    }
+  });
+
+  it("168. as quatro mensagens são strings distintas e não vazias", () => {
+    const vals = Object.values(DETAIL_LOAD_ERROR_MESSAGES);
+    for (const m of vals) {
+      expect(typeof m).toBe("string");
+      expect(m.trim().length).toBeGreaterThan(0);
+    }
+    expect(new Set(vals).size).toBe(vals.length);
+  });
+
+  it("169. DETAIL_LOAD_ERROR_MESSAGES é congelado (imutável)", () => {
+    expect(Object.isFrozen(DETAIL_LOAD_ERROR_MESSAGES)).toBe(true);
   });
 });
+
+describe("LV-09.1B.5.3 — resolveDetailLoadResponse integra o tradutor", () => {
+  it("170. offline em getById produz mensagem específica no snapshot", () => {
+    const err: ServiceError = { code: "offline", message: "x" };
+    const incoming: DetailLoadIncoming = {
+      requestId: 1,
+      type: "deadline",
+      response: { ok: false, error: err },
+    };
+    const r = resolveDetailLoadResponse(1, incoming);
+    expect(r).not.toBe("ignore");
+    if (r !== "ignore" && r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.offline);
+    } else {
+      throw new Error("esperava kind:'error'");
+    }
+  });
+
+  it("171. unavailable em getById produz mensagem específica", () => {
+    const err: ServiceError = { code: "unavailable", message: "x" };
+    const r = resolveDetailLoadResponse(2, {
+      requestId: 2,
+      type: "appointment",
+      response: { ok: false, error: err },
+    });
+    if (r !== "ignore" && r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.unavailable);
+    } else {
+      throw new Error("esperava kind:'error'");
+    }
+  });
+
+  it("172. internal_error em getById produz mensagem específica", () => {
+    const err: ServiceError = { code: "internal_error", message: "x" };
+    const r = resolveDetailLoadResponse(3, {
+      requestId: 3,
+      type: "deadline",
+      response: { ok: false, error: err },
+    });
+    if (r !== "ignore" && r.kind === "error") {
+      expect(r.message).toBe(DETAIL_LOAD_ERROR_MESSAGES.internal_error);
+    } else {
+      throw new Error("esperava kind:'error'");
+    }
+  });
+
+  it("173. requestId obsoleto retorna 'ignore' mesmo com erro", () => {
+    const r = resolveDetailLoadResponse(10, {
+      requestId: 9,
+      type: "deadline",
+      response: { ok: false, error: { code: "offline", message: "x" } },
+    });
+    expect(r).toBe("ignore");
+  });
+});
+
+describe("LV-09.1B.5.3 — DetailLoadIncoming é união discriminada por 'type'", () => {
+  it("174. resposta 'deadline' bem-sucedida entrega item Deadline sem cast", async () => {
+    const env = createMockDomainEnvironment();
+    const ctxs = ctxOfUser(env, SEED_USER_1_ID);
+    const ctx = ctxs.find((c) => c.organizationId === SEED_ORG_ALFA_ID);
+    if (!ctx) throw new Error("ctx alfa não encontrado");
+    const list = ok(await env.services.deadlines.list(ctx));
+    const d = list.items[0];
+    if (!d) throw new Error("prazo esperado");
+    const res = await env.services.deadlines.getById(ctx, d.caseId, d.id);
+    const incoming: DetailLoadIncoming = {
+      requestId: 1,
+      type: "deadline",
+      response: res,
+    };
+    const snap = resolveDetailLoadResponse(1, incoming);
+    if (snap === "ignore" || snap.kind !== "ready") {
+      throw new Error("esperava kind:'ready'");
+    }
+    expect(snap.type).toBe("deadline");
+    // Verificação de tipo em runtime: campo específico de Deadline.
+    if (snap.type === "deadline") {
+      expect(typeof snap.item.dueAt).toBe("string");
+      expect(snap.item.status).toBeDefined();
+    }
+  });
+
+  it("175. resposta 'appointment' bem-sucedida entrega item Appointment sem cast", async () => {
+    const env = createMockDomainEnvironment();
+    const ctxs = ctxOfUser(env, SEED_USER_1_ID);
+    const ctx = ctxs.find((c) => c.organizationId === SEED_ORG_ALFA_ID);
+    if (!ctx) throw new Error("ctx alfa não encontrado");
+    const list = ok(await env.services.appointments.list(ctx));
+    const a = list.items[0];
+    if (!a) throw new Error("compromisso esperado");
+    const res = await env.services.appointments.getById(ctx, a.caseId, a.id);
+    const incoming: DetailLoadIncoming = {
+      requestId: 1,
+      type: "appointment",
+      response: res,
+    };
+    const snap = resolveDetailLoadResponse(1, incoming);
+    if (snap === "ignore" || snap.kind !== "ready") {
+      throw new Error("esperava kind:'ready'");
+    }
+    expect(snap.type).toBe("appointment");
+    if (snap.type === "appointment") {
+      expect(typeof snap.item.startsAt).toBe("string");
+      expect(typeof snap.item.endsAt).toBe("string");
+    }
+  });
+
+  it("176. detail-reducers.ts não contém 'as Deadline' nem 'as Appointment'", () => {
+    const SRC = readFileSync(
+      "src/features/agenda/detail-reducers.ts",
+      "utf8",
+    );
+    expect(SRC).not.toContain("as Deadline");
+    expect(SRC).not.toContain("as Appointment");
+    expect(SRC).not.toMatch(/\bas\s+never\b/);
+    expect(SRC).not.toMatch(/\bas\s+any\b/);
+  });
+});
+
