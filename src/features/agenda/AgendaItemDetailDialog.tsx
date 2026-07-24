@@ -430,11 +430,15 @@ export function AgendaItemDetailDialog(
         .evaluate(context, { action, caseId: selected.caseId })
         .then((res) => {
           if (cancelled || !mountedRef.current) return;
-          setter(res.ok && res.data.allowed ? "allowed" : "denied");
+          if (!res.ok) {
+            setter("error");
+            return;
+          }
+          setter(res.data.allowed ? "allowed" : "denied");
         })
         .catch(() => {
           if (cancelled || !mountedRef.current) return;
-          setter("denied");
+          setter("error");
         });
     };
     evalOne(updateAction, setPerm);
@@ -443,7 +447,7 @@ export function AgendaItemDetailDialog(
     return () => {
       cancelled = true;
     };
-  }, [selected, detail, environment, context]);
+  }, [selected, detail, environment, context, permAttempt]);
 
   // Carrega assignments do caso quando entrar em edição
   const currentCaseId = selected?.caseId;
