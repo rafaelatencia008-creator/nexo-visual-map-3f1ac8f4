@@ -24,6 +24,7 @@ import {
   hasOnlyAllowedKeys,
   isEntityMetadata,
   isIsoDateTime,
+  isoDateTimeToEpoch,
   type EntityMetadata,
   type IsoDateTime,
 } from "./common";
