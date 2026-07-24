@@ -63,6 +63,7 @@ import type { Assignment } from "@/domain/core/assignment";
 import type { AssignmentId, CaseId } from "@/domain/core/ids";
 import type { MockDomainEnvironment } from "@/domain/mocks";
 import type { ServiceContext } from "@/domain/services/context";
+import { shouldCloseAgendaCreateAfterSuccess } from "./create-surface-policy";
 
 import {
   AGENDA_DESCRIPTION_MAX,
