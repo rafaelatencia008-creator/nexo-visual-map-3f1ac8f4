@@ -409,31 +409,41 @@ type CasesState =
   | { kind: "error"; message: string };
 
 function AgendaPage() {
-  const { environment, context } = useMockDomain();
-  const [filters, setFilters] = React.useState<AgendaFilters>(EMPTY_AGENDA_FILTERS);
+  const routeState = useAgendaRouteState();
+  const {
+    environment,
+    context,
+    filters,
+    setFilters,
+    mode,
+    setMode,
+    anchor,
+    setAnchor,
+    showMore,
+    setShowMore,
+    reloadKey,
+    setReloadKey,
+    pendingCreated,
+    setPendingCreated,
+    pendingUpdated,
+    setPendingUpdated,
+    pendingRemoval,
+    setPendingRemoval,
+    loadGenerationRef,
+    casesState,
+    accessibleCases,
+  } = routeState;
+  const navigate = useNavigate();
   const [state, setState] = React.useState<LoadState>({
     kind: "loading",
     generation: 0,
   });
-  const [casesState, setCasesState] = React.useState<CasesState>({ kind: "loading" });
-  const [mode, setMode] = React.useState<ViewMode>("week");
-  const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
-  const [showMore, setShowMore] = React.useState(false);
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [reloadKey, setReloadKey] = React.useState(0);
-  const [pendingCreated, setPendingCreated] =
-    React.useState<PendingCreatedItem | null>(null);
-  const [pendingUpdated, setPendingUpdated] =
-    React.useState<PendingCreatedItem | null>(null);
   const [selected, setSelected] = React.useState<SelectedAgendaItem | null>(
     null,
   );
-  const [pendingRemoval, setPendingRemoval] =
-    React.useState<PendingRemovalItem | null>(null);
   const lastTriggerRef = React.useRef<HTMLElement | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
-  const loadGenerationRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
 
@@ -444,29 +454,7 @@ function AgendaPage() {
     };
   }, []);
 
-  // Carrega processos acessíveis (contexto/organização/permissões).
-  React.useEffect(() => {
-    let cancelled = false;
-    setCasesState({ kind: "loading" });
-    fetchAccessibleCases(environment, context)
-      .then((items) => {
-        if (cancelled || !mountedRef.current) return;
-        // Ordenação estável por referência.
-        const sorted = items.slice().sort((a, b) =>
-          a.reference < b.reference ? -1 : a.reference > b.reference ? 1 : 0,
-        );
-        setCasesState({ kind: "ready", items: sorted });
-      })
-      .catch((err: unknown) => {
-        if (cancelled || !mountedRef.current) return;
-        const message =
-          err instanceof Error ? err.message : "Falha ao carregar processos.";
-        setCasesState({ kind: "error", message });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [environment, context]);
+
 
   // Recarrega prazos/compromissos ao alterar filtros. Descarta respostas obsoletas.
   React.useEffect(() => {
