@@ -336,7 +336,7 @@ export function AgendaItemDetailDialog(
     setMutating(false);
     setMutationError(null);
     setMutationConflict(null);
-    mutationInFlightRef.current = false;
+    mutationLock.release();
     setAssignments({ kind: "idle" });
     setDForm(null);
     setAForm(null);
