@@ -256,6 +256,8 @@ export function AgendaItemDetailDialog(
     setAForm(null);
     setExpectedVersion(0);
     setErrors({});
+    setTouched({});
+    setAttemptedSubmit(false);
     setGeneralError(null);
     setConflictState(null);
     setSubmitting(false);
