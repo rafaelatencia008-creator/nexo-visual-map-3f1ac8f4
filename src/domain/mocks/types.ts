@@ -36,6 +36,8 @@ import type { CaseSnapshotService } from "../services/case-snapshot-service";
 import type { Deadline, Appointment } from "../core/agenda";
 import type { DeadlineService } from "../services/deadline-service";
 import type { AppointmentService } from "../services/appointment-service";
+import type { Communication } from "../core/communication";
+import type { CommunicationService } from "../services/communication-service";
 
 export type MockDomainServices = Readonly<{
   organization: OrganizationService;
@@ -55,6 +57,7 @@ export type MockDomainServices = Readonly<{
   caseSnapshots: CaseSnapshotService;
   deadlines: DeadlineService;
   appointments: AppointmentService;
+  communications: CommunicationService;
 }>;
 
 export type MockDomainSnapshot = Readonly<{
@@ -74,6 +77,7 @@ export type MockDomainSnapshot = Readonly<{
   caseSnapshots: readonly CaseSnapshot[];
   deadlines: readonly Deadline[];
   appointments: readonly Appointment[];
+  communications: readonly Communication[];
 }>;
 
 export const MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS: ReadonlySet<string> = new Set([
