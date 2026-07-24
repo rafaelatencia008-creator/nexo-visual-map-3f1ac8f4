@@ -49,9 +49,7 @@ function AgendaNovoPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const initialCaseId =
-    search.caseId && search.caseId.length > 0
-      ? (search.caseId as CaseId)
-      : undefined;
+    search.caseId && isCaseId(search.caseId) ? search.caseId : undefined;
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
