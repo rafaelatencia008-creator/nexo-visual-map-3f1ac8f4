@@ -39,6 +39,7 @@ import {
 import { createCaseSnapshotServiceMock } from "./case-snapshot-mock";
 import { createDeadlineServiceMock } from "./deadline-mock";
 import { createAppointmentServiceMock } from "./appointment-mock";
+import { createCommunicationServiceMock } from "./communication-mock";
 import {
   guardOrganizationService,
   guardMembershipService,
@@ -55,6 +56,7 @@ import {
   guardCaseSnapshotService,
   guardDeadlineService,
   guardAppointmentService,
+  guardCommunicationService,
 } from "./permission-guards";
 import {
   MOCK_DOMAIN_OPTIONS_ALLOWED_KEYS,
@@ -106,6 +108,8 @@ function loadSeed(store: MockStore): void {
   for (const s of seed.caseSnapshots) store.caseSnapshots.set(s.id, deepClone(s));
   for (const d of seed.deadlines) store.deadlines.set(d.id, deepClone(d));
   for (const a of seed.appointments) store.appointments.set(a.id, deepClone(a));
+  for (const m of seed.communications)
+    store.communications.set(m.id, deepClone(m));
 }
 
 function snapshot(store: MockStore): MockDomainSnapshot {
@@ -126,6 +130,7 @@ function snapshot(store: MockStore): MockDomainSnapshot {
     caseSnapshots: Array.from(store.caseSnapshots.values()).map(deepClone),
     deadlines: Array.from(store.deadlines.values()).map(deepClone),
     appointments: Array.from(store.appointments.values()).map(deepClone),
+    communications: Array.from(store.communications.values()).map(deepClone),
   });
 }
 
@@ -476,6 +481,10 @@ export function createMockDomainEnvironment(
     appointments: guardAppointmentService(
       store,
       createAppointmentServiceMock(store, clock, ids),
+    ),
+    communications: guardCommunicationService(
+      store,
+      createCommunicationServiceMock(store, clock, ids),
     ),
   });
 
