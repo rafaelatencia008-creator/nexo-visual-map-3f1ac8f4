@@ -1542,3 +1542,99 @@ describe("LV-09.1B.5.1 — sem mudança de status, exclusão ou nova rota", () =
     expect("status" in r.input).toBe(false);
   });
 });
+
+// =========================================================================
+// 11) LV-09.1B.5.2 — Testes comportamentais reais dos reducers puros
+// =========================================================================
+
+import {
+  buildPendingUpdateMarker,
+  deriveEditUiState,
+  reduceConflictAction,
+  resolveDetailLoadResponse,
+  resolveDiscardIntent,
+  resolvePendingUpdateAction,
+  type ConflictState,
+  type EditUiInputs,
+} from "@/features/agenda/detail-reducers";
+import type { PendingCreatedItem } from "@/features/agenda/created-visibility";
+
+// ---- Respostas obsoletas (126–129) --------------------------------------
+
+describe("LV-09.1B.5.2 — respostas obsoletas do detalhe", () => {
+  it("126. resposta de requisição anterior é ignorada (não altera seleção atual)", async () => {
+    const env = createMockDomainEnvironment();
+    const d1 = await makeDeadline(env);
+    const d2 = await makeDeadline(env);
+    // Simulação: requisição 1 estava carregando d1, mas a seleção mudou para d2
+    // e o requestId corrente foi promovido para 2.
+    const currentReqId = 2;
+    const staleResponse = await env.services.deadlines.getById(
+      OWNER_ALFA,
+      d1.caseId,
+      d1.id,
+    );
+    const decided = resolveDetailLoadResponse(currentReqId, {
+      requestId: 1,
+      type: "deadline",
+      response: staleResponse,
+    });
+    expect(decided).toBe("ignore");
+  });
+
+  it("127. resposta da requisição corrente é aceita", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const response = await env.services.deadlines.getById(
+      OWNER_ALFA,
+      d.caseId,
+      d.id,
+    );
+    const decided = resolveDetailLoadResponse(7, {
+      requestId: 7,
+      type: "deadline",
+      response,
+    });
+    if (decided === "ignore") throw new Error("expected non-ignore");
+    if (decided.kind !== "ready") throw new Error("expected ready");
+    expect(decided.type).toBe("deadline");
+    expect(decided.item.id).toBe(d.id);
+  });
+
+  it("128. erro de resposta antiga não substitui detalhe novo", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    // Falha de uma requisição antiga (ID desconhecido)
+    const oldFailure = await env.services.deadlines.getById(
+      OWNER_ALFA,
+      d.caseId,
+      d.id + "_ghost",
+    );
+    const decided = resolveDetailLoadResponse(5, {
+      requestId: 3,
+      type: "deadline",
+      response: oldFailure,
+    });
+    expect(decided).toBe("ignore");
+  });
+
+  it("129. trocar tipo (deadline → appointment) invalida a resposta anterior", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const oldResp = await env.services.deadlines.getById(
+      OWNER_ALFA,
+      d.caseId,
+      d.id,
+    );
+    // requestId foi promovido porque a seleção mudou (agora é appointment em req=9)
+    const decided = resolveDetailLoadResponse(9, {
+      requestId: 8, // resposta obsoleta do getById do deadline
+      type: "deadline",
+      response: oldResp,
+    });
+    expect(decided).toBe("ignore");
+  });
+});
+
+// ---- Validade e erros progressivos (130–137) ----------------------------
+
