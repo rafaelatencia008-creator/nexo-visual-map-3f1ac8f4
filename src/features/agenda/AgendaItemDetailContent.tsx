@@ -499,18 +499,22 @@ export const AgendaItemDetailContent = React.forwardRef<
   // discriminada em `resolveDetailLoadResponse`), sem casts.
   React.useEffect(() => {
     if (!active || !selected) return;
+    let cancelled = false;
     const reqId = ++detailReqIdRef.current;
     const reqSelectionKey = selectionKey;
     setDetail({ kind: "loading" });
 
-    // Invalidação assíncrona: só aplica o resultado se, no momento em que
-    // a promise resolveu, a seleção corrente ainda for a mesma que iniciou
-    // a chamada e o componente ainda estiver ativo.
+    // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2).
     const stillCurrent = (): boolean =>
-      mountedRef.current &&
-      activeRef.current &&
-      selectionKeyRef.current === reqSelectionKey &&
-      reqId === detailReqIdRef.current;
+      isAgendaDetailAsyncResultCurrent({
+        mounted: mountedRef.current,
+        active: activeRef.current,
+        cancelled,
+        currentSelectionKey: selectionKeyRef.current,
+        requestSelectionKey: reqSelectionKey,
+        currentRequestId: detailReqIdRef.current,
+        requestId: reqId,
+      });
 
     const applyDecision = (
       decided: ReturnType<typeof resolveDetailLoadResponse>,
@@ -568,7 +572,12 @@ export const AgendaItemDetailContent = React.forwardRef<
           });
         });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectionKey, active, environment, context, reload]);
+
 
 
   // Avalia permissões de edição, mudança de status e exclusão em paralelo.
