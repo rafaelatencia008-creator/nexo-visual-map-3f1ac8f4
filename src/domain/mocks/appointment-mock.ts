@@ -223,7 +223,7 @@ export function createAppointmentServiceMock(
       if (
         opts.rangeFrom !== undefined &&
         opts.rangeTo !== undefined &&
-        opts.rangeFrom > opts.rangeTo
+        isoDateTimeToEpoch(opts.rangeFrom) > isoDateTimeToEpoch(opts.rangeTo)
       ) {
         return invalid<PageResult<Appointment>>("range_inverted");
       }
