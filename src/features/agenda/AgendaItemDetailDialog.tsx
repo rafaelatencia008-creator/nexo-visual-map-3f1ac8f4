@@ -1416,7 +1416,7 @@ export function AgendaItemDetailDialog(
             {mutationConflict && mutationConflict.operation === "change_status" ? (
               <>
                 <AlertDialogCancel
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                   onClick={(e) => {
                     e.preventDefault();
                     keepReviewingMutation();
@@ -1429,7 +1429,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     reloadAfterMutationConflict();
                   }}
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
                   Recarregar dados
@@ -1437,7 +1437,7 @@ export function AgendaItemDetailDialog(
               </>
             ) : (
               <>
-                <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={!canOpenItemAction}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
@@ -1515,7 +1515,7 @@ export function AgendaItemDetailDialog(
             {mutationConflict && mutationConflict.operation === "remove" ? (
               <>
                 <AlertDialogCancel
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                   onClick={(e) => {
                     e.preventDefault();
                     keepReviewingMutation();
@@ -1528,7 +1528,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     reloadAfterMutationConflict();
                   }}
-                  disabled={mutating}
+                  disabled={!canOpenItemAction}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
                   Recarregar dados
@@ -1536,7 +1536,7 @@ export function AgendaItemDetailDialog(
               </>
             ) : (
               <>
-                <AlertDialogCancel disabled={mutating} autoFocus>
+                <AlertDialogCancel disabled={!canOpenItemAction} autoFocus>
                   Manter item
                 </AlertDialogCancel>
                 <AlertDialogAction
