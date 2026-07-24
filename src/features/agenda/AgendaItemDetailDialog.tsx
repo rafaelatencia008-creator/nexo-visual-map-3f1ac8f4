@@ -1137,7 +1137,7 @@ export function AgendaItemDetailDialog(
                     loaded={detail.loaded}
                     permChangeStatus={permChangeStatus}
                     permRemove={permRemove}
-                    mutating={mutating}
+                    actionsDisabled={!canOpenItemAction}
                     mutationError={mutationError}
                     onSelectDeadlineAction={requestDeadlineStatusChange}
                     onSelectAppointmentAction={requestAppointmentStatusChange}
@@ -1156,7 +1156,7 @@ export function AgendaItemDetailDialog(
                         size="sm"
                         variant="outline"
                         onClick={retryPermissions}
-                        disabled={mutating || !lockDecisions.canRetryPermissions}
+                        disabled={!canRetryPermissionEvaluation}
                       >
                         Tentar novamente
                       </Button>
@@ -1272,7 +1272,7 @@ export function AgendaItemDetailDialog(
                     type="button"
                     variant="outline"
                     onClick={requestClose}
-                    disabled={submitting || mutating}
+                    disabled={!canCloseDetail}
                   >
                     Fechar
                   </Button>
@@ -1280,7 +1280,7 @@ export function AgendaItemDetailDialog(
                     <Button
                       type="button"
                       onClick={enterEdit}
-                      disabled={perm !== "allowed" || mutating}
+                      disabled={!canEditItem}
                       aria-describedby={
                         perm === "denied" ? "detail-perm-hint" : undefined
                       }
@@ -1443,7 +1443,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmStatusChange();
                   }}
-                  disabled={mutating || !permissionAllowsAction(permChangeStatus)}
+                  disabled={!canConfirmStatusChange}
                   aria-busy={mutating}
                 >
                   {mutating && (
@@ -1544,7 +1544,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmRemoval();
                   }}
-                  disabled={mutating || !permissionAllowsAction(permRemove)}
+                  disabled={!canConfirmRemoval}
                   aria-busy={mutating}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
@@ -1569,7 +1569,7 @@ function ItemActionsSection({
   loaded,
   permChangeStatus,
   permRemove,
-  mutating,
+  actionsDisabled,
   mutationError,
   onSelectDeadlineAction,
   onSelectAppointmentAction,
@@ -1578,7 +1578,7 @@ function ItemActionsSection({
   loaded: Loaded;
   permChangeStatus: PermState;
   permRemove: PermState;
-  mutating: boolean;
+  actionsDisabled: boolean;
   mutationError: TranslatedMutationError | null;
   onSelectDeadlineAction: (action: DeadlineStatusAction) => void;
   onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
@@ -1611,7 +1611,7 @@ function ItemActionsSection({
               type="button"
               size="sm"
               variant="outline"
-              disabled={mutating}
+              disabled={actionsDisabled}
               onClick={() => onSelectDeadlineAction(a)}
             >
               {a.status === "completed" ? (
@@ -1631,7 +1631,7 @@ function ItemActionsSection({
               type="button"
               size="sm"
               variant="outline"
-              disabled={mutating}
+              disabled={actionsDisabled}
               onClick={() => onSelectAppointmentAction(a)}
             >
               {a.status === "completed" ? (
@@ -1649,7 +1649,7 @@ function ItemActionsSection({
             type="button"
             size="sm"
             variant="destructive"
-            disabled={mutating}
+            disabled={actionsDisabled}
             onClick={onRequestRemoval}
           >
             <Trash2 className="mr-2 h-4 w-4" aria-hidden />
