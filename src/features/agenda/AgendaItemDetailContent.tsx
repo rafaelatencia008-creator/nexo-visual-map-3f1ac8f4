@@ -1047,7 +1047,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     setPendingRemoval(true);
   }, [mutating]);
 
-  const lockDecisions = getMutationLockDecisions();
+  const rawLockDecisions = getMutationLockDecisions();
   const hasPermEvalError = hasPermissionEvaluationError({
     update: perm,
     changeStatus: permChangeStatus,
@@ -1056,30 +1056,33 @@ export const AgendaItemDetailContent = React.forwardRef<
 
   // LV-09.1B.6.3B.2.1.1 — gate único de interatividade. Só permite ações
   // funcionais quando o componente está ativo, há uma seleção definida e o
-  // item já foi carregado com sucesso. Botões dependentes de `detail.kind`
-  // são fechados aqui na fonte, não em cada consumidor.
+  // item já foi carregado com sucesso. Fecha os gates de edição/mutação
+  // diretamente no `lockDecisions` — os `canX` derivados abaixo continuam
+  // sendo definidos exatamente como antes, mas herdam a inatividade.
   const isInteractive =
     active && selected !== null && detail.kind === "ready";
+  const lockDecisions = isInteractive
+    ? rawLockDecisions
+    : {
+        ...rawLockDecisions,
+        canEnterEdit: false,
+        canOpenConfirmation: false,
+        canRetryPermissions: false,
+      };
 
   // Gates unificados da UI (fonte única). Todos os botões e handlers
   // consomem estes valores em vez de recompor `submitting || mutating`.
-  const canCloseDetail = active && lockDecisions.canClose;
+  const canCloseDetail = lockDecisions.canClose;
   const canEditItem =
-    isInteractive &&
-    lockDecisions.canEnterEdit &&
-    permissionAllowsAction(perm);
-  const canOpenItemAction =
-    isInteractive && lockDecisions.canOpenConfirmation;
+    lockDecisions.canEnterEdit && permissionAllowsAction(perm);
+  const canOpenItemAction = lockDecisions.canOpenConfirmation;
   const canConfirmStatusChange =
-    isInteractive &&
     lockDecisions.canOpenConfirmation &&
     permissionAllowsAction(permChangeStatus);
   const canConfirmRemoval =
-    isInteractive &&
-    lockDecisions.canOpenConfirmation &&
-    permissionAllowsAction(permRemove);
-  const canRetryPermissionEvaluation =
-    isInteractive && lockDecisions.canRetryPermissions;
+    lockDecisions.canOpenConfirmation && permissionAllowsAction(permRemove);
+  const canRetryPermissionEvaluation = lockDecisions.canRetryPermissions;
+
 
 
 
