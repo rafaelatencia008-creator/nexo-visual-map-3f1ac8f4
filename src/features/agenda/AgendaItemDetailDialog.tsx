@@ -17,6 +17,8 @@ import {
   Flag,
   Loader2,
   Pencil,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -113,6 +115,10 @@ export type AgendaItemUpdated =
   | Readonly<{ type: "deadline"; item: Deadline }>
   | Readonly<{ type: "appointment"; item: Appointment }>;
 
+export type AgendaItemDeleted =
+  | Readonly<{ type: "deadline"; caseId: CaseId; id: DeadlineId }>
+  | Readonly<{ type: "appointment"; caseId: CaseId; id: AppointmentId }>;
+
 export interface AgendaItemDetailDialogProps {
   readonly selected: SelectedAgendaItem | null;
   readonly onClose: () => void;
@@ -120,6 +126,7 @@ export interface AgendaItemDetailDialogProps {
   readonly context: ServiceContext;
   readonly cases: readonly Case[];
   readonly onUpdated: (updated: AgendaItemUpdated) => void;
+  readonly onDeleted: (deleted: AgendaItemDeleted) => void;
   /** Instante de referência para estado visual derivado (ex.: "Atrasado"). */
   readonly referenceEpoch: number;
 }
