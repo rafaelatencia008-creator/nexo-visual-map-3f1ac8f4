@@ -537,6 +537,28 @@ function AgendaPage() {
   const showUpcoming = shouldShowUpcomingPanel(filters);
   const totalVisible = visible.deadlines.length + visible.appointments.length;
 
+  const accessibleCases: readonly Case[] =
+    casesState.kind === "ready" ? casesState.items : [];
+
+  const handleCreated = React.useCallback(
+    (created: AgendaCreatedItem) => {
+      setReloadKey((k) => k + 1);
+      const iso =
+        created.type === "deadline" ? created.item.dueAt : created.item.startsAt;
+      const inView = isInRange(iso, range.from, range.to);
+      if (!inView) {
+        toast.info(
+          "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
+        );
+      }
+      // Retorna o foco ao botão que abriu o diálogo.
+      window.setTimeout(() => {
+        newItemButtonRef.current?.focus();
+      }, 0);
+    },
+    [range.from, range.to],
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -548,13 +570,35 @@ function AgendaPage() {
             Prazos e compromissos oficiais em visão diária, semanal e mensal.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-md border border-border/70 bg-card px-3 py-2 text-sm">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
-          <span className="capitalize text-muted-foreground">
-            {formatHeading(anchor, mode)}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-border/70 bg-card px-3 py-2 text-sm">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <span className="capitalize text-muted-foreground">
+              {formatHeading(anchor, mode)}
+            </span>
+          </div>
+          <Button
+            ref={newItemButtonRef}
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            disabled={casesState.kind !== "ready" || accessibleCases.length === 0}
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Novo item
+          </Button>
         </div>
       </header>
+
+      <AgendaCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        environment={environment}
+        context={context}
+        cases={accessibleCases}
+        initialCaseId={filters.caseId ?? undefined}
+        onCreated={handleCreated}
+      />
+
 
       <AgendaFiltersBar
         filters={filters}
