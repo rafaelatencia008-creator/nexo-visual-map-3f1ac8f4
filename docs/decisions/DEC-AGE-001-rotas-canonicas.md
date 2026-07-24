@@ -70,7 +70,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 
 1. **Reconciliação das rotas canônicas.** As três rotas passam a existir de
    forma explícita no roteamento file-based do TanStack Router:
-
    - `src/routes/app.agenda.tsx` — rota pai (layout com `<Outlet />`) que
      hospeda o `AgendaRouteStateProvider` compartilhado.
    - `src/routes/app.agenda.index.tsx` — calendário e listagem.
@@ -80,7 +79,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 2. **Reuso de conteúdo por extração, não por duplicação.** As implementações
    funcionais dos fluxos de criação e de detalhe/edição foram extraídas em
    dois componentes reutilizáveis:
-
    - `AgendaCreateContent` — corpo completo do fluxo de criação, sem
      shell de diálogo.
    - `AgendaItemDetailContent` — corpo completo do fluxo de detalhe/edição,
@@ -109,7 +107,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
    acessíveis para localizar o `Appointment` correspondente a um
    `appointmentId` de URL. O resultado é uma união discriminada com
    exatamente três estados:
-
    - `{ kind: "found"; appointment }`
    - `{ kind: "not_found" }`
    - `{ kind: "error"; source: "appointments"; code? }`

@@ -48,9 +48,7 @@ const OWNER_ALFA: ServiceContext = {
   role: "proprietario",
 };
 
-async function makeAppointment(
-  env: ReturnType<typeof createMockDomainEnvironment>,
-) {
+async function makeAppointment(env: ReturnType<typeof createMockDomainEnvironment>) {
   const r = await env.services.appointments.create(OWNER_ALFA, {
     caseId: SEED_CASE_ALFA_1_ID,
     kind: "hearing",
@@ -129,11 +127,7 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
   it("3. ID sintaticamente inválido retorna 'not_found'", async () => {
     const env = createMockDomainEnvironment();
     for (const bad of ["", "apt_x", "case_1", "not-an-id", "123"]) {
-      const r = await resolveAppointmentRoute(
-        env.services.appointments,
-        OWNER_ALFA,
-        bad,
-      );
+      const r = await resolveAppointmentRoute(env.services.appointments, OWNER_ALFA, bad);
       expect(r.kind).toBe("not_found");
     }
   });
@@ -435,10 +429,7 @@ describe("LV-09.1B.6.3A.1 · rotas canônicas file-based", () => {
   });
 
   it("19. rota canônica de detalhe de compromisso existe", () => {
-    const src = readFileSync(
-      "src/routes/app.agenda.$appointmentId.tsx",
-      "utf8",
-    );
+    const src = readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda/$appointmentId")');
     expect(src).toContain("resolveAppointmentRoute");
     expect(src).toContain("AgendaItemDetailDialog");
@@ -475,10 +466,7 @@ describe("LV-09.1B.6.3A.1 · rotas canônicas file-based", () => {
   });
 
   it("25. rota de detalhe oferece caminho de volta em not_found/erro", () => {
-    const src = readFileSync(
-      "src/routes/app.agenda.$appointmentId.tsx",
-      "utf8",
-    );
+    const src = readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8");
     expect(src).toContain("Voltar para a agenda");
     expect(src).toContain('"not_found"');
     expect(src).toContain('"error"');
@@ -505,10 +493,7 @@ describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7 não iniciada)", () => {
 // ---- DEC-AGE-001 reflete o estado real -----------------------------------
 
 describe("LV-09.1B.6.3A.1 · DEC-AGE-001", () => {
-  const dec = readFileSync(
-    "docs/decisions/DEC-AGE-001-rotas-canonicas.md",
-    "utf8",
-  );
+  const dec = readFileSync("docs/decisions/DEC-AGE-001-rotas-canonicas.md", "utf8");
   it("30. DEC menciona a condição transitória (diálogos montados diretamente)", () => {
     expect(dec).toMatch(/transit[óo]ri/i);
     expect(dec).toContain("AgendaCreateDialog");
@@ -520,7 +505,9 @@ describe("LV-09.1B.6.3A.1 · DEC-AGE-001", () => {
   });
   it("32. DEC não afirma que os componentes Content já existem", () => {
     // Devem aparecer apenas como pendência (linhas com 'não'/'ainda não').
-    expect(dec).toMatch(/ainda\s+n[ãa]o[^.]*AgendaCreateContent|AgendaCreateContent[^.]*ainda\s+n[ãa]o|n[ãa]o[^.]*criad[oa]s[^.]*AgendaCreateContent/i);
+    expect(dec).toMatch(
+      /ainda\s+n[ãa]o[^.]*AgendaCreateContent|AgendaCreateContent[^.]*ainda\s+n[ãa]o|n[ãa]o[^.]*criad[oa]s[^.]*AgendaCreateContent/i,
+    );
   });
   it("33. DEC informa que a LV-09.1B.7 não está iniciada", () => {
     expect(dec).toContain("LV-09.1B.7");

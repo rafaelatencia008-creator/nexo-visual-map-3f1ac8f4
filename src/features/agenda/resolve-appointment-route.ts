@@ -51,12 +51,7 @@ export interface ResolveAppointmentRouteOptions {
 }
 
 function sanitizePositiveInt(v: number | undefined, fallback: number): number {
-  if (
-    typeof v !== "number" ||
-    !Number.isFinite(v) ||
-    !Number.isInteger(v) ||
-    v <= 0
-  ) {
+  if (typeof v !== "number" || !Number.isFinite(v) || !Number.isInteger(v) || v <= 0) {
     return fallback;
   }
   return v;
@@ -83,9 +78,7 @@ export async function resolveAppointmentRoute(
 
   for (let i = 0; i < maxPages; i++) {
     const r = await service.list(context, {
-      page: cursor
-        ? { cursor, limit: pageLimit }
-        : { limit: pageLimit },
+      page: cursor ? { cursor, limit: pageLimit } : { limit: pageLimit },
     });
     if (!r.ok) {
       return {

@@ -11,10 +11,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 
 import { useAgendaRouteState } from "@/features/agenda/route-state";
-import {
-  AgendaCreateDialog,
-  type AgendaCreatedItem,
-} from "@/features/agenda/AgendaCreateDialog";
+import { AgendaCreateDialog, type AgendaCreatedItem } from "@/features/agenda/AgendaCreateDialog";
 import { isCaseId } from "@/domain/core/ids";
 
 type AgendaNovoSearch = { readonly caseId?: string };
@@ -48,8 +45,7 @@ function AgendaNovoPage() {
   } = useAgendaRouteState();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const initialCaseId =
-    search.caseId && isCaseId(search.caseId) ? search.caseId : undefined;
+  const initialCaseId = search.caseId && isCaseId(search.caseId) ? search.caseId : undefined;
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -86,9 +82,7 @@ function AgendaNovoPage() {
   );
 
   if (casesState.kind === "loading") {
-    return (
-      <div className="text-sm text-muted-foreground">Carregando processos…</div>
-    );
+    return <div className="text-sm text-muted-foreground">Carregando processos…</div>;
   }
   if (casesState.kind === "error") {
     return (
