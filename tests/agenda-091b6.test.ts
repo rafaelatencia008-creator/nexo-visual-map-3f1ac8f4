@@ -932,15 +932,15 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(slice).not.toMatch(/services\./);
   });
 
-  it("82. requestClose considera mutationInFlightRef", () => {
+  it("82. requestClose consulta getMutationLockDecisions()", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/mutationInFlightRef\.current/);
+    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
   });
-  it("83. Escape no diálogo principal bloqueia durante mutação", () => {
+  it("83. Escape no diálogo principal bloqueia via getMutationLockDecisions", () => {
     expect(DETAIL_SRC).toMatch(
-      /submittingRef\.current \|\| mutationInFlightRef\.current \|\| mutating/,
+      /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/,
     );
   });
   it("84. botão Fechar chama requestClose e desabilita durante mutating", () => {
@@ -950,9 +950,9 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
   it("85. botão Editar desabilita quando mutating", () => {
     expect(DETAIL_SRC).toMatch(/perm !== "allowed" \|\| mutating/);
   });
-  it("86. Escape nos AlertDialog de confirmação bloqueia durante mutação", () => {
+  it("86. Escape nos AlertDialog de confirmação bloqueia via lock decisions", () => {
     const escBlocks = DETAIL_SRC.match(
-      /mutationInFlightRef\.current \|\| mutating\) e\.preventDefault/g,
+      /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/g,
     ) ?? [];
     expect(escBlocks.length).toBeGreaterThanOrEqual(2);
   });
@@ -986,16 +986,14 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     // Substituído por prova comportamental — vide 106 e 107.
     expect(DETAIL_SRC).toMatch(/resolvePermissionEvaluation/);
   });
-  it("92. UI oferece 'Tentar novamente' quando permissão em error", () => {
+  it("92. UI oferece 'Tentar novamente' via hasPermEvalError", () => {
     expect(DETAIL_SRC).toContain("Não foi possível verificar esta permissão.");
     expect(DETAIL_SRC).toContain("Tentar novamente");
-    expect(DETAIL_SRC).toMatch(
-      /permChangeStatus === "error" \|\| permRemove === "error"/,
-    );
+    expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("93. handlers exigem 'allowed' antes de chamar o serviço", () => {
-    expect(DETAIL_SRC).toMatch(/if \(permChangeStatus !== "allowed"\) return;/);
-    expect(DETAIL_SRC).toMatch(/if \(permRemove !== "allowed"\) return;/);
+  it("93. handlers exigem permissionAllowsAction antes de chamar o serviço", () => {
+    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permChangeStatus\)\) return/);
+    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permRemove\)\) return/);
   });
 
   it("94. retryPermissions incrementa permAttempt", () => {
@@ -1083,12 +1081,12 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
       /setMutationError\(null\);\s*setMutationConflict\(null\);\s*setPendingRemoval\(true\)/,
     );
   });
-  it("105. remoção só executa quando pendingRemoval está aberto e permRemove='allowed'", () => {
+  it("105. remoção só executa quando pendingRemoval aberto e permRemove allowed", () => {
     const idx = DETAIL_SRC.indexOf("const confirmRemoval");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 900);
-    expect(slice).toMatch(/mutationInFlightRef\.current/);
-    expect(slice).toMatch(/permRemove !== "allowed"/);
+    expect(slice).toMatch(/mutationLock\.tryAcquire\(\)/);
+    expect(slice).toMatch(/permissionAllowsAction\(permRemove\)/);
     expect(slice).toMatch(/if \(!pendingRemoval\) return/);
   });
 });
@@ -1439,21 +1437,19 @@ describe("LV-09.1B.6.2 — integração real dos helpers", () => {
     expect(DETAIL_SRC).toMatch(/resolveMutationConflictAction/);
     expect(DETAIL_SRC).toMatch(/hasPermissionEvaluationError/);
   });
-  it("140. banner de retry considera perm === 'error' (update)", () => {
-    expect(DETAIL_SRC).toMatch(
-      /perm === "error" \|\| permChangeStatus === "error" \|\| permRemove === "error"/,
-    );
+  it("140. banner de retry é controlado por hasPermEvalError", () => {
+    expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("141. enterEdit bloqueia durante mutação (linha explícita)", () => {
+  it("141. enterEdit bloqueia via getMutationLockDecisions().canEnterEdit", () => {
     const idx = DETAIL_SRC.indexOf("const enterEdit = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/mutationInFlightRef\.current \|\| mutating/);
+    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canEnterEdit/);
   });
-  it("142. requestClose bloqueia durante mutating (linha explícita)", () => {
+  it("142. requestClose bloqueia via getMutationLockDecisions().canClose", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/mutationInFlightRef\.current \|\| mutating/);
+    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
   });
   it("143. callbacks dedicados de request de status/remoção existem", () => {
     expect(DETAIL_SRC).toMatch(/requestDeadlineStatusChange/);
@@ -1483,5 +1479,65 @@ describe("LV-09.1B.6.2 — integração real dos helpers", () => {
   it("148. LV-09.1B.6.2 não cria nova rota", () => {
     const routes = AGENDA_ROUTE_SRC.match(/createFileRoute\(/g) ?? [];
     expect(routes.length).toBe(1);
+  });
+});
+
+// =========================================================================
+// 13) LV-09.1B.6.2.1 — Integração definitiva dos helpers comportamentais
+// =========================================================================
+
+describe("LV-09.1B.6.2.1 — integração real do single-flight lock", () => {
+  it("149. lock adaptado à mesma ref bloqueia segunda aquisição", () => {
+    const ref = { current: false };
+    const lock = bindSingleFlightLockToRef(ref);
+    expect(lock.tryAcquire()).toBe(true);
+    expect(lock.tryAcquire()).toBe(false);
+  });
+  it("150. status e exclusão compartilham a mesma instância (mesma ref)", () => {
+    const ref = { current: false };
+    const lockForStatus = bindSingleFlightLockToRef(ref);
+    const lockForRemove = bindSingleFlightLockToRef(ref);
+    expect(lockForStatus.tryAcquire()).toBe(true);
+    // Segunda mutação (exclusão) não pode adquirir enquanto status está ativo
+    expect(lockForRemove.tryAcquire()).toBe(false);
+  });
+  it("151. release no finally permite nova operação", () => {
+    const ref = { current: false };
+    const lock = bindSingleFlightLockToRef(ref);
+    expect(lock.tryAcquire()).toBe(true);
+    lock.release();
+    expect(lock.tryAcquire()).toBe(true);
+  });
+  it("152. deriveMutationLockDecisions consome mutationLock.isLocked()", () => {
+    expect(DETAIL_SRC).toMatch(
+      /mutationRefLocked:\s*mutationLock\.isLocked\(\)/,
+    );
+  });
+  it("153. hasPermissionEvaluationError controla a renderização do banner", () => {
+    expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
+  });
+  it("154. permissionAllowsAction controla update, changeStatus e remove", () => {
+    expect(DETAIL_SRC).toMatch(/permissionAllowsAction\(perm\)/);
+    expect(DETAIL_SRC).toMatch(/permissionAllowsAction\(permChangeStatus\)/);
+    expect(DETAIL_SRC).toMatch(/permissionAllowsAction\(permRemove\)/);
+  });
+  it("155. nenhuma mutação escreve mutationInFlightRef.current = true", () => {
+    expect(DETAIL_SRC).not.toMatch(/mutationInFlightRef\.current\s*=\s*true/);
+  });
+  it("156. nenhuma mutação escreve mutationInFlightRef.current = false", () => {
+    expect(DETAIL_SRC).not.toMatch(/mutationInFlightRef\.current\s*=\s*false/);
+  });
+  it("157. diálogo importa e utiliza bindSingleFlightLockToRef", () => {
+    expect(DETAIL_SRC).toMatch(/bindSingleFlightLockToRef/);
+    expect(DETAIL_SRC).toMatch(
+      /bindSingleFlightLockToRef\(mutationInFlightRef\)/,
+    );
+  });
+  it("158. mutações consomem tryAcquire/release do lock testado", () => {
+    const tryAcquires = DETAIL_SRC.match(/mutationLock\.tryAcquire\(\)/g) ?? [];
+    const releases = DETAIL_SRC.match(/mutationLock\.release\(\)/g) ?? [];
+    // status + remoção
+    expect(tryAcquires.length).toBeGreaterThanOrEqual(2);
+    expect(releases.length).toBeGreaterThanOrEqual(2);
   });
 });

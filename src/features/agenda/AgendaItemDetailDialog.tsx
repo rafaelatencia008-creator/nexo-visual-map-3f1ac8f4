@@ -121,6 +121,7 @@ import {
   type TranslatedMutationError,
 } from "./item-mutations";
 import {
+  bindSingleFlightLockToRef,
   deriveMutationLockDecisions,
   hasPermissionEvaluationError,
   resolveMutationConflictAction,
@@ -310,6 +311,21 @@ export function AgendaItemDetailDialog(
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
   const mutationInFlightRef = React.useRef(false);
+  const mutationLock = React.useMemo(
+    () => bindSingleFlightLockToRef(mutationInFlightRef),
+    [],
+  );
+  // Fonte única de verdade sobre bloqueio síncrono. Consulta o lock testado
+  // e o estado de submit/mutation em tempo real.
+  const getMutationLockDecisions = React.useCallback(
+    () =>
+      deriveMutationLockDecisions({
+        mutationRefLocked: mutationLock.isLocked(),
+        mutating,
+        submitting: submittingRef.current,
+      }),
+    [mutationLock, mutating],
+  );
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -331,7 +347,7 @@ export function AgendaItemDetailDialog(
     setMutating(false);
     setMutationError(null);
     setMutationConflict(null);
-    mutationInFlightRef.current = false;
+    mutationLock.release();
     setAssignments({ kind: "idle" });
     setDForm(null);
     setAForm(null);
@@ -506,7 +522,7 @@ export function AgendaItemDetailDialog(
   // ---- Handlers -----------------------------------------------------------
 
   const enterEdit = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canEnterEdit) return;
     if (detail.kind !== "ready" || !permissionAllowsAction(perm)) return;
     setErrors({});
     setTouched({});
@@ -554,7 +570,7 @@ export function AgendaItemDetailDialog(
   }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canClose) return;
     const dec = resolveDiscardIntent("close", {
       mode,
       hasChanges: hasLocalChanges,
@@ -732,11 +748,10 @@ export function AgendaItemDetailDialog(
   // ---- Mudança de status / exclusão (LV-09.1B.6) ------------------------
 
   const confirmStatusChange = React.useCallback(async () => {
-    if (mutationInFlightRef.current) return;
     if (!pendingStatus) return;
     if (detail.kind !== "ready") return;
-    if (permChangeStatus !== "allowed") return;
-    mutationInFlightRef.current = true;
+    if (!permissionAllowsAction(permChangeStatus)) return;
+    if (!mutationLock.tryAcquire()) return;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
@@ -800,17 +815,16 @@ export function AgendaItemDetailDialog(
       }
     } finally {
       if (mountedRef.current) setMutating(false);
-      mutationInFlightRef.current = false;
+      mutationLock.release();
     }
   }, [pendingStatus, detail, permChangeStatus, environment, context, onUpdated]);
 
   const confirmRemoval = React.useCallback(async () => {
-    if (mutationInFlightRef.current) return;
     if (!pendingRemoval) return;
     if (detail.kind !== "ready") return;
-    if (permRemove !== "allowed") return;
+    if (!permissionAllowsAction(permRemove)) return;
     if (!selected) return;
-    mutationInFlightRef.current = true;
+    if (!mutationLock.tryAcquire()) return;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
@@ -865,7 +879,7 @@ export function AgendaItemDetailDialog(
       }
     } finally {
       if (mountedRef.current) setMutating(false);
-      mutationInFlightRef.current = false;
+      mutationLock.release();
     }
   }, [
     pendingRemoval,
@@ -878,7 +892,7 @@ export function AgendaItemDetailDialog(
   ]);
 
   const reloadAfterMutationConflict = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     const eff = resolveMutationConflictAction("reload");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
@@ -890,7 +904,7 @@ export function AgendaItemDetailDialog(
   }, [mutating]);
 
   const keepReviewingMutation = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     const eff = resolveMutationConflictAction("continue_reviewing");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
@@ -902,7 +916,7 @@ export function AgendaItemDetailDialog(
   }, [mutating]);
 
   const retryPermissions = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canRetryPermissions) return;
     setPermAttempt((n) => n + 1);
   }, [mutating]);
 
@@ -911,16 +925,17 @@ export function AgendaItemDetailDialog(
   // do botão.
   const requestDeadlineStatusChange = React.useCallback(
     (action: DeadlineStatusAction) => {
-      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      if (!getMutationLockDecisions().canOpenConfirmation) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "deadline", action });
     },
+    // getMutationLockDecisions is stable-by-inputs; include mutating for freshness
     [mutating],
   );
   const requestAppointmentStatusChange = React.useCallback(
     (action: AppointmentStatusAction) => {
-      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      if (!getMutationLockDecisions().canOpenConfirmation) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "appointment", action });
@@ -928,18 +943,13 @@ export function AgendaItemDetailDialog(
     [mutating],
   );
   const requestRemoval = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     setMutationError(null);
     setMutationConflict(null);
     setPendingRemoval(true);
   }, [mutating]);
 
-  // Decisão unificada de bloqueio síncrono, consumida pela UI real.
-  const lockDecisions = deriveMutationLockDecisions({
-    mutationRefLocked: mutationInFlightRef.current,
-    mutating,
-    submitting,
-  });
+  const lockDecisions = getMutationLockDecisions();
   const hasPermEvalError = hasPermissionEvaluationError({
     update: perm,
     changeStatus: permChangeStatus,
@@ -1033,7 +1043,7 @@ export function AgendaItemDetailDialog(
         <DialogContent
           className="max-h-[95vh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-0 sm:max-w-2xl"
           onEscapeKeyDown={(e) => {
-            if (submittingRef.current || mutationInFlightRef.current || mutating) {
+            if (!getMutationLockDecisions().canClose) {
               e.preventDefault();
               return;
             }
@@ -1120,7 +1130,7 @@ export function AgendaItemDetailDialog(
                     onSelectAppointmentAction={requestAppointmentStatusChange}
                     onRequestRemoval={requestRemoval}
                   />
-                  {(perm === "error" || permChangeStatus === "error" || permRemove === "error") && (
+                  {hasPermEvalError && (
                     <div
                       role="status"
                       className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground"
@@ -1331,7 +1341,7 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingStatus !== null}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current && !mutating) {
+          if (!o && getMutationLockDecisions().canClose) {
             setPendingStatus(null);
             setMutationError(null);
             setMutationConflict(null);
@@ -1340,7 +1350,7 @@ export function AgendaItemDetailDialog(
       >
         <AlertDialogContent
           onEscapeKeyDown={(e) => {
-            if (mutationInFlightRef.current || mutating) e.preventDefault();
+            if (!getMutationLockDecisions().canClose) e.preventDefault();
           }}
         >
           <AlertDialogHeader>
@@ -1420,7 +1430,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmStatusChange();
                   }}
-                  disabled={mutating || permChangeStatus !== "allowed"}
+                  disabled={mutating || !permissionAllowsAction(permChangeStatus)}
                   aria-busy={mutating}
                 >
                   {mutating && (
@@ -1437,7 +1447,7 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingRemoval}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current && !mutating) {
+          if (!o && getMutationLockDecisions().canClose) {
             setPendingRemoval(false);
             setMutationError(null);
             setMutationConflict(null);
@@ -1446,7 +1456,7 @@ export function AgendaItemDetailDialog(
       >
         <AlertDialogContent
           onEscapeKeyDown={(e) => {
-            if (mutationInFlightRef.current || mutating) e.preventDefault();
+            if (!getMutationLockDecisions().canClose) e.preventDefault();
           }}
         >
           <AlertDialogHeader>
@@ -1521,7 +1531,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmRemoval();
                   }}
-                  disabled={mutating || permRemove !== "allowed"}
+                  disabled={mutating || !permissionAllowsAction(permRemove)}
                   aria-busy={mutating}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
@@ -1561,8 +1571,8 @@ function ItemActionsSection({
   onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
   onRequestRemoval: () => void;
 }) {
-  const canStatus = permChangeStatus === "allowed";
-  const canRemove = permRemove === "allowed";
+  const canStatus = permissionAllowsAction(permChangeStatus);
+  const canRemove = permissionAllowsAction(permRemove);
   if (!canStatus && !canRemove) return null;
   const isDeadline = loaded.type === "deadline";
   const deadlineActions: readonly DeadlineStatusAction[] = isDeadline
