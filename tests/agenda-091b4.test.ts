@@ -1073,12 +1073,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("88. criar dois compromissos consecutivos preserva a integridade da lista visível", async () => {
     const env = createMockDomainEnvironment();
-    const ctx: ServiceContext = {
-      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
-      organizationId: SEED_ORG_ALFA_ID,
-      now: dt("2026-08-01T10:00:00.000Z"),
-    };
-    const a = await env.services.appointments.create(ctx, {
+    const a = await env.services.appointments.create(OWNER_ALFA, {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "hearing",
       title: "A1",
@@ -1086,7 +1081,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
       endsAt: dt("2026-08-05T11:00:00.000Z"),
       mode: "in_person",
     });
-    const b = await env.services.appointments.create(ctx, {
+    const b = await env.services.appointments.create(OWNER_ALFA, {
       caseId: SEED_CASE_ALFA_1_ID,
       kind: "hearing",
       title: "A2",
