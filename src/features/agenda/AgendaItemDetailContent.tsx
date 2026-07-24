@@ -379,6 +379,13 @@ export const AgendaItemDetailContent = React.forwardRef<
     () => bindSingleFlightLockToRef(mutationInFlightRef),
     [],
   );
+  // LV-09.1B.6.3B.2.1.2 — tokens monotônicos de operação.
+  // Finalizador (finally) de uma operação antiga não pode desligar
+  // `setSubmitting`/`setMutating` de uma operação posterior; a trava
+  // síncrona/lock, por contrato, é sempre liberada pela operação
+  // proprietária.
+  const submitOperationIdRef = React.useRef(0);
+  const mutationOperationIdRef = React.useRef(0);
   // Fonte única de verdade sobre bloqueio síncrono. Consulta o lock testado
   // e o estado de submit/mutation em tempo real.
   const getMutationLockDecisions = React.useCallback(
@@ -390,6 +397,59 @@ export const AgendaItemDetailContent = React.forwardRef<
       }),
     [mutationLock, mutating],
   );
+
+  // LV-09.1B.6.3B.2.1.2 — atividade/prontidão separadas do lock.
+  // `hasActiveSelection` habilita fechamento e retry em qualquer detalhe
+  // ativo (mesmo em loading/erro). `isInteractiveReady` só é verdadeiro
+  // após o carregamento bem-sucedido.
+  const { hasActiveSelection, isInteractiveReady } =
+    deriveAgendaDetailActivityState({
+      active,
+      hasSelection: selected !== null,
+      selectionKey,
+      detailReady: detail.kind === "ready",
+    });
+
+  const rawLockDecisions = getMutationLockDecisions();
+
+  const hasPermEvalError = hasPermissionEvaluationError({
+    update: perm,
+    changeStatus: permChangeStatus,
+    remove: permRemove,
+  });
+
+  // Seis gates completos: todos ficam falsos quando o detalhe está
+  // inativo. Fechamento permanece disponível durante loading e erro
+  // (depende apenas de `hasActiveSelection`, não de `isInteractiveReady`).
+  const canCloseDetail = hasActiveSelection && rawLockDecisions.canClose;
+  const canEditItem =
+    isInteractiveReady &&
+    rawLockDecisions.canEnterEdit &&
+    permissionAllowsAction(perm);
+  const canOpenItemAction =
+    isInteractiveReady && rawLockDecisions.canOpenConfirmation;
+  const canConfirmStatusChange =
+    isInteractiveReady &&
+    rawLockDecisions.canOpenConfirmation &&
+    permissionAllowsAction(permChangeStatus);
+  const canConfirmRemoval =
+    isInteractiveReady &&
+    rawLockDecisions.canOpenConfirmation &&
+    permissionAllowsAction(permRemove);
+  const canRetryPermissionEvaluation =
+    isInteractiveReady && rawLockDecisions.canRetryPermissions;
+
+  // `lockDecisions` mantido como projeção compatível: quando não estamos
+  // prontos para interação, os três gates funcionais ficam desligados.
+  const lockDecisions = isInteractiveReady
+    ? rawLockDecisions
+    : {
+        ...rawLockDecisions,
+        canEnterEdit: false,
+        canOpenConfirmation: false,
+        canRetryPermissions: false,
+      };
+
 
   React.useEffect(() => {
     mountedRef.current = true;
