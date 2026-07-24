@@ -25,7 +25,15 @@ import {
 import type { ServiceContext } from "@/domain/services/context";
 import type { ServiceResult } from "@/domain/services/result";
 import type { AssignmentId } from "@/domain/core/ids";
-import { isIsoDateTime } from "@/domain/core/common";
+import { isIsoDateTime, type IsoDateTime } from "@/domain/core/common";
+
+/** Helper de teste: valida em runtime que o literal é IsoDateTime. */
+function dt(value: string): IsoDateTime {
+  if (!isIsoDateTime(value)) {
+    throw new Error(`Data ISO inválida no teste: ${value}`);
+  }
+  return value;
+}
 import {
   AGENDA_TITLE_MAX,
   AGENDA_DESCRIPTION_MAX,
