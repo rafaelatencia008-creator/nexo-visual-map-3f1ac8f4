@@ -723,9 +723,7 @@ function AgendaPage() {
             onClick={() =>
               navigate({
                 to: "/app/agenda/novo",
-                search: filters.caseId
-                  ? { caseId: String(filters.caseId) }
-                  : undefined,
+                search: filters.caseId ? { caseId: filters.caseId } : undefined,
               })
             }
             disabled={casesState.kind !== "ready" || accessibleCases.length === 0}
