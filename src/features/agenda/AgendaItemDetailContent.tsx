@@ -660,6 +660,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     let cancelled = false;
     const reqSelectionKey = selectionKey;
+    const reqActivityGeneration = activityGenerationRef.current;
     setPerm("loading");
     setPermChangeStatus("loading");
     setPermRemove("loading");
@@ -675,7 +676,8 @@ export const AgendaItemDetailContent = React.forwardRef<
       !cancelled &&
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === reqSelectionKey;
+      selectionKeyRef.current === reqSelectionKey &&
+      activityGenerationRef.current === reqActivityGeneration;
     const evalOne = (
       action: typeof updateAction | typeof statusAction | typeof removeAction,
       setter: (v: PermState) => void,
