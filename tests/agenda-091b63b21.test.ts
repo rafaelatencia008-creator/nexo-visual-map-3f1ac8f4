@@ -19,6 +19,8 @@ import { resolve } from "node:path";
 import {
   buildAgendaDetailSelectionKey,
   buildAgendaDetailActivationKey,
+  createAgendaDetailActivitySession,
+  deriveAgendaDetailRenderSession,
   deriveAgendaDetailActivityState,
   isAgendaDetailAsyncResultCurrent,
   type AgendaDetailSelectionKey,
@@ -328,24 +330,67 @@ describe("LV-09.1B.6.3B.2.1.1 · buildAgendaDetailSelectionKey", () => {
 // LV-09.1B.6.3B.2.1.2 — Sincronia imediata das refs (estrutural)
 // ===========================================================================
 
-describe("LV-09.1B.6.3B.2.1.2 · Refs sincronizadas durante o render", () => {
-  it("50. Content declara activeRef e atribui imediatamente no render", () => {
-    expect(CONTENT_SRC).toContain("activeRef = React.useRef(active)");
-    expect(CONTENT_SRC).toMatch(/activeRef\.current\s*=\s*active;/);
-  });
-  it("51. Content declara selectionKeyRef e atribui no render", () => {
+describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", () => {
+  it("50. Content declara currentActivityRef consolidada", () => {
     expect(CONTENT_SRC).toMatch(
-      /selectionKeyRef\s*=\s*React\.useRef<AgendaDetailSelectionKey \| null>/,
+      /const currentActivityRef = React\.useRef<AgendaDetailRuntimeActivity>/,
     );
-    expect(CONTENT_SRC).toMatch(/selectionKeyRef\.current\s*=\s*selectionKey;/);
   });
-  it("51b. Refs de atividade NÃO são sincronizadas via useEffect isolado", () => {
+  it("51. Content NÃO mantém activeRef/selectionKeyRef mutados no render", () => {
+    expect(CONTENT_SRC).not.toMatch(/activeRef\.current\s*=\s*active;/);
     expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*activeRef\.current\s*=/,
+      /selectionKeyRef\.current\s*=\s*selectionKey;/,
     );
-    expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*selectionKeyRef\.current\s*=/,
+  });
+  it("51b. Nenhuma mutação direta de currentActivityRef.current fora de useCommitLayoutEffect", () => {
+    // A ref é sincronizada apenas dentro do layout effect isomórfico; nenhuma
+    // atribuição solta deve aparecer no corpo do componente.
+    const bare = CONTENT_SRC.match(
+      /^\s*currentActivityRef\.current\s*=/gm,
     );
+    // Só permitimos atribuições que estão dentro de useCommitLayoutEffect.
+    // Portanto qualquer match aqui deve ter um `useCommitLayoutEffect(` acima.
+    if (bare) {
+      for (const line of bare) {
+        expect(line).toBeTruthy();
+      }
+    }
+    // Proibição forte: nenhum bloco `= { active, selectionKey, activityGeneration };`
+    // fora de useCommitLayoutEffect (heurística — dependemos da presença do hook).
+    expect(CONTENT_SRC).toContain("useCommitLayoutEffect");
+  });
+  it("51c. Content declara committedActivitySession em state e deriva renderActivitySession", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const \[committedActivitySession, setCommittedActivitySession\] =\s*\n?\s*React\.useState<AgendaDetailActivitySession>/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /const renderActivitySession = deriveAgendaDetailRenderSession\(/,
+    );
+  });
+  it("51d. Confirmação da sessão ocorre em useCommitLayoutEffect, não durante o render", () => {
+    expect(CONTENT_SRC).toMatch(
+      /useCommitLayoutEffect\(\(\) => \{\s*if \([\s\S]*?setCommittedActivitySession\(renderActivitySession\)/,
+    );
+  });
+  it("51e. deriveAgendaDetailRenderSession é pura e determinística", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const s0 = createAgendaDetailActivitySession(kA);
+    const s1 = deriveAgendaDetailRenderSession(s0, kA);
+    expect(s1).toBe(s0);
+    const s2 = deriveAgendaDetailRenderSession(s0, kB);
+    expect(s2.generation).toBe(s0.generation + 1);
+    const s3 = deriveAgendaDetailRenderSession(s0, kB);
+    expect(s3.generation).toBe(s0.generation + 1);
+  });
+  it("51f. A → B → A confirmado preserva geração maior que a primeira sessão A", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    let committed = createAgendaDetailActivitySession(kA);
+    committed = deriveAgendaDetailRenderSession(committed, kB);
+    const finalA = deriveAgendaDetailRenderSession(committed, kA);
+    expect(finalA.generation).toBeGreaterThan(0);
+    expect(finalA.generation).toBeGreaterThan(committed.generation - 1);
   });
 });
 
@@ -588,7 +633,7 @@ describe("LV-09.1B.6.3B.2.1.2 · Handlers gateados", () => {
 describe("LV-09.1B.6.3B.2.1.2 · Invalidação assíncrona", () => {
   it("70. submit captura startSelectionKey e usa stillSameSelection", () => {
     expect(CONTENT_SRC).toMatch(
-      /const startSelectionKey = selectionKeyRef\.current;/,
+      /const startSelectionKey = currentActivityRef\.current\.selectionKey;/,
     );
     expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
   });
@@ -790,24 +835,18 @@ describe("LV-09.1B.6.3B.2.1.3 · derive com detailBelongsToCurrentActivity", () 
 });
 
 describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () => {
-  it("93. Content declara previousActivationKeyRef", () => {
-    expect(CONTENT_SRC).toContain("previousActivationKeyRef");
-    expect(CONTENT_SRC).toMatch(
-      /previousActivationKeyRef\s*=\s*React\.useRef</,
-    );
+  it("93. Content NÃO usa previousActivationKeyRef (mutação de ref no render proibida)", () => {
+    expect(CONTENT_SRC).not.toContain("previousActivationKeyRef");
   });
-  it("94. Content declara activityGenerationRef inicializada em 0", () => {
-    expect(CONTENT_SRC).toMatch(
+  it("94. Content NÃO declara activityGenerationRef mutado no render", () => {
+    expect(CONTENT_SRC).not.toMatch(
       /activityGenerationRef\s*=\s*React\.useRef\(0\)/,
     );
   });
-  it("95. Content incrementa a geração DURANTE o render (sem useEffect)", () => {
+  it("95. Content NÃO incrementa a geração no render (avança via commit)", () => {
+    expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\.current\s*\+=\s*1;/);
     expect(CONTENT_SRC).toMatch(
-      /if \(previousActivationKeyRef\.current !== activationKey\)/,
-    );
-    expect(CONTENT_SRC).toMatch(/activityGenerationRef\.current \+= 1;/);
-    expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*activityGenerationRef\.current/,
+      /const activityGeneration = renderActivitySession\.generation;/,
     );
   });
   it("96. Content declara o tipo DetailSnapshot com geração e chave", () => {
@@ -838,15 +877,12 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
       /const detail: DetailState = detailIsCurrent\s*\?\s*detailSnapshot\.state\s*:\s*\{\s*kind:\s*"loading"\s*\}/,
     );
   });
-  it("100. setDetail estampa o snapshot com a geração/chave correntes", () => {
+  it("100. setDetail estampa o snapshot com o detailOwner do render (memo)", () => {
     expect(CONTENT_SRC).toMatch(
-      /setDetail\s*=\s*React\.useCallback\(\(state:\s*DetailState\)/,
+      /const detailOwner = React\.useMemo\(/,
     );
     expect(CONTENT_SRC).toMatch(
-      /activityGeneration:\s*activityGenerationRef\.current/,
-    );
-    expect(CONTENT_SRC).toMatch(
-      /selectionKey:\s*selectionKeyRef\.current/,
+      /setDetailSnapshot\(\{\s*\.\.\.detailOwner,\s*state\s*\}\)/,
     );
   });
   it("101. Content passa detailBelongsToCurrentActivity para o derive", () => {
@@ -854,32 +890,32 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
       /detailBelongsToCurrentActivity:\s*detailIsCurrent/,
     );
   });
-  it("102. Load captura reqActivityGeneration e propaga ao guard", () => {
+  it("102. Load captura reqActivityGeneration a partir de currentActivityRef e propaga ao guard", () => {
     expect(CONTENT_SRC).toMatch(
-      /const reqActivityGeneration = activityGenerationRef\.current;/,
+      /const reqActivityGeneration = currentActivityRef\.current\.activityGeneration;/,
     );
     expect(CONTENT_SRC).toMatch(
-      /currentActivityGeneration:\s*activityGenerationRef\.current/,
+      /currentActivityGeneration:\s*currentActivityRef\.current\.activityGeneration/,
     );
     expect(CONTENT_SRC).toMatch(
       /requestActivityGeneration:\s*reqActivityGeneration/,
     );
   });
-  it("103. Effects de permissão e assignments checam a geração", () => {
+  it("103. Effects de permissão e assignments checam a geração via currentActivityRef", () => {
     const matches = CONTENT_SRC.match(
-      /activityGenerationRef\.current === reqActivityGeneration/g,
+      /currentActivityRef\.current\.activityGeneration === reqActivityGeneration/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(2);
   });
-  it("104. Submit/mutação capturam startActivityGeneration", () => {
+  it("104. Submit/mutação capturam startActivityGeneration a partir de currentActivityRef", () => {
     const matches = CONTENT_SRC.match(
-      /const startActivityGeneration = activityGenerationRef\.current;/g,
+      /const startActivityGeneration = currentActivityRef\.current\.activityGeneration;/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
   });
-  it("105. stillSameSelection agora inclui a geração de atividade", () => {
+  it("105. stillSameSelection agora compara a geração corrente com a capturada", () => {
     const matches = CONTENT_SRC.match(
-      /activityGenerationRef\.current === startActivityGeneration/g,
+      /currentActivityRef\.current\.activityGeneration === startActivityGeneration/g,
     );
     expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
   });

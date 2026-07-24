@@ -149,3 +149,41 @@ export function deriveAgendaDetailActivityState(
     inputs.detailReady;
   return { hasActiveSelection, isInteractiveReady };
 }
+
+// ---------------------------------------------------------------------------
+// LV-09.1B.6.3B.2.1.3.1 — Sessão de atividade segura para renders concorrentes.
+//
+// A geração de atividade não pode mais avançar por mutação de ref durante o
+// render (React 18+ pode descartar renders). A sessão **confirmada** vive em
+// state; cada render deriva uma sessão candidata a partir dela. Só o commit
+// (via layout effect isomórfico) promove a sessão candidata a confirmada.
+//
+// Uma renderização abandonada calcula uma geração candidata que jamais é
+// confirmada — a próxima render volta a derivar a partir da sessão
+// confirmada anterior, preservando A → B → A e o cenário de render de B
+// descartado.
+// ---------------------------------------------------------------------------
+
+export interface AgendaDetailActivitySession {
+  readonly activationKey: AgendaDetailSelectionKey | null;
+  readonly generation: number;
+}
+
+export function createAgendaDetailActivitySession(
+  activationKey: AgendaDetailSelectionKey | null,
+): AgendaDetailActivitySession {
+  return Object.freeze({ activationKey, generation: 0 });
+}
+
+export function deriveAgendaDetailRenderSession(
+  committed: AgendaDetailActivitySession,
+  activationKey: AgendaDetailSelectionKey | null,
+): AgendaDetailActivitySession {
+  if (committed.activationKey === activationKey) {
+    return committed;
+  }
+  return Object.freeze({
+    activationKey,
+    generation: committed.generation + 1,
+  });
+}
