@@ -94,9 +94,9 @@ function fakeApt(id: string): Appointment {
   } as unknown as Appointment;
 }
 
-const VALID_ID_A = "appointment_route_test_a";
-const VALID_ID_B = "appointment_route_test_b";
-const VALID_ID_MISSING = "appointment_route_missing_xyz";
+const VALID_ID_A = "appt_route_test_a";
+const VALID_ID_B = "appt_route_test_b";
+const VALID_ID_MISSING = "appt_route_missing_xyz";
 
 // ---- Resolvedor de rota --------------------------------------------------
 
@@ -193,7 +193,7 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
           return {
             ok: true,
             data: {
-              items: [fakeApt("appointment_other_1")] as readonly Appointment[],
+              items: [fakeApt("appt_other_1")] as readonly Appointment[],
               nextCursor: "c1",
             },
           } as ServiceResult<PageResult<Appointment>>;
@@ -202,7 +202,7 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
           return {
             ok: true,
             data: {
-              items: [fakeApt("appointment_other_2")] as readonly Appointment[],
+              items: [fakeApt("appt_other_2")] as readonly Appointment[],
               nextCursor: "c2",
             },
           } as ServiceResult<PageResult<Appointment>>;
@@ -274,7 +274,7 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
           return {
             ok: true,
             data: {
-              items: [fakeApt("appointment_x")] as readonly Appointment[],
+              items: [fakeApt("appt_x")] as readonly Appointment[],
               nextCursor: "c1",
             },
           } as ServiceResult<PageResult<Appointment>>;
@@ -282,7 +282,7 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
         return {
           ok: true,
           data: {
-            items: [fakeApt("appointment_y")] as readonly Appointment[],
+            items: [fakeApt("appt_y")] as readonly Appointment[],
           },
         } as ServiceResult<PageResult<Appointment>>;
       },
