@@ -81,6 +81,33 @@ iniciada.
   testes existentes continuam válidos, apenas as leituras estruturais de
   fonte foram redirecionadas para `AgendaItemDetailContent.tsx`.
 
+### Entregue na parcela B (LV-09.1B.6.3B.2.1.1 — ciclo de atividade e invalidação assíncrona)
+
+- Criado `src/features/agenda/detail-activity.ts` com
+  `buildAgendaDetailSelectionKey(selected)`, que produz uma chave estável
+  `${type}:${caseId}:${id}`. Duas seleções para o mesmo item da agenda
+  geram chaves idênticas, mesmo quando o pai recria o objeto `selected`.
+- `AgendaItemDetailContent` passou a chavear **todos** os efeitos
+  (reset, load, permissões, assignments) por `selectionKey` em vez da
+  referência do objeto `selected`. Reset e load também dependem de
+  `active`, e o assignments passa a incluir `selectionKey` no array de
+  dependências.
+- Introduzidos `activeRef` e `selectionKeyRef` sincronizados por
+  `useEffect`. Cada resposta assíncrona (load, permissão, assignments,
+  submit, mudança de status, exclusão) captura a chave da seleção no
+  início da chamada e só aplica `setState` se, no momento da resolução,
+  o componente ainda estiver ativo **e** a seleção corrente for a mesma.
+  Handlers antigos que só validavam `mountedRef.current` foram trocados
+  por `stillCurrent()` / `stillSameSelection()`, garantindo que
+  respostas atrasadas de uma seleção anterior nunca contaminem o estado
+  da seleção atual.
+- Gate unificado `isInteractive = active && selected !== null &&
+  detail.kind === "ready"` aplicado aos seis gates de UI (`canEditItem`,
+  `canOpenItemAction`, `canConfirmStatusChange`, `canConfirmRemoval`,
+  `canRetryPermissionEvaluation`) e como pré-condição de `canCloseDetail`.
+  `submit`, `confirmStatusChange` e `confirmRemoval` também verificam
+  `activeRef.current` antes de acionar o serviço.
+
 ### Pendente da parcela B (LV-09.1B.6.3B.2.2)
 
 Ainda **não** foi realizada a conversão total do detalhe em página:
@@ -90,6 +117,8 @@ Ainda **não** foi realizada a conversão total do detalhe em página:
   substitua esse uso por `AgendaItemDetailContent` com
   `surface="page"`. A LV-09.1B.6.3 permanece **aberta** até essa
   substituição.
+
+
 
 
 A LV-09.1B.7 (motor consultivo de disponibilidade) **não está iniciada**.

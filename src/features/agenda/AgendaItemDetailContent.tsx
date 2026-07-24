@@ -1,5 +1,6 @@
 /**
  * LV-09.1B.6.3B.2.1 — Corpo funcional do detalhe/edição de item da Agenda.
+ * LV-09.1B.6.3B.2.1.1 — Ciclo de atividade e invalidação assíncrona.
  *
  * Única implementação funcional do fluxo de detalhe. Não contém shell de
  * diálogo: pode ser montado dentro de `AgendaItemDetailDialog` (wrapper
@@ -7,7 +8,15 @@
  * LV-09.1B.6.3B.2.2). Consome exclusivamente os serviços oficiais
  * expostos por `MockDomainEnvironment`. Aplica concorrência otimista via
  * `expectedVersion` capturado no início da edição.
+ *
+ * Todos os efeitos (reset, load, permissões, assignments) são chaveados
+ * por `selectionKey` (identidade semântica estável) e comparam com
+ * `selectionKeyRef.current`/`activeRef.current` antes de aplicar
+ * qualquer `setState`. Handlers de mutação (submit, mudança de status,
+ * exclusão) capturam a chave da seleção no início e descartam o
+ * resultado se a seleção mudar durante a operação.
  */
+
 
 
 import * as React from "react";
@@ -123,6 +132,12 @@ import {
   resolveMutationConflictAction,
   resolvePermissionEvaluation,
 } from "./item-mutation-reducers";
+import {
+  buildAgendaDetailSelectionKey,
+  type AgendaDetailSelectionKey,
+} from "./detail-activity";
+
+
 
 // ---- Tipos públicos -----------------------------------------------------
 
@@ -267,6 +282,17 @@ export const AgendaItemDetailContent = React.forwardRef<
     onRequestClose();
   }, [onRequestClose]);
 
+  // LV-09.1B.6.3B.2.1.1 — identidade semântica estável da seleção.
+  // Duas seleções para o mesmo item produzem a mesma chave, mesmo que o
+  // pai recrie o objeto entre renderizações. Todos os efeitos passam a
+  // depender dessa chave (não da referência do objeto `selected`).
+  const selectionKey = React.useMemo(
+    () => buildAgendaDetailSelectionKey(selected),
+    [selected],
+  );
+
+
+
 
 
   const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
@@ -322,6 +348,22 @@ export const AgendaItemDetailContent = React.forwardRef<
   const detailReqIdRef = React.useRef(0);
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
+  // LV-09.1B.6.3B.2.1.1 — snapshots síncronos para invalidação assíncrona.
+  // Respostas em voo comparam a chave capturada no início da chamada com
+  // `selectionKeyRef.current` no momento da resolução; se divergiram (ou
+  // o componente ficou inativo), o resultado é descartado sem tocar em
+  // `setState`.
+  const activeRef = React.useRef(active);
+  const selectionKeyRef = React.useRef<AgendaDetailSelectionKey | null>(
+    selectionKey,
+  );
+  React.useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+  React.useEffect(() => {
+    selectionKeyRef.current = selectionKey;
+  }, [selectionKey]);
+
   const mutationInFlightRef = React.useRef(false);
   const mutationLock = React.useMemo(
     () => bindSingleFlightLockToRef(mutationInFlightRef),
@@ -346,7 +388,9 @@ export const AgendaItemDetailContent = React.forwardRef<
     };
   }, []);
 
-  // Reset ao abrir/mudar seleção
+  // Reset ao abrir/mudar seleção. Chaveado por `selectionKey` (identidade
+  // semântica estável) — não reexecuta apenas porque o pai recriou o objeto
+  // `selected` sem trocar de item.
   React.useEffect(() => {
     if (!active || !selected) return;
     setDetail({ kind: "loading" });
@@ -371,7 +415,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     setConflictState(null);
     setSubmitting(false);
     submittingRef.current = false;
-  }, [selected]);
+  }, [selectionKey, active]);
 
   // Carrega o detalhe pelo serviço oficial. Ramifica pelo discriminante para
   // preservar a correlação entre `type` e o tipo da `response` (união
@@ -379,7 +423,17 @@ export const AgendaItemDetailContent = React.forwardRef<
   React.useEffect(() => {
     if (!active || !selected) return;
     const reqId = ++detailReqIdRef.current;
+    const reqSelectionKey = selectionKey;
     setDetail({ kind: "loading" });
+
+    // Invalidação assíncrona: só aplica o resultado se, no momento em que
+    // a promise resolveu, a seleção corrente ainda for a mesma que iniciou
+    // a chamada e o componente ainda estiver ativo.
+    const stillCurrent = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === reqSelectionKey &&
+      reqId === detailReqIdRef.current;
 
     const applyDecision = (
       decided: ReturnType<typeof resolveDetailLoadResponse>,
@@ -400,7 +454,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.deadlines
         .getById(context, selected.caseId, selected.id)
         .then((response) => {
-          if (!mountedRef.current) return;
+          if (!stillCurrent()) return;
           applyDecision(
             resolveDetailLoadResponse(detailReqIdRef.current, {
               requestId: reqId,
@@ -410,7 +464,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           );
         })
         .catch(() => {
-          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          if (!stillCurrent()) return;
           setDetail({
             kind: "error",
             message: "Não foi possível carregar este item.",
@@ -420,7 +474,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.appointments
         .getById(context, selected.caseId, selected.id)
         .then((response) => {
-          if (!mountedRef.current) return;
+          if (!stillCurrent()) return;
           applyDecision(
             resolveDetailLoadResponse(detailReqIdRef.current, {
               requestId: reqId,
@@ -430,14 +484,14 @@ export const AgendaItemDetailContent = React.forwardRef<
           );
         })
         .catch(() => {
-          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          if (!stillCurrent()) return;
           setDetail({
             kind: "error",
             message: "Não foi possível carregar este item.",
           });
         });
     }
-  }, [selected, environment, context, reload]);
+  }, [selectionKey, active, environment, context, reload]);
 
 
   // Avalia permissões de edição, mudança de status e exclusão em paralelo.
@@ -445,6 +499,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!active || !selected) return;
     if (detail.kind !== "ready") return;
     let cancelled = false;
+    const reqSelectionKey = selectionKey;
     setPerm("loading");
     setPermChangeStatus("loading");
     setPermRemove("loading");
@@ -456,6 +511,11 @@ export const AgendaItemDetailContent = React.forwardRef<
         : "appointment.changeStatus";
     const removeAction =
       selected.type === "deadline" ? "deadline.remove" : "appointment.remove";
+    const stillCurrent = (): boolean =>
+      !cancelled &&
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === reqSelectionKey;
     const evalOne = (
       action: typeof updateAction | typeof statusAction | typeof removeAction,
       setter: (v: PermState) => void,
@@ -463,13 +523,11 @@ export const AgendaItemDetailContent = React.forwardRef<
       environment.services.permissions
         .evaluate(context, { action, caseId: selected.caseId })
         .then((res) => {
-          if (cancelled || !mountedRef.current) return;
-          // Fonte única: helper puro. Preserva a mesma decisão testada.
-          // Regra estrutural: `res.data.allowed ? "allowed" : "denied"`.
+          if (!stillCurrent()) return;
           setter(resolvePermissionEvaluation({ kind: "resolved", result: res }));
         })
         .catch(() => {
-          if (cancelled || !mountedRef.current) return;
+          if (!stillCurrent()) return;
           setter(resolvePermissionEvaluation({ kind: "rejected" }));
         });
     };
@@ -479,7 +537,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     return () => {
       cancelled = true;
     };
-  }, [selected, detail, environment, context, permAttempt]);
+  }, [selectionKey, active, detail, environment, context, permAttempt]);
 
   // Carrega assignments do caso quando entrar em edição
   const currentCaseId = selected?.caseId;
@@ -488,7 +546,13 @@ export const AgendaItemDetailContent = React.forwardRef<
       return;
     }
     const reqId = ++assignReqIdRef.current;
+    const reqSelectionKey = selectionKey;
     setAssignments({ kind: "loading" });
+    const stillCurrent = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      reqId === assignReqIdRef.current &&
+      selectionKeyRef.current === reqSelectionKey;
     (async () => {
       const collected: Assignment[] = [];
       const seen = new Set<string>();
@@ -500,7 +564,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           cursor ? { cursor, limit: ASSIGN_LIMIT } : { limit: ASSIGN_LIMIT },
         );
         if (!res.ok) {
-          if (mountedRef.current && reqId === assignReqIdRef.current) {
+          if (stillCurrent()) {
             setAssignments({
               kind: "error",
               message: "Não foi possível carregar responsáveis.",
@@ -518,18 +582,19 @@ export const AgendaItemDetailContent = React.forwardRef<
         if (!res.data.nextCursor) break;
         cursor = res.data.nextCursor;
       }
-      if (mountedRef.current && reqId === assignReqIdRef.current) {
+      if (stillCurrent()) {
         setAssignments({ kind: "ready", items: collected });
       }
     })().catch(() => {
-      if (mountedRef.current && reqId === assignReqIdRef.current) {
+      if (stillCurrent()) {
         setAssignments({
           kind: "error",
           message: "Não foi possível carregar responsáveis.",
         });
       }
     });
-  }, [mode, currentCaseId, environment, context, assignAttempt]);
+  }, [active, mode, currentCaseId, selectionKey, environment, context, assignAttempt]);
+
 
   // ---- Handlers -----------------------------------------------------------
 
@@ -643,9 +708,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(perm)) return;
+    if (!activeRef.current) return;
+    // LV-09.1B.6.3B.2.1.1 — captura chave da seleção para invalidar
+    // aplicação de resultados caso a seleção mude durante o submit.
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
+
 
     if (detail.loaded.type === "deadline" && dForm) {
       const built = buildUpdateDeadlineInput(
@@ -665,11 +739,12 @@ export const AgendaItemDetailContent = React.forwardRef<
           context,
           built.input,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           handleUpdateError(res.error);
           return;
         }
+
         toast.success("Prazo atualizado com sucesso.");
         const updated = res.data;
         setDetail({
@@ -700,11 +775,12 @@ export const AgendaItemDetailContent = React.forwardRef<
           context,
           built.input,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           handleUpdateError(res.error);
           return;
         }
+
         toast.success("Compromisso atualizado com sucesso.");
         const updated = res.data;
         setDetail({
@@ -759,11 +835,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!pendingStatus) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(permChangeStatus)) return;
+    if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
     try {
+
       if (
         pendingStatus.kind === "deadline" &&
         detail.loaded.type === "deadline"
@@ -775,7 +858,7 @@ export const AgendaItemDetailContent = React.forwardRef<
         );
         const res =
           await environment.services.deadlines.changeStatus(context, input);
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
@@ -803,7 +886,7 @@ export const AgendaItemDetailContent = React.forwardRef<
         );
         const res =
           await environment.services.appointments.changeStatus(context, input);
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
@@ -832,12 +915,19 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(permRemove)) return;
     if (!active || !selected) return;
+    if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
     try {
       const version = detail.loaded.item.metadata.version;
+
       if (detail.loaded.type === "deadline") {
         const res = await environment.services.deadlines.remove(
           context,
@@ -845,7 +935,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           detail.loaded.item.id,
           version,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
@@ -868,7 +958,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           detail.loaded.item.id,
           version,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
@@ -957,12 +1047,28 @@ export const AgendaItemDetailContent = React.forwardRef<
     setPendingRemoval(true);
   }, [mutating]);
 
-  const lockDecisions = getMutationLockDecisions();
+  const rawLockDecisions = getMutationLockDecisions();
   const hasPermEvalError = hasPermissionEvaluationError({
     update: perm,
     changeStatus: permChangeStatus,
     remove: permRemove,
   });
+
+  // LV-09.1B.6.3B.2.1.1 — gate único de interatividade. Só permite ações
+  // funcionais quando o componente está ativo, há uma seleção definida e o
+  // item já foi carregado com sucesso. Fecha os gates de edição/mutação
+  // diretamente no `lockDecisions` — os `canX` derivados abaixo continuam
+  // sendo definidos exatamente como antes, mas herdam a inatividade.
+  const isInteractive =
+    active && selected !== null && detail.kind === "ready";
+  const lockDecisions = isInteractive
+    ? rawLockDecisions
+    : {
+        ...rawLockDecisions,
+        canEnterEdit: false,
+        canOpenConfirmation: false,
+        canRetryPermissions: false,
+      };
 
   // Gates unificados da UI (fonte única). Todos os botões e handlers
   // consomem estes valores em vez de recompor `submitting || mutating`.
@@ -976,6 +1082,8 @@ export const AgendaItemDetailContent = React.forwardRef<
   const canConfirmRemoval =
     lockDecisions.canOpenConfirmation && permissionAllowsAction(permRemove);
   const canRetryPermissionEvaluation = lockDecisions.canRetryPermissions;
+
+
 
 
 
