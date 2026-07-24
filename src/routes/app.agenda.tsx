@@ -1536,17 +1536,36 @@ function MonthView({
 function DeadlineCard({
   deadline,
   nowEpoch,
+  onOpen,
 }: {
   deadline: Deadline;
   nowEpoch: number;
+  onOpen?: (d: Deadline, ev?: React.SyntheticEvent) => void;
 }) {
   const presentation = getDeadlinePresentation(deadline, nowEpoch);
   const overdue = isDeadlineOverdue(deadline, nowEpoch);
   const StateIcon = DEADLINE_STATE_ICON[presentation.state];
+  const clickable = typeof onOpen === "function";
+  const activate = (ev: React.SyntheticEvent) => {
+    if (onOpen) onOpen(deadline, ev);
+  };
   return (
     <article
       aria-label={`Prazo — ${deadline.title}`}
-      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? activate : undefined}
+      onKeyDown={
+        clickable
+          ? (ev) => {
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                activate(ev);
+              }
+            }
+          : undefined
+      }
+      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass} ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
     >
       <span
         aria-hidden
@@ -1606,6 +1625,7 @@ function DeadlineCard({
     </article>
   );
 }
+
 
 function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const presentation = getAppointmentPresentation(appointment);
