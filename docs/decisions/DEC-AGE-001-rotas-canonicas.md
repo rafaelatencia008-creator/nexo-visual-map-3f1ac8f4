@@ -1,12 +1,12 @@
 # DEC-AGE-001 — Rotas canônicas da Agenda
 
-**Status:** aceito (parcela A concluída; parcela B em andamento — criação
-extraída, detalhe ainda pendente)
+**Status:** aceito
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3 (aberta) — parcela A entregue nas LV-09.1B.6.3A a
-LV-09.1B.6.3A.3; parcela B iniciada na LV-09.1B.6.3B.1 (extração do
-fluxo de criação); LV-09.1B.6.3B.2 (extração do detalhe) ainda não
-iniciada.
+**Etapa:** LV-09.1B.6.3 concluída; LV-09.1B.7.1 e LV-09.1B.7.1.1
+concluídas; LV-09.1B.7.2 concluída; correção LV-09.1B.7.2.1 concluída
+(tipagem segura, ciclo consultivo em helper puro
+`availability-consultation-state.ts`, `SelectTrigger` único para o
+Responsável e aria-linkage do erro de intervalo).
 
 ## Estado atual desta decisão
 
@@ -198,15 +198,14 @@ iniciada.
 
 
 
-### Pendente da parcela B (LV-09.1B.6.3B.2.2)
+### LV-09.1B.6.3B.2.2 concluída
 
-Ainda **não** foi realizada a conversão total do detalhe em página:
+A rota `/app/agenda/$appointmentId` tornou-se página real, montando
+`AgendaItemDetailContent` com `surface="page"` diretamente. O uso do
+`AgendaItemDetailDialog` permanece exclusivo do calendário. A
+LV-09.1B.6.3 está concluída.
 
-- A rota `/app/agenda/$appointmentId` continua montando temporariamente (condição transitória)
-  o `AgendaItemDetailDialog` (wrapper fino) até que a LV-09.1B.6.3B.2.2
-  substitua esse uso por `AgendaItemDetailContent` com
-  `surface="page"`. A LV-09.1B.6.3 permanece **aberta** até essa
-  substituição.
+
 
 
 
@@ -370,3 +369,28 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
   "Verificar disponibilidade" que navega para `/app/disponibilidade`,
   preservando o botão "Novo item" e todo o restante do cabeçalho.
 
+
+## Adendo LV-09.1B.7.2.1 — Tipagem segura e ciclo consultivo puro
+
+- Ciclo consultivo (single-flight, requestId monotônico, invalidação
+  por mudança de campo) extraído do componente para o helper puro
+  `src/features/agenda/availability-consultation-state.ts`. O
+  `AgendaAvailabilityContent` guarda a sessão em uma única `ref` e não
+  mutá seus campos diretamente.
+- `availability-form.ts` deixou de usar `undefined as never` e
+  `assignmentId as AssignmentId`; o narrowing é obtido por
+  `datetimeLocalToIso(...).ok` e `isAssignmentId(rawAssignmentId)`.
+- `AgendaAvailabilityContent.tsx`: `formatDateTime` recebe `IsoDateTime`;
+  o carregamento de vínculos usa `isCaseId` como guard (sem
+  `as CaseId`); o campo Responsável sempre expõe o mesmo
+  `SelectTrigger` com `id="availability-assignment"`, variando apenas
+  `placeholder` e `disabled`; o estado indeterminado `invalid_interval`
+  também é comunicado nos inputs de data via `aria-invalid` e
+  `aria-describedby="availability-interval-error"`.
+- Suíte `tests/agenda-091b72.test.ts`: helpers de teste não usam mais
+  `as unknown as` para `Case`, `Assignment` ou `Appointment` — usam
+  helpers de narrowing `isoDt`/`isoD` e as overloads de
+  `buildDomainId`. As provas 35 e 45–54 tornaram-se comportamentais
+  sobre o helper puro; novas provas garantem `SelectTrigger` único do
+  Responsável, aria-linkage do erro de intervalo e ausência de
+  `as never` nos três arquivos-chave.
