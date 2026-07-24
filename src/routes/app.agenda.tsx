@@ -19,15 +19,33 @@ import {
   ArrowUp,
   CircleDot,
   FileClock,
+  Search,
+  X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { useMockDomain } from "@/components/app/MockDomainProvider";
+import type { Case } from "@/domain/core/case";
 import type {
   Appointment,
   AppointmentKind,
@@ -38,6 +56,13 @@ import type {
   DeadlinePriority,
   DeadlineStatus,
 } from "@/domain/core/agenda";
+import {
+  APPOINTMENT_KINDS,
+  APPOINTMENT_MODES,
+  DEADLINE_KINDS,
+  DEADLINE_PRIORITIES,
+} from "@/domain/core/agenda";
+import type { CaseId } from "@/domain/core/ids";
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
@@ -52,6 +77,24 @@ import {
   buildMonthCells,
   selectUpcomingDeadlines,
 } from "@/features/agenda/date-view";
+import {
+  EMPTY_AGENDA_FILTERS,
+  buildAppointmentListOptions,
+  buildDeadlineListOptions,
+  countActiveFilters,
+  hasActiveFilters,
+  removeFilter,
+  sanitizeForItemType,
+  shouldQueryAppointments,
+  shouldQueryDeadlines,
+  shouldShowUpcomingPanel,
+  summarizeFilters,
+  type AgendaFilterChip,
+  type AgendaFilterLabels,
+  type AgendaFilters,
+  type AgendaItemFilter,
+  type AgendaLifecycleFilter,
+} from "@/features/agenda/filters";
 
 // ============================================================================
 // Tela oficial /app/agenda.
