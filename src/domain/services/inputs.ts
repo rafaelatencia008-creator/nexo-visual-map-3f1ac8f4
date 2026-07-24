@@ -23,6 +23,12 @@ import type {
   UserId,
 } from "../core/ids";
 import type {
+  CommunicationChannel,
+  CommunicationDirection,
+  CommunicationKind,
+  CommunicationOutcome,
+} from "../core/communication";
+import type {
   CaseStatus,
   ConfidentialityLevel,
   ConflictCheckStatus,
