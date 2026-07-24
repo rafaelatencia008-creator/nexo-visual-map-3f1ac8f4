@@ -1,63 +1,61 @@
 # DEC-AGE-001 — Rotas canônicas da Agenda
 
-**Status:** aceito (parcela A entregue; parcela B pendente)
+**Status:** aceito (parcela A concluída; parcela B em andamento — criação
+extraída, detalhe ainda pendente)
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A,
-saneada na LV-09.1B.6.3A.1, coerência final na LV-09.1B.6.3A.2 e correção
-da navegação pós-criação na LV-09.1B.6.3A.3; parcela B (LV-09.1B.6.3B)
-ainda não iniciada.
+**Etapa:** LV-09.1B.6.3 (aberta) — parcela A entregue nas LV-09.1B.6.3A a
+LV-09.1B.6.3A.3; parcela B iniciada na LV-09.1B.6.3B.1 (extração do
+fluxo de criação); LV-09.1B.6.3B.2 (extração do detalhe) ainda não
+iniciada.
 
 ## Estado atual desta decisão
 
-### Entregue na parcela A (LV-09.1B.6.3A + .3A.1)
+### Entregue na parcela A (LV-09.1B.6.3A a .3A.3)
 
 - Rota pai `src/routes/app.agenda.tsx` como layout com `<Outlet />` e
   `AgendaRouteStateProvider` compartilhado.
 - Calendário como rota índice `src/routes/app.agenda.index.tsx`.
 - Rota canônica de criação `src/routes/app.agenda.novo.tsx`.
 - Rota canônica de detalhe `src/routes/app.agenda.$appointmentId.tsx`.
-- Provider compartilhado com filtros, modo, âncora temporal, marcadores
-  `pendingCreated`/`pendingRemoval` e chave de recarga.
-- Resolvedor puro `resolve-appointment-route.ts` com guard sintático
-  (`isAppointmentId`), deduplicação de itens, detecção de ciclo de cursor
-  e retorno de erro ao esgotar `maxPages`.
-- Navegação canônica funcionando entre `/app/agenda`, `/app/agenda/novo`
-  e `/app/agenda/$appointmentId`.
-- Pós-criação de prazo atravessa a rota: `pendingCreated` é registrado no
-  estado compartilhado **antes** da navegação, preservando o aviso
-  "Ele não aparece na visualização atual".
+- Resolvedor puro `resolve-appointment-route.ts` com guard sintático,
+  deduplicação e detecção de ciclo.
+- Política pura `shouldCloseAgendaCreateAfterSuccess` — a rota canônica
+  controla o fechamento pós-sucesso via `closeAfterCreate`.
 
-### Transitório nesta parcela
+### Entregue na parcela B (LV-09.1B.6.3B.1 — criação)
 
-Nesta parcela A, as páginas de rota ainda montam diretamente os diálogos
-existentes:
+- Criado `src/features/agenda/AgendaCreateContent.tsx` — corpo completo
+  do fluxo de criação, sem shell de diálogo. Concentra a **única**
+  implementação funcional: estado dos formulários, permissões, carregamento
+  paginado de assignments, submit, single-flight, detecção de rascunho e
+  confirmação de descarte.
+- `AgendaCreateDialog` passou a ser um **wrapper fino**: monta apenas
+  `<Dialog>`, `<DialogTitle>`, `<DialogDescription>` e delega o
+  fechamento externo ao Content via `React.useImperativeHandle`
+  (`AgendaCreateContentHandle.requestClose()`). A API pública histórica
+  (`AgendaCreateDialog`, `AgendaCreateDialogProps`, `AgendaCreatedItem`)
+  permanece compatível — os testes existentes continuam válidos.
+- `/app/agenda/novo` deixou de montar diálogo e passou a ser uma página
+  real: cabeçalho com `h1`, link "Voltar para a agenda" e renderização
+  direta de `AgendaCreateContent` com `active`, `surface="page"` e
+  `closeAfterCreate={false}`. A rota controla toda a navegação:
+  compromisso → `/app/agenda/$appointmentId`; prazo → `pendingCreated`
+  no provider + volta para `/app/agenda`; cancelamento/descarte →
+  `/app/agenda`.
 
-- `/app/agenda/novo` monta `AgendaCreateDialog` com
-  `closeAfterCreate={false}`. A rota canônica é a autoridade da navegação
-  pós-sucesso: ao criar um compromisso, navega para
-  `/app/agenda/$appointmentId`; ao criar um prazo, registra
-  `pendingCreated` no provider e navega uma única vez para `/app/agenda`.
-  O diálogo não dispara `onOpenChange(false)` após sucesso, evitando uma
-  segunda navegação. Cancelamento sem rascunho e descarte de rascunho
-  continuam chamando `onOpenChange(false)` normalmente, e a rota trata
-  esse fechamento como volta para `/app/agenda`.
-- `/app/agenda/$appointmentId` monta `AgendaItemDetailDialog`.
+### Pendente da parcela B (LV-09.1B.6.3B.2)
 
-Isso é intencional: mantém o comportamento oficial idêntico enquanto as
-rotas canônicas passam a existir.
+Ainda **não** foi criado:
 
-### Pendente da parcela B (LV-09.1B.6.3B)
-
-Ainda **não** foram criados:
-
-- `AgendaCreateContent` — corpo do fluxo de criação sem shell de diálogo.
 - `AgendaItemDetailContent` — corpo do fluxo de detalhe/edição sem shell
   de diálogo.
 
-Como os componentes `Content` ainda não existem, os diálogos
-`AgendaCreateDialog` e `AgendaItemDetailDialog` **ainda não são wrappers
-finos**. A LV-09.1B.6.3 permanece **aberta** e só será encerrada quando a
-parcela B extrair esses `Content` e transformar os diálogos em wrappers.
+A rota `/app/agenda/$appointmentId` continua montando temporariamente
+(condição transitória) o `AgendaItemDetailDialog` existente — os diálogos
+ainda não foram convertidos em wrappers finos para o detalhe. A
+LV-09.1B.6.3 permanece **aberta** e só será encerrada quando a
+LV-09.1B.6.3B.2 extrair esse `Content` e transformar o diálogo de detalhe
+em wrapper fino.
 
 A LV-09.1B.7 (motor consultivo de disponibilidade) **não está iniciada**.
 Qualquer artefato antecipado dessa etapa foi removido na LV-09.1B.6.3A.1.
