@@ -1,14 +1,17 @@
 /**
- * LV-09.1B.7.2 — Helper puro do formulário consultivo de disponibilidade.
+ * LV-09.1B.7.2 / LV-09.1B.7.2.1 — Helper puro do formulário consultivo.
  *
  * Sem React, sem I/O. Reutiliza `datetimeLocalToIso` e
  * `validateAppointmentInterval` de `./create-form`. Não cria outro parser
  * de `datetime-local`. Traduz o estado do formulário em um input tipado
  * para `checkAppointmentAvailability` — sem `caseId`, sem `title`,
  * sem `status`, sem `excludeAppointmentId`, sem `expectedVersion`.
+ *
+ * Correção LV-09.1B.7.2.1: sem `as never`, sem `undefined as never`,
+ * sem `as AssignmentId`. TypeScript estreita `startParsed.ok`,
+ * `endParsed.ok` e `isAssignmentId(rawAssignmentId)` diretamente.
  */
 
-import type { AssignmentId, CaseId } from "@/domain/core/ids";
 import { isAssignmentId, isCaseId } from "@/domain/core/ids";
 import type { CheckAppointmentAvailabilityInput } from "./check-appointment-availability";
 import { datetimeLocalToIso, validateAppointmentInterval } from "./create-form";
@@ -62,28 +65,18 @@ export function buildAvailabilityConsultationInput(
 
   const rawCaseId = form.caseId.trim();
   const rawAssignmentId = form.assignmentId.trim();
-  const rawStart = form.startsAtLocal;
-  const rawEnd = form.endsAtLocal;
 
-  let caseId: CaseId | undefined;
-  if (rawCaseId.length === 0) {
+  const caseIdValid = rawCaseId.length > 0 && isCaseId(rawCaseId);
+  if (!caseIdValid) {
     errors.caseId = AVAILABILITY_FORM_MESSAGES.caseRequired;
-  } else if (!isCaseId(rawCaseId)) {
-    errors.caseId = AVAILABILITY_FORM_MESSAGES.caseRequired;
-  } else {
-    caseId = rawCaseId;
   }
 
-  let assignmentId: AssignmentId | undefined;
-  if (rawAssignmentId.length === 0) {
+  const assignmentIdValid = rawAssignmentId.length > 0 && isAssignmentId(rawAssignmentId);
+  if (!assignmentIdValid) {
     errors.assignmentId = AVAILABILITY_FORM_MESSAGES.assignmentRequired;
-  } else if (!isAssignmentId(rawAssignmentId)) {
-    errors.assignmentId = AVAILABILITY_FORM_MESSAGES.assignmentRequired;
-  } else {
-    assignmentId = rawAssignmentId;
   }
 
-  const startParsed = datetimeLocalToIso(rawStart);
+  const startParsed = datetimeLocalToIso(form.startsAtLocal);
   if (!startParsed.ok) {
     errors.startsAt =
       startParsed.reason === "empty"
@@ -91,7 +84,7 @@ export function buildAvailabilityConsultationInput(
         : AVAILABILITY_FORM_MESSAGES.startInvalid;
   }
 
-  const endParsed = datetimeLocalToIso(rawEnd);
+  const endParsed = datetimeLocalToIso(form.endsAtLocal);
   if (!endParsed.ok) {
     errors.endsAt =
       endParsed.reason === "empty"
@@ -110,18 +103,18 @@ export function buildAvailabilityConsultationInput(
     return Object.freeze({ ok: false, errors: Object.freeze(errors) });
   }
 
-  // `caseId` não faz parte do contrato do motor — foi validado apenas
-  // para viabilizar a descoberta do vínculo.
-  void caseId;
-
-  // Neste ponto todos os campos foram validados com sucesso.
-  const startsAt = startParsed.ok ? startParsed.value : (undefined as never);
-  const endsAt = endParsed.ok ? endParsed.value : (undefined as never);
+  // Estreitamento explícito: caso qualquer garantia acima não seja
+  // reconhecida pelo compilador, retornamos o mesmo `false` (não
+  // fabricamos valores sintéticos). Essa guarda é comprovadamente
+  // inatingível quando `errors` é vazio, mas satisfaz o narrowing.
+  if (!startParsed.ok || !endParsed.ok || !isAssignmentId(rawAssignmentId)) {
+    return Object.freeze({ ok: false, errors: Object.freeze({}) });
+  }
 
   const input: CheckAppointmentAvailabilityInput = Object.freeze({
-    startsAt,
-    endsAt,
-    assignmentId: assignmentId as AssignmentId,
+    startsAt: startParsed.value,
+    endsAt: endParsed.value,
+    assignmentId: rawAssignmentId,
   });
   return Object.freeze({ ok: true, input });
 }
