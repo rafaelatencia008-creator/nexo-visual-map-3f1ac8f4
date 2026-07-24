@@ -553,7 +553,14 @@ function AgendaPage() {
 
   const handleCreated = React.useCallback(
     (created: AgendaCreatedItem) => {
-      setPendingCreated({ id: String(created.item.id), type: created.type });
+      // Reserva a próxima geração de recarga: somente uma consulta iniciada
+      // *depois* desta chamada poderá resolver a visibilidade do item.
+      const requiredGeneration = loadGenerationRef.current + 1;
+      setPendingCreated({
+        id: String(created.item.id),
+        type: created.type,
+        requiredGeneration,
+      });
       setReloadKey((k) => k + 1);
       // Retorna o foco ao botão que abriu o diálogo.
       window.setTimeout(() => {
@@ -563,23 +570,34 @@ function AgendaPage() {
     [],
   );
 
-  // Após a recarga concluir, avalia se o item criado aparece na visualização
-  // atual. Se não aparecer (filtros/período), sinaliza ao usuário.
+  const visibleDeadlineIds = React.useMemo(
+    () => new Set(visible.deadlines.map((d) => String(d.id))),
+    [visible.deadlines],
+  );
+  const visibleAppointmentIds = React.useMemo(
+    () => new Set(visible.appointments.map((a) => String(a.id))),
+    [visible.appointments],
+  );
+
+  // Após a recarga *da geração correta* concluir, avalia se o item criado
+  // aparece na visualização atual. Consulta em andamento, erro ou geração
+  // obsoleta mantêm o marcador pendente ("wait").
   React.useEffect(() => {
     if (!pendingCreated) return;
-    if (state.kind !== "ready") return;
-    const list =
-      pendingCreated.type === "deadline"
-        ? visible.deadlines
-        : visible.appointments;
-    const found = list.some((it) => String(it.id) === pendingCreated.id);
-    if (!found) {
+    const decision = resolveCreatedItemVisibility(
+      pendingCreated,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision === "wait") return;
+    if (decision === "hidden") {
       toast.info(
         "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
       );
     }
     setPendingCreated(null);
-  }, [pendingCreated, state, visible]);
+  }, [pendingCreated, state, visibleDeadlineIds, visibleAppointmentIds]);
 
   return (
     <div className="space-y-6">
