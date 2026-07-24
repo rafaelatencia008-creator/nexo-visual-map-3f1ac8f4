@@ -258,14 +258,22 @@ export function buildMutationConflict(
   err: TranslatedMutationError,
 ): MutationConflict {
   if (err.kind !== "conflict") return null;
-  const base = { operation } as const;
+  if (operation === "remove") {
+    return Object.freeze({
+      operation: "remove" as const,
+      ...(err.expectedVersion !== undefined
+        ? { expected: err.expectedVersion }
+        : {}),
+      ...(err.actualVersion !== undefined ? { actual: err.actualVersion } : {}),
+    });
+  }
   return Object.freeze({
-    ...base,
+    operation: "change_status" as const,
     ...(err.expectedVersion !== undefined
       ? { expected: err.expectedVersion }
       : {}),
     ...(err.actualVersion !== undefined ? { actual: err.actualVersion } : {}),
-  }) as MutationConflict;
+  });
 }
 
 // ---- Estado de permissão com erro técnico separado ----------------------
