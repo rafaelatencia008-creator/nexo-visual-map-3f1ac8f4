@@ -2333,9 +2333,7 @@ describe("LV-09.1B.5.3 — DetailLoadIncoming é união discriminada por 'type'"
 
   it("175. resposta 'appointment' bem-sucedida entrega item Appointment sem cast", async () => {
     const env = createMockDomainEnvironment();
-    const ctxs = ctxOfUser(env, SEED_USER_1_ID);
-    const ctx = ctxs.find((c) => c.organizationId === SEED_ORG_ALFA_ID);
-    if (!ctx) throw new Error("ctx alfa não encontrado");
+    const ctx = OWNER_ALFA;
     const list = ok(await env.services.appointments.list(ctx));
     const a = list.items[0];
     if (!a) throw new Error("compromisso esperado");
