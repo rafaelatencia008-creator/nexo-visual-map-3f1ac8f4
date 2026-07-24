@@ -947,17 +947,30 @@ function ViewPanel({
   loaded,
   caseLabel,
   perm,
+  referenceEpoch,
 }: {
   loaded: Loaded;
   caseLabel: string;
   perm: PermState;
+  referenceEpoch: number;
 }) {
   if (loaded.type === "deadline") {
     const d = loaded.item;
+    const presentation = getDeadlinePresentation(d, referenceEpoch);
     return (
       <dl className="grid gap-3 text-sm">
         <Row label="Item">
           <Badge variant="secondary">Prazo</Badge>
+        </Row>
+        <Row label="Estado atual">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${presentation.stateBadgeClass}`}
+            data-testid="deadline-state-badge"
+            data-state={presentation.state}
+          >
+            <DeadlineStateIcon state={presentation.state} />
+            {presentation.stateLabel}
+          </span>
         </Row>
         <Row label="Título">
           <span className="font-medium">{d.title}</span>
