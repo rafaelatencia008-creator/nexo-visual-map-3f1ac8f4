@@ -390,19 +390,94 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
   });
 });
 
-// ---- Rota /novo · caseId --------------------------------------------------
+// ---- Rota /novo · helper resolveAgendaNovoCaseId --------------------------
 
-describe("LV-09.1B.6.3A.1 · search caseId em /app/agenda/novo", () => {
-  it("14. search param caseId válido é aceito", () => {
-    const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
-    expect(src).toContain("isCaseId(search.caseId)");
-    expect(src).toContain("initialCaseId");
+import { resolveAgendaNovoCaseId } from "@/features/agenda/route-params";
+import { buildDomainId, isCaseId as _isCaseId } from "@/domain/core/ids";
+
+describe("LV-09.1B.6.3A.2 · resolveAgendaNovoCaseId (helper puro)", () => {
+  const validCaseId = buildDomainId("case", "alfa_1");
+
+  it("14a. um CaseId oficial válido é retornado", () => {
+    const r = resolveAgendaNovoCaseId(String(validCaseId));
+    expect(r).toBe(validCaseId);
+    expect(_isCaseId(r)).toBe(true);
   });
 
-  it("15. search param caseId inválido é ignorado (sem cast bruto)", () => {
+  it("14b. string vazia retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("")).toBeUndefined();
+  });
+
+  it("14c. string com prefixo incorreto retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("person_alfa_1")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("appt_alfa_1")).toBeUndefined();
+  });
+
+  it("14d. string malformada retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("case_")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("case_ !!")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("not-an-id")).toBeUndefined();
+  });
+
+  it("14e. null retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(null)).toBeUndefined();
+  });
+
+  it("14f. undefined retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(undefined)).toBeUndefined();
+  });
+
+  it("14g. número retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(0)).toBeUndefined();
+    expect(resolveAgendaNovoCaseId(42)).toBeUndefined();
+    expect(resolveAgendaNovoCaseId(Number.NaN)).toBeUndefined();
+  });
+
+  it("14h. objeto retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId({})).toBeUndefined();
+    expect(resolveAgendaNovoCaseId({ caseId: String(validCaseId) })).toBeUndefined();
+  });
+
+  it("14i. array retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId([])).toBeUndefined();
+    expect(resolveAgendaNovoCaseId([String(validCaseId)])).toBeUndefined();
+  });
+
+  it("14j. chamadas repetidas são determinísticas", () => {
+    const a = resolveAgendaNovoCaseId(String(validCaseId));
+    const b = resolveAgendaNovoCaseId(String(validCaseId));
+    expect(a).toBe(b);
+    expect(resolveAgendaNovoCaseId("nope")).toBe(resolveAgendaNovoCaseId("nope"));
+  });
+
+  it("14k. a função não lança para nenhuma entrada", () => {
+    const inputs: unknown[] = [
+      null,
+      undefined,
+      "",
+      "case_ok",
+      123,
+      {},
+      [],
+      Symbol("x"),
+      () => 0,
+      BigInt(1),
+    ];
+    for (const v of inputs) {
+      expect(() => resolveAgendaNovoCaseId(v)).not.toThrow();
+    }
+  });
+});
+
+describe("LV-09.1B.6.3A.2 · integração com validateSearch em /app/agenda/novo", () => {
+  it("15. app.agenda.novo.tsx usa resolveAgendaNovoCaseId dentro de validateSearch", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
-    // Não pode existir cast direto `as CaseId`.
+    expect(src).toContain("resolveAgendaNovoCaseId");
+    expect(src).toContain("validateSearch");
+    // O helper é referenciado dentro de validateSearch, e nenhum cast bruto sobrevive.
+    expect(src).toMatch(/validateSearch[\s\S]*resolveAgendaNovoCaseId\(search\.caseId\)/);
     expect(src).not.toMatch(/as\s+CaseId/);
+    expect(src).not.toMatch(/as\s+unknown\s+as\s+CaseId/);
   });
 });
 
@@ -492,25 +567,47 @@ describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7 não iniciada)", () => {
 
 // ---- DEC-AGE-001 reflete o estado real -----------------------------------
 
-describe("LV-09.1B.6.3A.1 · DEC-AGE-001", () => {
+describe("LV-09.1B.6.3A.2 · DEC-AGE-001 (coerência final)", () => {
   const dec = readFileSync("docs/decisions/DEC-AGE-001-rotas-canonicas.md", "utf8");
+
   it("30. DEC menciona a condição transitória (diálogos montados diretamente)", () => {
     expect(dec).toMatch(/transit[óo]ri/i);
     expect(dec).toContain("AgendaCreateDialog");
     expect(dec).toContain("AgendaItemDetailDialog");
   });
+
   it("31. DEC menciona a parcela B como pendente", () => {
     expect(dec).toContain("LV-09.1B.6.3B");
     expect(dec).toMatch(/pendente|n[ãa]o iniciad/i);
   });
-  it("32. DEC não afirma que os componentes Content já existem", () => {
-    // Devem aparecer apenas como pendência (linhas com 'não'/'ainda não').
-    expect(dec).toMatch(
-      /ainda\s+n[ãa]o[^.]*AgendaCreateContent|AgendaCreateContent[^.]*ainda\s+n[ãa]o|n[ãa]o[^.]*criad[oa]s[^.]*AgendaCreateContent/i,
-    );
-  });
-  it("33. DEC informa que a LV-09.1B.7 não está iniciada", () => {
+
+  it("32. DEC informa que a LV-09.1B.7 não está iniciada", () => {
     expect(dec).toContain("LV-09.1B.7");
     expect(dec).toMatch(/n[ãa]o\s+(est[áa]|foi)\s+iniciad/i);
+  });
+
+  it("33. DEC NÃO afirma que os componentes Content já existem", () => {
+    expect(dec).not.toMatch(/foram\s+extra[íi]d[ao]s\s+em\s+dois\s+componentes/i);
+    expect(dec).not.toMatch(/j[áa]\s+(foi|foram|existe|existem)[^.]*AgendaCreateContent/i);
+    expect(dec).not.toMatch(/j[áa]\s+(foi|foram|existe|existem)[^.]*AgendaItemDetailContent/i);
+  });
+
+  it("34. DEC NÃO afirma que os diálogos já são wrappers finos", () => {
+    expect(dec).not.toMatch(/permanecem\s+como\s+wrappers\s+finos/i);
+    expect(dec).not.toMatch(/cada\s+wrapper\s+apenas\s+monta\s+o\s+Content/i);
+  });
+
+  it("35. DEC NÃO afirma que as regras já vivem exclusivamente no Content", () => {
+    expect(dec).not.toMatch(/regras\s+vivem\s+exclusivamente\s+no\s+Content/i);
+    expect(dec).not.toMatch(/essas\s+regras\s+vivem\s+exclusivamente\s+no\s+Content/i);
+  });
+
+  it("36. DEC afirma positivamente que a extração ocorrerá na parcela B", () => {
+    expect(dec).toMatch(/ser[ãa]o\s+extra[íi]d[ao]s/i);
+    expect(dec).toMatch(/ser[ãa]o\s+transformados\s+em\s+wrappers\s+finos/i);
+  });
+
+  it("37. DEC afirma que a LV-09.1B.6.3 permanece aberta", () => {
+    expect(dec).toMatch(/LV-09\.1B\.6\.3[^B]?[\s\S]{0,80}?(aberta|permanece\s+aberta)/i);
   });
 });

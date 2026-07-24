@@ -2,8 +2,8 @@
  * LV-09.1B.6.3A — Rota canônica de criação de prazo/compromisso.
  *
  * Nesta parcela A, a rota monta temporariamente o `AgendaCreateDialog`
- * existente. A parcela B (LV-09.1B.6.3B) extrai o corpo para
- * `AgendaCreateContent` e a página passa a renderizá-lo como conteúdo
+ * existente. A parcela B (LV-09.1B.6.3B) extrairá o corpo para
+ * `AgendaCreateContent` e a página passará a renderizá-lo como conteúdo
  * pleno (sem shell de diálogo). O comportamento oficial não muda.
  */
 
@@ -12,9 +12,12 @@ import * as React from "react";
 
 import { useAgendaRouteState } from "@/features/agenda/route-state";
 import { AgendaCreateDialog, type AgendaCreatedItem } from "@/features/agenda/AgendaCreateDialog";
-import { isCaseId } from "@/domain/core/ids";
+import { resolveAgendaNovoCaseId } from "@/features/agenda/route-params";
+import type { CaseId } from "@/domain/core/ids";
 
-type AgendaNovoSearch = { readonly caseId?: string };
+type AgendaNovoSearch = {
+  readonly caseId?: CaseId;
+};
 
 export const Route = createFileRoute("/app/agenda/novo")({
   head: () => ({
@@ -27,8 +30,8 @@ export const Route = createFileRoute("/app/agenda/novo")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): AgendaNovoSearch => ({
-    caseId: typeof s.caseId === "string" && s.caseId.length > 0 ? s.caseId : undefined,
+  validateSearch: (search: Record<string, unknown>): AgendaNovoSearch => ({
+    caseId: resolveAgendaNovoCaseId(search.caseId),
   }),
   component: AgendaNovoPage,
 });
@@ -45,7 +48,7 @@ function AgendaNovoPage() {
   } = useAgendaRouteState();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const initialCaseId = search.caseId && isCaseId(search.caseId) ? search.caseId : undefined;
+  const initialCaseId = search.caseId;
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {

@@ -76,18 +76,20 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
    - `src/routes/app.agenda.novo.tsx` — criação de prazo ou compromisso.
    - `src/routes/app.agenda.$appointmentId.tsx` — detalhe de compromisso.
 
-2. **Reuso de conteúdo por extração, não por duplicação.** As implementações
-   funcionais dos fluxos de criação e de detalhe/edição foram extraídas em
-   dois componentes reutilizáveis:
+2. **Reuso de conteúdo por extração planejada, não por duplicação.** Na
+   parcela B, as implementações funcionais dos fluxos de criação e de
+   detalhe/edição serão extraídas em dois componentes reutilizáveis:
    - `AgendaCreateContent` — corpo completo do fluxo de criação, sem
      shell de diálogo.
    - `AgendaItemDetailContent` — corpo completo do fluxo de detalhe/edição,
      sem shell de diálogo.
 
-   Os componentes históricos `AgendaCreateDialog` e `AgendaItemDetailDialog`
-   permanecem como wrappers finos, para manter compatibilidade com o
-   restante do app e com a suíte de testes existente. Cada wrapper apenas
-   monta o Content correspondente dentro de um `<Dialog>`.
+   Após essa extração, `AgendaCreateDialog` e `AgendaItemDetailDialog`
+   serão transformados em wrappers finos que apenas montam o `Content`
+   correspondente dentro de um `<Dialog>`, preservando compatibilidade
+   com o restante do app e com a suíte de testes existente. Nesta parcela
+   A, esses componentes `Content` ainda não foram criados e os diálogos
+   ainda não são wrappers finos.
 
 3. **Prazo permanece em diálogo.** O detalhe/edição de prazo continua sendo
    apresentado como diálogo sobre o calendário — a documentação v3.2 não
@@ -152,7 +154,9 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 
 - Este DEC não altera o comportamento de validação, permissões, submit,
   transição de status, exclusão, tratamento de conflito ou single-flight
-  lock: essas regras vivem exclusivamente no Content e são compartilhadas
-  entre wrapper e página.
+  lock. Nesta parcela A, essas regras continuam preservadas dentro dos
+  diálogos existentes (`AgendaCreateDialog` e `AgendaItemDetailDialog`).
+  A parcela B realizará a extração para `AgendaCreateContent` e
+  `AgendaItemDetailContent` sem alterar nenhuma dessas regras.
 - Este DEC não introduz nenhuma nova regra de permissão nem novo
   contrato de serviço.
