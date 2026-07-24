@@ -15,7 +15,7 @@ import {
   AgendaCreateDialog,
   type AgendaCreatedItem,
 } from "@/features/agenda/AgendaCreateDialog";
-import type { CaseId } from "@/domain/core/ids";
+import { isCaseId } from "@/domain/core/ids";
 
 type AgendaNovoSearch = { readonly caseId?: string };
 
