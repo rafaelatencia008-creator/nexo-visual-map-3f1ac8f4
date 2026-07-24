@@ -129,7 +129,7 @@ import type { AppointmentId, DeadlineId } from "@/domain/core/ids";
 // Consome exclusivamente os contratos oficiais (LV-09.1A).
 // ============================================================================
 
-export const Route = createFileRoute("/app/agenda")({
+export const Route = createFileRoute("/app/agenda/")({
   head: () => ({
     meta: [
       { title: "Agenda — Nexo Pericial 360" },

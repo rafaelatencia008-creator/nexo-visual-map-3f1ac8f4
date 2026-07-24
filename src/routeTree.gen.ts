@@ -54,6 +54,7 @@ import { Route as AppProcessosIndexRouteImport } from './routes/app.processos.in
 import { Route as AppPeritosIndexRouteImport } from './routes/app.peritos.index'
 import { Route as AppPericiasIndexRouteImport } from './routes/app.pericias.index'
 import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
+import { Route as AppAgendaIndexRouteImport } from './routes/app.agenda.index'
 import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppPeritosNovoRouteImport } from './routes/app.peritos.novo'
 import { Route as AppPericiasNovaRouteImport } from './routes/app.pericias.nova'
@@ -293,6 +294,11 @@ const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
   path: '/clientes/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAgendaRoute,
+} as any)
 const AppProcessosNovoRoute = AppProcessosNovoRouteImport.update({
   id: '/processos/novo',
   path: '/processos/novo',
@@ -374,7 +380,7 @@ export interface FileRoutesByFullPath {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
-  '/app/agenda': typeof AppAgendaRoute
+  '/app/agenda': typeof AppAgendaRouteWithChildren
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/documentos': typeof AppDocumentosRoute
@@ -400,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/clientes/': typeof AppClientesIndexRoute
   '/app/pericias/': typeof AppPericiasIndexRoute
   '/app/peritos/': typeof AppPeritosIndexRoute
@@ -431,7 +438,6 @@ export interface FileRoutesByTo {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
-  '/app/agenda': typeof AppAgendaRoute
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/documentos': typeof AppDocumentosRoute
@@ -457,6 +463,7 @@ export interface FileRoutesByTo {
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/agenda': typeof AppAgendaIndexRoute
   '/app/clientes': typeof AppClientesIndexRoute
   '/app/pericias': typeof AppPericiasIndexRoute
   '/app/peritos': typeof AppPeritosIndexRoute
@@ -491,7 +498,7 @@ export interface FileRoutesById {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/verificar-email': typeof VerificarEmailRoute
-  '/app/agenda': typeof AppAgendaRoute
+  '/app/agenda': typeof AppAgendaRouteWithChildren
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/documentos': typeof AppDocumentosRoute
@@ -517,6 +524,7 @@ export interface FileRoutesById {
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
+  '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/clientes/': typeof AppClientesIndexRoute
   '/app/pericias/': typeof AppPericiasIndexRoute
   '/app/peritos/': typeof AppPeritosIndexRoute
@@ -578,6 +586,7 @@ export interface FileRouteTypes {
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
+    | '/app/agenda/'
     | '/app/clientes/'
     | '/app/pericias/'
     | '/app/peritos/'
@@ -609,7 +618,6 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/sobre'
     | '/verificar-email'
-    | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
     | '/app/documentos'
@@ -635,6 +643,7 @@ export interface FileRouteTypes {
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
+    | '/app/agenda'
     | '/app/clientes'
     | '/app/pericias'
     | '/app/peritos'
@@ -694,6 +703,7 @@ export interface FileRouteTypes {
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
+    | '/app/agenda/'
     | '/app/clientes/'
     | '/app/pericias/'
     | '/app/peritos/'
@@ -1047,6 +1057,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/agenda/': {
+      id: '/app/agenda/'
+      path: '/'
+      fullPath: '/app/agenda/'
+      preLoaderRoute: typeof AppAgendaIndexRouteImport
+      parentRoute: typeof AppAgendaRoute
+    }
     '/app/processos/novo': {
       id: '/app/processos/novo'
       path: '/processos/novo'
@@ -1134,8 +1151,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppAgendaRouteChildren {
+  AppAgendaIndexRoute: typeof AppAgendaIndexRoute
+}
+
+const AppAgendaRouteChildren: AppAgendaRouteChildren = {
+  AppAgendaIndexRoute: AppAgendaIndexRoute,
+}
+
+const AppAgendaRouteWithChildren = AppAgendaRoute._addFileChildren(
+  AppAgendaRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppAgendaRoute: typeof AppAgendaRoute
+  AppAgendaRoute: typeof AppAgendaRouteWithChildren
   AppAjudaRoute: typeof AppAjudaRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppDocumentosRoute: typeof AppDocumentosRoute
@@ -1170,7 +1199,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAgendaRoute: AppAgendaRoute,
+  AppAgendaRoute: AppAgendaRouteWithChildren,
   AppAjudaRoute: AppAjudaRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppDocumentosRoute: AppDocumentosRoute,
@@ -1252,13 +1281,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
