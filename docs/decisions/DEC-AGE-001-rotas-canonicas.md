@@ -342,5 +342,31 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
   reais**, encerrando **LV-09.1B.6.3B.2** e permitindo marcar
   **LV-09.1B.6.3** como concluída se nenhuma outra parcela pendente
   existir dentro dela.
-- Disponibilidade permanece **não iniciada**. `LV-09.1B.7` não foi
-  iniciada nem concluída.
+- Disponibilidade: **LV-09.1B.7.1** (motor consultivo puro) e
+  **LV-09.1B.7.1.1** (helpers oficiais / paginação) foram concluídas.
+
+## Adendo LV-09.1B.7.2 — Página consultiva de disponibilidade
+
+- **LV-09.1B.6.3** concluída.
+- **LV-09.1B.7.1** concluída (motor consultivo puro).
+- **LV-09.1B.7.1.1** concluída (helpers e paginação vinculados ao domínio).
+- **LV-09.1B.7.2** concluída nesta entrega: criada a rota canônica
+  `/app/disponibilidade` (`src/routes/app.disponibilidade.tsx`) como
+  página consultiva `SCR-AGE-004`. A rota é fina — obtém
+  `environment`/`context` via `useMockDomain` e monta
+  `AgendaAvailabilityContent`. O componente reutiliza o motor aprovado
+  `checkAppointmentAvailability` sem alterá-lo.
+- Composição canônica das rotas da Agenda após esta etapa:
+  - `/app/agenda` — calendário e diálogos rápidos.
+  - `/app/agenda/novo` — página real de criação.
+  - `/app/agenda/$appointmentId` — página real do compromisso.
+  - `/app/disponibilidade` — página consultiva de disponibilidade.
+- **A página é consultiva.** Não cria, altera, cancela, conclui nem
+  remove compromissos, e não bloqueia os formulários de criação ou
+  edição. O motor é consultivo e não existe persistência de
+  disponibilidade — nenhuma reserva, `AvailabilityService`, `working
+  hours`, `time slots` ou sincronização externa foi criada.
+- Acesso: a Agenda (`/app/agenda`) ganhou um botão secundário
+  "Verificar disponibilidade" que navega para `/app/disponibilidade`,
+  preservando o botão "Novo item" e todo o restante do cabeçalho.
+
