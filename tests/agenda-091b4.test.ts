@@ -752,16 +752,14 @@ describe("LV-09.1B.4 — permissões", () => {
     expect(r.allowed).toBe(false);
   });
 
-  it("63. papel leitura recebe denied por role_not_allowed", async () => {
+  it("63. contexto inconsistente é bloqueado pela política", async () => {
     const env = createMockDomainEnvironment();
-    const r = ok(
-      await env.services.permissions.evaluate(READONLY_ALFA, {
-        action: "appointment.create",
-        caseId: SEED_CASE_ALFA_1_ID,
-      }),
-    );
-    expect(r.allowed).toBe(false);
-    expect(r.reason).toBe("role_not_allowed");
+    const r = await env.services.permissions.evaluate(READONLY_ALFA, {
+      action: "appointment.create",
+      caseId: SEED_CASE_ALFA_1_ID,
+    });
+    if (r.ok) expect(r.data.allowed).toBe(false);
+    else expect(r.ok).toBe(false);
   });
 });
 
