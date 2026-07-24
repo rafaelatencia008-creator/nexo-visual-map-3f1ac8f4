@@ -47,6 +47,7 @@ import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppEquipeRouteImport } from './routes/app.equipe'
 import { Route as AppEntrevistasRouteImport } from './routes/app.entrevistas'
 import { Route as AppDocumentosRouteImport } from './routes/app.documentos'
+import { Route as AppDisponibilidadeRouteImport } from './routes/app.disponibilidade'
 import { Route as AppConfiguracoesRouteImport } from './routes/app.configuracoes'
 import { Route as AppAjudaRouteImport } from './routes/app.ajuda'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
@@ -261,6 +262,11 @@ const AppDocumentosRoute = AppDocumentosRouteImport.update({
   path: '/documentos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDisponibilidadeRoute = AppDisponibilidadeRouteImport.update({
+  id: '/disponibilidade',
+  path: '/disponibilidade',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -395,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/app/agenda': typeof AppAgendaRouteWithChildren
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/disponibilidade': typeof AppDisponibilidadeRoute
   '/app/documentos': typeof AppDocumentosRoute
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/verificar-email': typeof VerificarEmailRoute
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/disponibilidade': typeof AppDisponibilidadeRoute
   '/app/documentos': typeof AppDocumentosRoute
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/app/agenda': typeof AppAgendaRouteWithChildren
   '/app/ajuda': typeof AppAjudaRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/disponibilidade': typeof AppDisponibilidadeRoute
   '/app/documentos': typeof AppDocumentosRoute
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
@@ -581,6 +590,7 @@ export interface FileRouteTypes {
     | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
+    | '/app/disponibilidade'
     | '/app/documentos'
     | '/app/entrevistas'
     | '/app/equipe'
@@ -640,6 +650,7 @@ export interface FileRouteTypes {
     | '/verificar-email'
     | '/app/ajuda'
     | '/app/configuracoes'
+    | '/app/disponibilidade'
     | '/app/documentos'
     | '/app/entrevistas'
     | '/app/equipe'
@@ -702,6 +713,7 @@ export interface FileRouteTypes {
     | '/app/agenda'
     | '/app/ajuda'
     | '/app/configuracoes'
+    | '/app/disponibilidade'
     | '/app/documentos'
     | '/app/entrevistas'
     | '/app/equipe'
@@ -1032,6 +1044,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDocumentosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/disponibilidade': {
+      id: '/app/disponibilidade'
+      path: '/disponibilidade'
+      fullPath: '/app/disponibilidade'
+      preLoaderRoute: typeof AppDisponibilidadeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/configuracoes': {
       id: '/app/configuracoes'
       path: '/configuracoes'
@@ -1209,6 +1228,7 @@ interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRouteWithChildren
   AppAjudaRoute: typeof AppAjudaRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppDisponibilidadeRoute: typeof AppDisponibilidadeRoute
   AppDocumentosRoute: typeof AppDocumentosRoute
   AppEntrevistasRoute: typeof AppEntrevistasRoute
   AppEquipeRoute: typeof AppEquipeRoute
@@ -1244,6 +1264,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRouteWithChildren,
   AppAjudaRoute: AppAjudaRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppDisponibilidadeRoute: AppDisponibilidadeRoute,
   AppDocumentosRoute: AppDocumentosRoute,
   AppEntrevistasRoute: AppEntrevistasRoute,
   AppEquipeRoute: AppEquipeRoute,
