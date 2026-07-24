@@ -1,12 +1,13 @@
 /**
  * LV-09.1B.6.3B.1 — Rota canônica de criação de prazo/compromisso.
- *
- * A página agora renderiza `AgendaCreateContent` diretamente, sem shell de
- * diálogo. A navegação pós-criação e o retorno para a Agenda são
- * controlados pela rota; por isso ela passa `closeAfterCreate={false}`.
+ * LV-09.1B.6.3B.1.1 — Saída segura: o botão superior "Voltar para a agenda"
+ * delega o pedido de fechamento ao Content (via handle imperativo), que
+ * decide entre voltar direto ou abrir "Descartar rascunho?". Só usamos o
+ * fallback direto para /app/agenda se o Content ainda não estiver montado
+ * (loading/erro), sem duplicar detecção de rascunho na rota.
  */
 
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import * as React from "react";
 
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useAgendaRouteState } from "@/features/agenda/route-state";
 import {
   AgendaCreateContent,
+  type AgendaCreateContentHandle,
   type AgendaCreatedItem,
 } from "@/features/agenda/AgendaCreateContent";
 import { resolveAgendaNovoCaseId } from "@/features/agenda/route-params";
@@ -54,22 +56,30 @@ function AgendaNovoPage() {
   const search = Route.useSearch();
   const initialCaseId = search.caseId;
 
+  const contentRef = React.useRef<AgendaCreateContentHandle | null>(null);
+
   const handleRequestClose = React.useCallback(() => {
+    navigate({ to: "/app/agenda" });
+  }, [navigate]);
+
+  const handleBackRequest = React.useCallback(() => {
+    const handle = contentRef.current;
+    if (handle) {
+      handle.requestClose();
+      return;
+    }
     navigate({ to: "/app/agenda" });
   }, [navigate]);
 
   const handleCreated = React.useCallback(
     (created: AgendaCreatedItem) => {
       if (created.type === "appointment") {
-        // Compromisso criado: navega diretamente para o detalhe canônico.
         navigate({
           to: "/app/agenda/$appointmentId",
           params: { appointmentId: String(created.item.id) },
         });
         return;
       }
-      // Prazo criado: registra o marcador no estado compartilhado ANTES de
-      // navegar, incrementando a geração exigida.
       const requiredGeneration = loadGenerationRef.current + 1;
       setPendingCreated({
         id: String(created.item.id),
@@ -85,11 +95,16 @@ function AgendaNovoPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/app/agenda" aria-label="Voltar para a agenda">
-            <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
-            Voltar para a agenda
-          </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={handleBackRequest}
+          aria-label="Voltar para a agenda"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
+          Voltar para a agenda
         </Button>
       </div>
       <header className="space-y-1">
@@ -112,6 +127,7 @@ function AgendaNovoPage() {
       ) : (
         <div className="rounded-lg border border-border/70 bg-card p-4 sm:p-6">
           <AgendaCreateContent
+            ref={contentRef}
             active
             surface="page"
             closeAfterCreate={false}

@@ -36,12 +36,25 @@ iniciada.
   (`AgendaCreateDialog`, `AgendaCreateDialogProps`, `AgendaCreatedItem`)
   permanece compatível — os testes existentes continuam válidos.
 - `/app/agenda/novo` deixou de montar diálogo e passou a ser uma página
-  real: cabeçalho com `h1`, link "Voltar para a agenda" e renderização
+  real: cabeçalho com `h1`, botão "Voltar para a agenda" e renderização
   direta de `AgendaCreateContent` com `active`, `surface="page"` e
   `closeAfterCreate={false}`. A rota controla toda a navegação:
   compromisso → `/app/agenda/$appointmentId`; prazo → `pendingCreated`
   no provider + volta para `/app/agenda`; cancelamento/descarte →
   `/app/agenda`.
+
+### Entregue na parcela B (LV-09.1B.6.3B.1.1 — saída segura da página de criação)
+
+- A rota `/app/agenda/novo` deixou de expor um `<Link to="/app/agenda">`
+  no cabeçalho. O retorno é agora um `<Button>` que chama
+  `handleBackRequest`, que delega ao Content através de
+  `contentRef.current.requestClose()` (handle imperativo
+  `AgendaCreateContentHandle`). A detecção de rascunho e a confirmação
+  "Descartar rascunho?" continuam **exclusivamente** no Content — a rota
+  não duplica esse estado. O fallback direto `navigate({ to: "/app/agenda" })`
+  só é usado quando o Content ainda não está montado (estados `loading`
+  ou `error` do provider). Durante submit o Content permanece na página
+  (o handle é responsável por ignorar o pedido).
 
 ### Pendente da parcela B (LV-09.1B.6.3B.2)
 

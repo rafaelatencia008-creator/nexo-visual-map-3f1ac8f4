@@ -167,9 +167,32 @@ describe("LV-09.1B.6.3B.1 · Página /app/agenda/novo", () => {
     expect(matches.length).toBe(1);
   });
 
-  it("25. página oferece retorno acessível para /app/agenda", () => {
+  it("25. página oferece retorno acessível para a Agenda via botão delegado", () => {
     expect(src).toMatch(/Voltar para a agenda/);
-    expect(src).toMatch(/to="\/app\/agenda"/);
+    // LV-09.1B.6.3B.1.1 — proíbe voltar via <Link to="/app/agenda"> na rota.
+    expect(src).not.toMatch(/<Link\s+[^>]*to="\/app\/agenda"/);
+    expect(src).toMatch(/handleBackRequest/);
+    expect(src).toMatch(/onClick=\{handleBackRequest\}/);
+  });
+
+  it("25a. handleBackRequest delega ao Content via contentRef.requestClose()", () => {
+    expect(src).toMatch(/AgendaCreateContentHandle/);
+    expect(src).toMatch(/contentRef\s*=\s*React\.useRef<AgendaCreateContentHandle/);
+    expect(src).toMatch(/ref=\{contentRef\}/);
+    expect(src).toMatch(/contentRef\.current/);
+    expect(src).toMatch(/handle\.requestClose\(\)/);
+  });
+
+  it("25b. handleBackRequest cai para navigate somente quando o Content não está montado", () => {
+    // O fallback navigate({ to: "/app/agenda" }) só é alcançado quando handle é null.
+    expect(src).toMatch(/if\s*\(\s*handle\s*\)\s*\{[\s\S]*handle\.requestClose\(\)[\s\S]*return;\s*\}/);
+    expect(src).toMatch(/navigate\(\{\s*to:\s*["']\/app\/agenda["']\s*\}\)/);
+  });
+
+  it("25c. rota NÃO duplica a detecção de rascunho do Content", () => {
+    expect(src).not.toMatch(/hasDeadlineDraft/);
+    expect(src).not.toMatch(/hasAppointmentDraft/);
+    expect(src).not.toMatch(/confirmDiscard/);
   });
 
   it("26. página usa active (montagem sempre ativa)", () => {
