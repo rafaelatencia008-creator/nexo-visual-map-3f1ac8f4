@@ -427,14 +427,16 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
       }
       toast.success("Prazo criado com sucesso.");
       onCreated({ type: "deadline", item: res.data });
-      onOpenChange(false);
+      if (shouldCloseAfterCreate) {
+        onOpenChange(false);
+      }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false);
       }
       submittingRef.current = false;
     }
-  }, [deadlineForm, environment, context, onCreated, onOpenChange]);
+  }, [deadlineForm, environment, context, onCreated, onOpenChange, shouldCloseAfterCreate]);
 
   const submitAppointment = React.useCallback(async () => {
     if (submittingRef.current) return;
