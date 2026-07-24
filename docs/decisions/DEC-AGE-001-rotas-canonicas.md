@@ -2,8 +2,10 @@
 
 **Status:** aceito (parcela A entregue; parcela B pendente)
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A e
-saneada na LV-09.1B.6.3A.1; parcela B (LV-09.1B.6.3B) ainda não iniciada.
+**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A,
+saneada na LV-09.1B.6.3A.1, coerência final na LV-09.1B.6.3A.2 e correção
+da navegação pós-criação na LV-09.1B.6.3A.3; parcela B (LV-09.1B.6.3B)
+ainda não iniciada.
 
 ## Estado atual desta decisão
 
