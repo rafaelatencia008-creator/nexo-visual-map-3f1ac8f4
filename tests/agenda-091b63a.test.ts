@@ -571,8 +571,7 @@ describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7.1 iniciada — motor consultivo)
 describe("LV-09.1B.6.3A.2 · DEC-AGE-001 (coerência final)", () => {
   const dec = readFileSync("docs/decisions/DEC-AGE-001-rotas-canonicas.md", "utf8");
 
-  it("30. DEC menciona a condição transitória (diálogos montados diretamente)", () => {
-    expect(dec).toMatch(/transit[óo]ri/i);
+  it("30. DEC continua nomeando os diálogos históricos (AgendaCreateDialog / AgendaItemDetailDialog)", () => {
     expect(dec).toContain("AgendaCreateDialog");
     expect(dec).toContain("AgendaItemDetailDialog");
   });
