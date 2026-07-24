@@ -691,8 +691,8 @@ export const AgendaItemDetailContent = React.forwardRef<
   // ---- Handlers -----------------------------------------------------------
 
   const enterEdit = React.useCallback(() => {
-    if (!getMutationLockDecisions().canEnterEdit) return;
-    if (detail.kind !== "ready" || !permissionAllowsAction(perm)) return;
+    if (!canEditItem) return;
+    if (detail.kind !== "ready") return;
     setErrors({});
     setTouched({});
     setAttemptedSubmit(false);
@@ -708,7 +708,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       setExpectedVersion(detail.loaded.item.metadata.version);
     }
     setMode("edit");
-  }, [detail, perm, mutating]);
+  }, [detail, canEditItem]);
 
   const hasLocalChanges = React.useMemo((): boolean => {
     if (mode !== "edit" || detail.kind !== "ready") return false;
@@ -722,6 +722,7 @@ export const AgendaItemDetailContent = React.forwardRef<
   }, [mode, detail, dForm, aForm]);
 
   const cancelEdit = React.useCallback(() => {
+    if (!isInteractiveReady) return;
     const dec = resolveDiscardIntent("cancel_edit", {
       mode,
       hasChanges: hasLocalChanges,
@@ -736,10 +737,10 @@ export const AgendaItemDetailContent = React.forwardRef<
     setErrors({});
     setGeneralError(null);
     setConflictState(null);
-  }, [mode, hasLocalChanges]);
+  }, [mode, hasLocalChanges, isInteractiveReady]);
 
   const requestClose = React.useCallback(() => {
-    if (!getMutationLockDecisions().canClose) return;
+    if (!canCloseDetail) return;
     const dec = resolveDiscardIntent("close", {
       mode,
       hasChanges: hasLocalChanges,
@@ -751,10 +752,22 @@ export const AgendaItemDetailContent = React.forwardRef<
       return;
     }
     onClose();
-  }, [mode, hasLocalChanges, onClose, mutating]);
+  }, [mode, hasLocalChanges, onClose, canCloseDetail]);
+
+  // LV-…2.1.2 — retry seguro do carregamento de detalhe.
+  const retryDetail = React.useCallback(() => {
+    if (!hasActiveSelection) return;
+    setReload((r) => r + 1);
+  }, [hasActiveSelection]);
 
   const confirmDiscardChoice = React.useCallback(() => {
     const action = confirmDiscard;
+    // Fechamento durante loading/erro segue disponível — depende de canClose.
+    if (action === "close") {
+      if (!canCloseDetail) return;
+    } else {
+      if (!isInteractiveReady) return;
+    }
     setConfirmDiscard(null);
     if (action === "close") {
       onClose();
@@ -772,9 +785,10 @@ export const AgendaItemDetailContent = React.forwardRef<
       setGeneralError(null);
       setReload((r) => r + 1);
     }
-  }, [confirmDiscard, onClose]);
+  }, [confirmDiscard, onClose, canCloseDetail, isInteractiveReady]);
 
   const reloadAfterConflict = React.useCallback(() => {
+    if (!isInteractiveReady) return;
     const dec = resolveDiscardIntent("reload_after_conflict", {
       mode,
       hasChanges: hasLocalChanges,
@@ -790,18 +804,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     );
     setMode("view");
     setReload((r) => r + 1);
-  }, [mode, hasLocalChanges]);
+  }, [mode, hasLocalChanges, isInteractiveReady]);
 
   React.useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
 
 
 
   const submit = React.useCallback(async () => {
+    if (!isInteractiveReady) return;
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(perm)) return;
-    if (!activeRef.current) return;
-    // LV-09.1B.6.3B.2.1.1 — captura chave da seleção para invalidar
+    // LV-…2.1.1 — captura chave da seleção para invalidar
     // aplicação de resultados caso a seleção mude durante o submit.
     const startSelectionKey = selectionKeyRef.current;
     const stillSameSelection = (): boolean =>
@@ -825,6 +839,9 @@ export const AgendaItemDetailContent = React.forwardRef<
       }
       if (!built.changed) return;
       submittingRef.current = true;
+      // LV-…2.1.2 — token monotônico: finalizadores antigos não podem
+      // desligar o `setSubmitting` de uma operação posterior.
+      const operationId = ++submitOperationIdRef.current;
       setSubmitting(true);
       try {
         const res = await environment.services.deadlines.update(
@@ -846,8 +863,13 @@ export const AgendaItemDetailContent = React.forwardRef<
         setMode("view");
         onUpdated({ type: "deadline", item: updated });
       } finally {
-        if (mountedRef.current) setSubmitting(false);
         submittingRef.current = false;
+        if (
+          mountedRef.current &&
+          submitOperationIdRef.current === operationId
+        ) {
+          setSubmitting(false);
+        }
       }
     } else if (detail.loaded.type === "appointment" && aForm) {
       const built = buildUpdateAppointmentInput(
@@ -861,6 +883,7 @@ export const AgendaItemDetailContent = React.forwardRef<
       }
       if (!built.changed) return;
       submittingRef.current = true;
+      const operationId = ++submitOperationIdRef.current;
       setSubmitting(true);
       try {
         const res = await environment.services.appointments.update(
@@ -882,8 +905,13 @@ export const AgendaItemDetailContent = React.forwardRef<
         setMode("view");
         onUpdated({ type: "appointment", item: updated });
       } finally {
-        if (mountedRef.current) setSubmitting(false);
         submittingRef.current = false;
+        if (
+          mountedRef.current &&
+          submitOperationIdRef.current === operationId
+        ) {
+          setSubmitting(false);
+        }
       }
     }
 
@@ -919,16 +947,17 @@ export const AgendaItemDetailContent = React.forwardRef<
     environment,
     context,
     onUpdated,
+    isInteractiveReady,
   ]);
 
   // ---- Mudança de status / exclusão (LV-09.1B.6) ------------------------
 
   const confirmStatusChange = React.useCallback(async () => {
+    if (!canConfirmStatusChange) return;
     if (!pendingStatus) return;
     if (detail.kind !== "ready") return;
-    if (!permissionAllowsAction(permChangeStatus)) return;
-    if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const operationId = ++mutationOperationIdRef.current;
     const startSelectionKey = selectionKeyRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
@@ -997,18 +1026,31 @@ export const AgendaItemDetailContent = React.forwardRef<
         onUpdated({ type: "appointment", item: updated });
       }
     } finally {
-      if (mountedRef.current) setMutating(false);
       mutationLock.release();
+      if (
+        mountedRef.current &&
+        mutationOperationIdRef.current === operationId
+      ) {
+        setMutating(false);
+      }
     }
-  }, [pendingStatus, detail, permChangeStatus, environment, context, onUpdated]);
+  }, [
+    pendingStatus,
+    detail,
+    mutationLock,
+    environment,
+    context,
+    onUpdated,
+    canConfirmStatusChange,
+  ]);
 
   const confirmRemoval = React.useCallback(async () => {
+    if (!canConfirmRemoval) return;
     if (!pendingRemoval) return;
     if (detail.kind !== "ready") return;
-    if (!permissionAllowsAction(permRemove)) return;
-    if (!active || !selected) return;
     if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const operationId = ++mutationOperationIdRef.current;
     const startSelectionKey = selectionKeyRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
@@ -1068,21 +1110,26 @@ export const AgendaItemDetailContent = React.forwardRef<
         });
       }
     } finally {
-      if (mountedRef.current) setMutating(false);
       mutationLock.release();
+      if (
+        mountedRef.current &&
+        mutationOperationIdRef.current === operationId
+      ) {
+        setMutating(false);
+      }
     }
   }, [
     pendingRemoval,
     detail,
-    permRemove,
-    selected,
+    mutationLock,
     environment,
     context,
     onDeleted,
+    canConfirmRemoval,
   ]);
 
   const reloadAfterMutationConflict = React.useCallback(() => {
-    if (!getMutationLockDecisions().canOpenConfirmation) return;
+    if (!canOpenItemAction) return;
     const eff = resolveMutationConflictAction("reload");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
@@ -1091,10 +1138,10 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (eff.clearError) setMutationError(null);
     if (eff.clearConflict) setMutationConflict(null);
     if (eff.reloadDetail) setReload((r) => r + 1);
-  }, [mutating]);
+  }, [canOpenItemAction]);
 
   const keepReviewingMutation = React.useCallback(() => {
-    if (!getMutationLockDecisions().canOpenConfirmation) return;
+    if (!canOpenItemAction) return;
     const eff = resolveMutationConflictAction("continue_reviewing");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
@@ -1102,42 +1149,38 @@ export const AgendaItemDetailContent = React.forwardRef<
     }
     if (eff.clearError) setMutationError(null);
     if (eff.clearConflict) setMutationConflict(null);
-    // eff.reloadDetail === false — não chama serviço.
-  }, [mutating]);
+  }, [canOpenItemAction]);
 
   const retryPermissions = React.useCallback(() => {
-    if (!getMutationLockDecisions().canRetryPermissions) return;
+    if (!canRetryPermissionEvaluation) return;
     setPermAttempt((n) => n + 1);
-  }, [mutating]);
+  }, [canRetryPermissionEvaluation]);
 
-  // Callbacks dedicados para abrir confirmações — impedem abertura durante
-  // uma mutação/edição em andamento sem depender apenas do estado `disabled`
-  // do botão.
   const requestDeadlineStatusChange = React.useCallback(
     (action: DeadlineStatusAction) => {
-      if (!getMutationLockDecisions().canOpenConfirmation) return;
+      if (!canOpenItemAction) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "deadline", action });
     },
-    // getMutationLockDecisions is stable-by-inputs; include mutating for freshness
-    [mutating],
+    [canOpenItemAction],
   );
   const requestAppointmentStatusChange = React.useCallback(
     (action: AppointmentStatusAction) => {
-      if (!getMutationLockDecisions().canOpenConfirmation) return;
+      if (!canOpenItemAction) return;
       setMutationError(null);
       setMutationConflict(null);
       setPendingStatus({ kind: "appointment", action });
     },
-    [mutating],
+    [canOpenItemAction],
   );
   const requestRemoval = React.useCallback(() => {
-    if (!getMutationLockDecisions().canOpenConfirmation) return;
+    if (!canOpenItemAction) return;
     setMutationError(null);
     setMutationConflict(null);
     setPendingRemoval(true);
-  }, [mutating]);
+  }, [canOpenItemAction]);
+
 
   // Gates unificados computados no topo do componente (LV-09.1B.6.3B.2.1.2).
 
