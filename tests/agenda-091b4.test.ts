@@ -1093,3 +1093,287 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// LV-09.1B.4.2 — sincronização segura da verificação pós-criação
+// ---------------------------------------------------------------------------
+
+import {
+  resolveCreatedItemVisibility,
+  type AgendaLoadStateSnapshot,
+  type PendingCreatedItem,
+} from "@/features/agenda/created-visibility";
+
+const P_DEADLINE: PendingCreatedItem = Object.freeze({
+  id: "deadline_xyz",
+  type: "deadline",
+  requiredGeneration: 5,
+});
+
+const P_APPOINTMENT: PendingCreatedItem = Object.freeze({
+  id: "appointment_xyz",
+  type: "appointment",
+  requiredGeneration: 5,
+});
+
+const READY = (gen: number): AgendaLoadStateSnapshot => ({
+  kind: "ready",
+  generation: gen,
+});
+const LOADING = (gen: number): AgendaLoadStateSnapshot => ({
+  kind: "loading",
+  generation: gen,
+});
+const ERR = (gen: number): AgendaLoadStateSnapshot => ({
+  kind: "error",
+  generation: gen,
+});
+
+describe("LV-09.1B.4.2 — resolveCreatedItemVisibility", () => {
+  it("89. estado ready de geração anterior à criação retorna wait", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(4),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("wait");
+  });
+
+  it("90. loading da geração exigida retorna wait", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      LOADING(5),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("wait");
+  });
+
+  it("91. ready de geração obsoleta (< requerida) retorna wait mesmo com ID presente", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(3),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("wait");
+  });
+
+  it("92. erro na geração exigida NÃO decide hidden — retorna wait", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      ERR(5),
+      new Set(),
+      new Set(),
+    );
+    expect(d).toBe("wait");
+  });
+
+  it("93. ready correto contendo o ID retorna visible", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("visible");
+  });
+
+  it("94. ready correto sem o ID retorna hidden", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(["other_id"]),
+      new Set(["deadline_xyz"]),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("95. prazo NÃO é procurado no conjunto de compromissos", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(),
+      new Set(["deadline_xyz"]),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("96. compromisso NÃO é procurado no conjunto de prazos", () => {
+    const d = resolveCreatedItemVisibility(
+      P_APPOINTMENT,
+      READY(5),
+      new Set(["appointment_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("97. compromisso visível na lista correta retorna visible", () => {
+    const d = resolveCreatedItemVisibility(
+      P_APPOINTMENT,
+      READY(5),
+      new Set(),
+      new Set(["appointment_xyz"]),
+    );
+    expect(d).toBe("visible");
+  });
+
+  it("98. item oculto por período (fora da visão) retorna hidden na nova consulta", () => {
+    // Consulta terminou (ready, gen 5), lista visível vazia — item filtrado
+    // por período. Deve resultar em hidden.
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(),
+      new Set(),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("99. item oculto por pesquisa textual retorna hidden", () => {
+    const d = resolveCreatedItemVisibility(
+      P_APPOINTMENT,
+      READY(5),
+      new Set(),
+      new Set(["outro_id"]),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("100. item oculto por filtro de processo retorna hidden", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(["ids_de_outro_processo"]),
+      new Set(),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("101. item oculto por filtro de tipo de item retorna hidden", () => {
+    // Filtro "somente compromissos" -> visibleDeadlineIds vazio para um prazo.
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(),
+      new Set(["appointment_xyz"]),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("102. item oculto por filtro de situação retorna hidden", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(),
+      new Set(),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("103. item oculto por prioridade/modalidade retorna hidden", () => {
+    const d = resolveCreatedItemVisibility(
+      P_APPOINTMENT,
+      READY(5),
+      new Set(),
+      new Set(),
+    );
+    expect(d).toBe("hidden");
+  });
+
+  it("104. item realmente visível não vira hidden mesmo com outros IDs no conjunto", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(["deadline_xyz", "outro_id"]),
+      new Set(["appointment_qqq"]),
+    );
+    expect(d).toBe("visible");
+  });
+
+  it("105. ready de geração posterior (> requerida) resolve normalmente", () => {
+    const d = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(9),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(d).toBe("visible");
+  });
+
+  it("106. resposta antiga não substitui a geração atual (wait)", () => {
+    // Primeira consulta terminou primeiro com gen 4; a exigida é 5.
+    const first = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(4),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(first).toBe("wait");
+    // Depois chega a consulta exigida (5) — resolve.
+    const second = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(5),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(second).toBe("visible");
+  });
+
+  it("107. retry após erro permite resolver: erro -> ready da mesma geração", () => {
+    const err = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      ERR(5),
+      new Set(),
+      new Set(),
+    );
+    expect(err).toBe("wait");
+    // Retry gera nova geração (>= requerida) que finaliza com sucesso.
+    const ok = resolveCreatedItemVisibility(
+      P_DEADLINE,
+      READY(6),
+      new Set(["deadline_xyz"]),
+      new Set(),
+    );
+    expect(ok).toBe("visible");
+  });
+
+  it("108. helper é puro: não muta os conjuntos recebidos", () => {
+    const dSet = new Set(["deadline_xyz"]);
+    const aSet = new Set(["appointment_xyz"]);
+    const before = { d: [...dSet], a: [...aSet] };
+    resolveCreatedItemVisibility(P_DEADLINE, READY(5), dSet, aSet);
+    resolveCreatedItemVisibility(P_APPOINTMENT, READY(5), dSet, aSet);
+    expect([...dSet]).toEqual(before.d);
+    expect([...aSet]).toEqual(before.a);
+  });
+
+  it("109. dois IDs diferentes não são confundidos", () => {
+    const p1: PendingCreatedItem = {
+      id: "id_A",
+      type: "deadline",
+      requiredGeneration: 5,
+    };
+    const p2: PendingCreatedItem = {
+      id: "id_B",
+      type: "deadline",
+      requiredGeneration: 5,
+    };
+    const ids = new Set(["id_A"]);
+    expect(resolveCreatedItemVisibility(p1, READY(5), ids, new Set())).toBe(
+      "visible",
+    );
+    expect(resolveCreatedItemVisibility(p2, READY(5), ids, new Set())).toBe(
+      "hidden",
+    );
+  });
+
+  it("110. app.agenda.tsx integra resolveCreatedItemVisibility (não decide por si só)", () => {
+    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    expect(src).toContain("resolveCreatedItemVisibility");
+    expect(src).toContain("loadGenerationRef");
+    expect(src).toContain("requiredGeneration");
+  });
+});
