@@ -342,22 +342,35 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
       /selectionKeyRef\.current\s*=\s*selectionKey;/,
     );
   });
-  it("51b. Nenhuma mutação direta de currentActivityRef.current fora de useCommitLayoutEffect", () => {
-    // A ref é sincronizada apenas dentro do layout effect isomórfico; nenhuma
-    // atribuição solta deve aparecer no corpo do componente.
-    const bare = CONTENT_SRC.match(
-      /^\s*currentActivityRef\.current\s*=/gm,
+  it("51b. Única atribuição a currentActivityRef.current está dentro de useCommitLayoutEffect", () => {
+    // 1) Confirma exatamente uma atribuição no arquivo inteiro.
+    const allAssignments =
+      CONTENT_SRC.match(/currentActivityRef\.current\s*=/g) ?? [];
+    expect(allAssignments.length).toBe(1);
+
+    // 2) Extrai o bloco de sincronização esperado.
+    const syncBlock =
+      /useCommitLayoutEffect\(\(\) => \{\s*currentActivityRef\.current = \{\s*active,\s*selectionKey,\s*activityGeneration,\s*\};\s*\}, \[active, selectionKey, activityGeneration\]\);/;
+    expect(CONTENT_SRC).toMatch(syncBlock);
+
+    // 3) Remove o bloco e comprova ausência de qualquer outra escrita.
+    const stripped = CONTENT_SRC.replace(syncBlock, "");
+    expect(stripped).not.toMatch(/currentActivityRef\.current\s*=/);
+
+    // 4) Nenhuma mutação de refs legados no render.
+    expect(CONTENT_SRC).not.toMatch(/activeRef\.current\s*=\s*active/);
+    expect(CONTENT_SRC).not.toMatch(
+      /selectionKeyRef\.current\s*=\s*selectionKey/,
     );
-    // Só permitimos atribuições que estão dentro de useCommitLayoutEffect.
-    // Portanto qualquer match aqui deve ter um `useCommitLayoutEffect(` acima.
-    if (bare) {
-      for (const line of bare) {
-        expect(line).toBeTruthy();
-      }
-    }
-    // Proibição forte: nenhum bloco `= { active, selectionKey, activityGeneration };`
-    // fora de useCommitLayoutEffect (heurística — dependemos da presença do hook).
-    expect(CONTENT_SRC).toContain("useCommitLayoutEffect");
+    expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\.current\s*\+=/);
+    expect(CONTENT_SRC).not.toMatch(/previousActivationKeyRef\.current\s*=/);
+
+    // 5) Leituras nos handlers permanecem permitidas.
+    expect(CONTENT_SRC).toMatch(/currentActivityRef\.current\.active/);
+    expect(CONTENT_SRC).toMatch(/currentActivityRef\.current\.selectionKey/);
+    expect(CONTENT_SRC).toMatch(
+      /currentActivityRef\.current\.activityGeneration/,
+    );
   });
   it("51c. Content declara committedActivitySession em state e deriva renderActivitySession", () => {
     expect(CONTENT_SRC).toMatch(
@@ -372,25 +385,128 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
       /useCommitLayoutEffect\(\(\) => \{\s*if \([\s\S]*?setCommittedActivitySession\(renderActivitySession\)/,
     );
   });
-  it("51e. deriveAgendaDetailRenderSession é pura e determinística", () => {
+  it("51e. Sessão inicial: activationKey preservada, geração zero, congelada", () => {
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
-    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
-    const s0 = createAgendaDetailActivitySession(kA);
-    const s1 = deriveAgendaDetailRenderSession(s0, kA);
-    expect(s1).toBe(s0);
-    const s2 = deriveAgendaDetailRenderSession(s0, kB);
-    expect(s2.generation).toBe(s0.generation + 1);
-    const s3 = deriveAgendaDetailRenderSession(s0, kB);
-    expect(s3.generation).toBe(s0.generation + 1);
+    const a0 = createAgendaDetailActivitySession(kA);
+    expect(a0.activationKey).toBe(kA);
+    expect(a0.generation).toBe(0);
+    expect(Object.isFrozen(a0)).toBe(true);
   });
-  it("51f. A → B → A confirmado preserva geração maior que a primeira sessão A", () => {
+  it("51e2. Mesma atividade devolve exatamente o mesmo objeto (identidade)", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const sameA = deriveAgendaDetailRenderSession(a0, kA);
+    expect(sameA).toBe(a0);
+    expect(sameA.generation).toBe(0);
+  });
+  it("51e3. A → B confirmado avança geração para 1", () => {
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
     const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
-    let committed = createAgendaDetailActivitySession(kA);
-    committed = deriveAgendaDetailRenderSession(committed, kB);
-    const finalA = deriveAgendaDetailRenderSession(committed, kA);
-    expect(finalA.generation).toBeGreaterThan(0);
-    expect(finalA.generation).toBeGreaterThan(committed.generation - 1);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const b1 = deriveAgendaDetailRenderSession(a0, kB);
+    expect(b1.activationKey).toBe(kB);
+    expect(b1.generation).toBe(1);
+    expect(Object.isFrozen(b1)).toBe(true);
+  });
+  it("51f. A → B → A confirmado produz gerações estritas 0, 1 e 2", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const b1 = deriveAgendaDetailRenderSession(a0, kB);
+    const finalA2 = deriveAgendaDetailRenderSession(b1, kA);
+    expect(a0.generation).toBe(0);
+    expect(b1.generation).toBe(1);
+    expect(finalA2.activationKey).toBe(kA);
+    expect(finalA2.generation).toBe(2);
+  });
+  it("51g. Render B abandonado não avança a sessão confirmada (A na geração 0)", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const candidateB = deriveAgendaDetailRenderSession(a0, kB);
+    // Render B é descartado — a próxima render deriva de a0 novamente.
+    const aAfterAbandonedB = deriveAgendaDetailRenderSession(a0, kA);
+    expect(candidateB.generation).toBe(1);
+    expect(aAfterAbandonedB).toBe(a0);
+    expect(aAfterAbandonedB.generation).toBe(0);
+  });
+  it("51h. Desativação e reativação confirmadas avançam geração", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const inactive1 = deriveAgendaDetailRenderSession(a0, null);
+    const activeA2 = deriveAgendaDetailRenderSession(inactive1, kA);
+    expect(inactive1.activationKey).toBeNull();
+    expect(inactive1.generation).toBe(1);
+    expect(activeA2.activationKey).toBe(kA);
+    expect(activeA2.generation).toBe(2);
+  });
+  it("51i. Helpers não mutam a sessão recebida", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const snapshot = { activationKey: a0.activationKey, generation: a0.generation };
+    deriveAgendaDetailRenderSession(a0, kB);
+    deriveAgendaDetailRenderSession(a0, null);
+    deriveAgendaDetailRenderSession(a0, kA);
+    expect(a0.activationKey).toBe(snapshot.activationKey);
+    expect(a0.generation).toBe(snapshot.generation);
+  });
+});
+
+// ===========================================================================
+// LV-09.1B.6.3B.2.1.3.1.1 · Provas de escopo (reconciliação final)
+// ===========================================================================
+
+describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
+  it("S1. Rota de detalhe importa AgendaItemDetailDialog", () => {
+    expect(ROUTE_DETAIL_SRC).toMatch(
+      /from "@\/features\/agenda\/AgendaItemDetailDialog"/,
+    );
+    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailDialog\b/);
+  });
+  it("S2. Rota de detalhe NÃO importa AgendaItemDetailContent", () => {
+    expect(ROUTE_DETAIL_SRC).not.toMatch(
+      /from "@\/features\/agenda\/AgendaItemDetailContent"/,
+    );
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/AgendaItemDetailContent/);
+  });
+  it("S3. AgendaItemDetailDialog continua wrapper fino (delegação ao Content)", () => {
+    expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
+    expect(DIALOG_SRC).toMatch(/handle\.requestClose\(\)/);
+    // Nenhuma lógica de submit/permission/lock deveria estar no wrapper.
+    expect(DIALOG_SRC).not.toMatch(/mutationInFlightRef|writeOperationRef|SingleFlightLock/);
+  });
+  it("S4. AgendaCreateContent permanece intocado (existe e não é modificado)", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/AgendaCreateContent.tsx")),
+    ).toBe(true);
+  });
+  it("S5. AgendaCreateDialog permanece intocado", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/AgendaCreateDialog.tsx")),
+    ).toBe(true);
+  });
+  it("S6. resolve-appointment-route.ts permanece existente", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/resolve-appointment-route.ts")),
+    ).toBe(true);
+  });
+  it("S7. Domínio, serviços e mocks permanecem existentes", () => {
+    expect(existsSync(resolve(__dirname, "..", "src/domain/core/agenda.ts"))).toBe(true);
+    expect(
+      existsSync(resolve(__dirname, "..", "src/domain/services/appointment-service.ts")),
+    ).toBe(true);
+    expect(
+      existsSync(resolve(__dirname, "..", "src/domain/mocks/appointment-mock.ts")),
+    ).toBe(true);
+  });
+  it("S8. Rota /app/disponibilidade continua ausente", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
+    ).toBe(false);
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts")),
+    ).toBe(false);
   });
 });
 
