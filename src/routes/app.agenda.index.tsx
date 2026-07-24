@@ -142,17 +142,6 @@ export const Route = createFileRoute("/app/agenda/")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  head: () => ({
-    meta: [
-      { title: "Agenda — Nexo Pericial 360" },
-      {
-        name: "description",
-        content:
-          "Agenda profissional com visão diária, semanal e mensal de prazos e compromissos.",
-      },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
   component: AgendaPage,
 });
 
