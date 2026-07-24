@@ -241,34 +241,71 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
     };
   }, [open, currentCaseId, environment, context]);
 
-  // Carrega assignments ativos do processo escolhido.
+  // Carrega assignments ativos do processo escolhido (paginação por cursor,
+  // deduplicação por ID, ordenação estável, respostas obsoletas descartadas).
   React.useEffect(() => {
     if (!open) return;
     if (!currentCaseId) {
       setAssignments({ kind: "idle" });
       return;
     }
+    const reqId = ++assignmentsReqIdRef.current;
     let cancelled = false;
     setAssignments({ kind: "loading" });
-    environment.services.assignments
-      .listByCase(context, currentCaseId as CaseId, { limit: 100 })
-      .then((res) => {
-        if (cancelled || !mountedRef.current) return;
+
+    async function loadAll(caseId: CaseId): Promise<
+      | { ok: true; items: readonly Assignment[] }
+      | { ok: false; message: string }
+    > {
+      const collected: Assignment[] = [];
+      const seen = new Set<string>();
+      let cursor: string | undefined;
+      for (let page = 0; page < ASSIGNMENTS_MAX_PAGES; page++) {
+        const res = await environment.services.assignments.listByCase(
+          context,
+          caseId,
+          cursor
+            ? { cursor, limit: ASSIGNMENTS_PAGE_LIMIT }
+            : { limit: ASSIGNMENTS_PAGE_LIMIT },
+        );
         if (!res.ok) {
-          setAssignments({ kind: "error", message: "Não foi possível carregar responsáveis." });
+          return { ok: false, message: "Não foi possível carregar responsáveis." };
+        }
+        for (const a of res.data.items) {
+          if (a.status !== "active") continue;
+          const key = String(a.id);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          collected.push(a);
+        }
+        if (!res.data.nextCursor) return { ok: true, items: collected };
+        cursor = res.data.nextCursor;
+      }
+      return { ok: true, items: collected };
+    }
+
+    loadAll(currentCaseId as CaseId)
+      .then((r) => {
+        if (cancelled || !mountedRef.current) return;
+        if (reqId !== assignmentsReqIdRef.current) return;
+        if (!r.ok) {
+          setAssignments({ kind: "error", message: r.message });
           return;
         }
-        const items = res.data.items.filter((a) => a.status === "active");
-        setAssignments({ kind: "ready", items });
+        setAssignments({ kind: "ready", items: r.items });
       })
       .catch(() => {
         if (cancelled || !mountedRef.current) return;
-        setAssignments({ kind: "error", message: "Não foi possível carregar responsáveis." });
+        if (reqId !== assignmentsReqIdRef.current) return;
+        setAssignments({
+          kind: "error",
+          message: "Não foi possível carregar responsáveis.",
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [open, currentCaseId, environment, context]);
+  }, [open, currentCaseId, environment, context, assignmentsAttempt]);
 
   const clearFieldError = React.useCallback((field: string) => {
     setErrors((prev) => {
