@@ -430,8 +430,13 @@ export function AgendaItemDetailDialog(
   }, [mode, detail, dForm, aForm]);
 
   const cancelEdit = React.useCallback(() => {
-    if (submittingRef.current) return;
-    if (hasLocalChanges) {
+    const dec = resolveDiscardIntent("cancel_edit", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("cancel_edit");
       return;
     }
@@ -439,11 +444,16 @@ export function AgendaItemDetailDialog(
     setErrors({});
     setGeneralError(null);
     setConflictState(null);
-  }, [hasLocalChanges]);
+  }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
-    if (submittingRef.current) return;
-    if (mode === "edit" && hasLocalChanges) {
+    const dec = resolveDiscardIntent("close", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("close");
       return;
     }
@@ -461,7 +471,9 @@ export function AgendaItemDetailDialog(
       setGeneralError(null);
       setConflictState(null);
     } else if (action === "reload_after_conflict") {
-      setConflictState(null);
+      setConflictState((prev) =>
+        reduceConflictAction(prev, { type: "reload_confirmed" }),
+      );
       setMode("view");
       setErrors({});
       setGeneralError(null);
@@ -470,14 +482,22 @@ export function AgendaItemDetailDialog(
   }, [confirmDiscard, onClose]);
 
   const reloadAfterConflict = React.useCallback(() => {
-    if (hasLocalChanges) {
+    const dec = resolveDiscardIntent("reload_after_conflict", {
+      mode,
+      hasChanges: hasLocalChanges,
+      submitting: submittingRef.current,
+    });
+    if (dec.action === "blocked") return;
+    if (dec.action === "confirm") {
       setConfirmDiscard("reload_after_conflict");
       return;
     }
-    setConflictState(null);
+    setConflictState((prev) =>
+      reduceConflictAction(prev, { type: "reload_confirmed" }),
+    );
     setMode("view");
     setReload((r) => r + 1);
-  }, [hasLocalChanges]);
+  }, [mode, hasLocalChanges]);
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
