@@ -549,19 +549,19 @@ describe("LV-09.1B.6.3A.1 · rotas canônicas file-based", () => {
   });
 });
 
-// ---- Escopo: arquivos antecipados da LV-09.1B.7 foram removidos ---------
+// ---- Escopo: LV-09.1B.7.1 iniciada (motor consultivo criado sem rota) --
 
-describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7 não iniciada)", () => {
-  it("26. src/features/agenda/availability.ts não existe", () => {
-    expect(existsSync("src/features/agenda/availability.ts")).toBe(false);
+describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7.1 iniciada — motor consultivo)", () => {
+  it("26. src/features/agenda/availability.ts existe (motor puro)", () => {
+    expect(existsSync("src/features/agenda/availability.ts")).toBe(true);
   });
-  it("27. src/features/agenda/check-appointment-availability.ts não existe", () => {
-    expect(existsSync("src/features/agenda/check-appointment-availability.ts")).toBe(false);
+  it("27. src/features/agenda/check-appointment-availability.ts existe (orquestrador)", () => {
+    expect(existsSync("src/features/agenda/check-appointment-availability.ts")).toBe(true);
   });
-  it("28. tests/agenda-091b7.test.ts não existe", () => {
-    expect(existsSync("tests/agenda-091b7.test.ts")).toBe(false);
+  it("28. tests/agenda-091b7.test.ts existe", () => {
+    expect(existsSync("tests/agenda-091b7.test.ts")).toBe(true);
   });
-  it("29. não há rota /app/disponibilidade", () => {
+  it("29. não há rota /app/disponibilidade (LV-09.1B.7.2 não iniciada)", () => {
     expect(existsSync("src/routes/app.disponibilidade.tsx")).toBe(false);
   });
 });
