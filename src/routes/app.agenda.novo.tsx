@@ -8,8 +8,6 @@
  */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import * as React from "react";
 
 import { useAgendaRouteState } from "@/features/agenda/route-state";
@@ -19,9 +17,7 @@ import {
 } from "@/features/agenda/AgendaCreateDialog";
 import type { CaseId } from "@/domain/core/ids";
 
-const searchSchema = z.object({
-  caseId: fallback(z.string(), "").default(""),
-});
+type AgendaNovoSearch = { readonly caseId?: string };
 
 export const Route = createFileRoute("/app/agenda/novo")({
   head: () => ({
@@ -34,7 +30,9 @@ export const Route = createFileRoute("/app/agenda/novo")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (s: Record<string, unknown>): AgendaNovoSearch => ({
+    caseId: typeof s.caseId === "string" && s.caseId.length > 0 ? s.caseId : undefined,
+  }),
   component: AgendaNovoPage,
 });
 

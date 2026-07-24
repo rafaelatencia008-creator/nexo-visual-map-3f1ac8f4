@@ -21,7 +21,7 @@ import {
   type AppointmentRouteResolution,
 } from "@/features/agenda/resolve-appointment-route";
 import type { Appointment } from "@/domain/core/agenda";
-import { buildPendingUpdateMarker } from "@/features/agenda/item-visibility";
+import { buildPendingUpdateMarker } from "@/features/agenda/detail-reducers";
 import { buildPendingRemovalMarker } from "@/features/agenda/item-mutations";
 
 export const Route = createFileRoute("/app/agenda/$appointmentId")({
