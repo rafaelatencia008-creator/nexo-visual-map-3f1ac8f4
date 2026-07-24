@@ -273,6 +273,17 @@ export const AgendaItemDetailContent = React.forwardRef<
     onRequestClose();
   }, [onRequestClose]);
 
+  // LV-09.1B.6.3B.2.1.1 — identidade semântica estável da seleção.
+  // Duas seleções para o mesmo item produzem a mesma chave, mesmo que o
+  // pai recrie o objeto entre renderizações. Todos os efeitos passam a
+  // depender dessa chave (não da referência do objeto `selected`).
+  const selectionKey = React.useMemo(
+    () => buildAgendaDetailSelectionKey(selected),
+    [selected],
+  );
+
+
+
 
 
   const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
