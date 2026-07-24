@@ -613,18 +613,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     const reqSelectionKey = selectionKey;
     // LV-09.1B.6.3B.2.1.3 — captura a geração da atividade no início da
     // requisição para diferenciar A → B → A.
-    const reqActivityGeneration = activityGenerationRef.current;
+    const reqActivityGeneration = currentActivityRef.current.activityGeneration;
     setDetail({ kind: "loading" });
 
     // Invalidação assíncrona centralizada em helper puro (LV-…2.1.2 + .3).
     const stillCurrent = (): boolean =>
       isAgendaDetailAsyncResultCurrent({
         mounted: mountedRef.current,
-        active: activeRef.current,
+        active: currentActivityRef.current.active,
         cancelled,
-        currentSelectionKey: selectionKeyRef.current,
+        currentSelectionKey: currentActivityRef.current.selectionKey,
         requestSelectionKey: reqSelectionKey,
-        currentActivityGeneration: activityGenerationRef.current,
+        currentActivityGeneration: currentActivityRef.current.activityGeneration,
         requestActivityGeneration: reqActivityGeneration,
         currentRequestId: detailReqIdRef.current,
         requestId: reqId,
@@ -700,7 +700,7 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     let cancelled = false;
     const reqSelectionKey = selectionKey;
-    const reqActivityGeneration = activityGenerationRef.current;
+    const reqActivityGeneration = currentActivityRef.current.activityGeneration;
     setPerm("loading");
     setPermChangeStatus("loading");
     setPermRemove("loading");
@@ -715,9 +715,9 @@ export const AgendaItemDetailContent = React.forwardRef<
     const stillCurrent = (): boolean =>
       !cancelled &&
       mountedRef.current &&
-      activeRef.current &&
-      selectionKeyRef.current === reqSelectionKey &&
-      activityGenerationRef.current === reqActivityGeneration;
+      currentActivityRef.current.active &&
+      currentActivityRef.current.selectionKey === reqSelectionKey &&
+      currentActivityRef.current.activityGeneration === reqActivityGeneration;
     const evalOne = (
       action: typeof updateAction | typeof statusAction | typeof removeAction,
       setter: (v: PermState) => void,
@@ -750,15 +750,15 @@ export const AgendaItemDetailContent = React.forwardRef<
     let cancelled = false;
     const reqId = ++assignReqIdRef.current;
     const reqSelectionKey = selectionKey;
-    const reqActivityGeneration = activityGenerationRef.current;
+    const reqActivityGeneration = currentActivityRef.current.activityGeneration;
     setAssignments({ kind: "loading" });
     const stillCurrent = (): boolean =>
       !cancelled &&
       mountedRef.current &&
-      activeRef.current &&
+      currentActivityRef.current.active &&
       reqId === assignReqIdRef.current &&
-      selectionKeyRef.current === reqSelectionKey &&
-      activityGenerationRef.current === reqActivityGeneration;
+      currentActivityRef.current.selectionKey === reqSelectionKey &&
+      currentActivityRef.current.activityGeneration === reqActivityGeneration;
     (async () => {
       const collected: Assignment[] = [];
       const seen = new Set<string>();
@@ -936,13 +936,13 @@ export const AgendaItemDetailContent = React.forwardRef<
     // LV-…2.1.1 + 2.1.3 — captura chave da seleção e geração de atividade
     // para invalidar aplicação de resultados caso mudem durante o submit
     // (inclui A → B → A: a segunda A tem geração distinta da primeira).
-    const startSelectionKey = selectionKeyRef.current;
-    const startActivityGeneration = activityGenerationRef.current;
+    const startSelectionKey = currentActivityRef.current.selectionKey;
+    const startActivityGeneration = currentActivityRef.current.activityGeneration;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
-      activeRef.current &&
-      selectionKeyRef.current === startSelectionKey &&
-      activityGenerationRef.current === startActivityGeneration;
+      currentActivityRef.current.active &&
+      currentActivityRef.current.selectionKey === startSelectionKey &&
+      currentActivityRef.current.activityGeneration === startActivityGeneration;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
@@ -1079,13 +1079,13 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (detail.kind !== "ready") return;
     if (!mutationLock.tryAcquire()) return;
     const operationId = ++mutationOperationIdRef.current;
-    const startSelectionKey = selectionKeyRef.current;
-    const startActivityGeneration = activityGenerationRef.current;
+    const startSelectionKey = currentActivityRef.current.selectionKey;
+    const startActivityGeneration = currentActivityRef.current.activityGeneration;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
-      activeRef.current &&
-      selectionKeyRef.current === startSelectionKey &&
-      activityGenerationRef.current === startActivityGeneration;
+      currentActivityRef.current.active &&
+      currentActivityRef.current.selectionKey === startSelectionKey &&
+      currentActivityRef.current.activityGeneration === startActivityGeneration;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
@@ -1171,16 +1171,16 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!canConfirmRemoval) return;
     if (!pendingRemoval) return;
     if (detail.kind !== "ready") return;
-    if (!activeRef.current) return;
+    if (!currentActivityRef.current.active) return;
     if (!mutationLock.tryAcquire()) return;
     const operationId = ++mutationOperationIdRef.current;
-    const startSelectionKey = selectionKeyRef.current;
-    const startActivityGeneration = activityGenerationRef.current;
+    const startSelectionKey = currentActivityRef.current.selectionKey;
+    const startActivityGeneration = currentActivityRef.current.activityGeneration;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
-      activeRef.current &&
-      selectionKeyRef.current === startSelectionKey &&
-      activityGenerationRef.current === startActivityGeneration;
+      currentActivityRef.current.active &&
+      currentActivityRef.current.selectionKey === startSelectionKey &&
+      currentActivityRef.current.activityGeneration === startActivityGeneration;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
