@@ -707,7 +707,7 @@ function AssignmentSelect(props: {
     </div>
   );
 }
-}
+
 
 function DeadlineFields(props: {
   form: CreateDeadlineFormState;
