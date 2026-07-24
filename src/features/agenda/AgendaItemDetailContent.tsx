@@ -1,21 +1,37 @@
 /**
- * LV-09.1B.6.3B.2.1 — Corpo funcional do detalhe/edição de item da Agenda.
+ * LV-09.1B.6.3B.2.1   — Corpo funcional do detalhe/edição de item da Agenda.
  * LV-09.1B.6.3B.2.1.1 — Ciclo de atividade e invalidação assíncrona.
+ * LV-09.1B.6.3B.2.1.2 — Gates completos, invalidação síncrona e
+ *                        propriedade dos locks.
  *
  * Única implementação funcional do fluxo de detalhe. Não contém shell de
  * diálogo: pode ser montado dentro de `AgendaItemDetailDialog` (wrapper
- * fino) ou dentro de uma página (`surface="page"`, a ser criada na
- * LV-09.1B.6.3B.2.2). Consome exclusivamente os serviços oficiais
- * expostos por `MockDomainEnvironment`. Aplica concorrência otimista via
- * `expectedVersion` capturado no início da edição.
+ * fino) ou dentro de uma página (`surface="page"`). Consome apenas os
+ * serviços oficiais expostos por `MockDomainEnvironment`. Aplica
+ * concorrência otimista via `expectedVersion` capturado no início da
+ * edição.
  *
- * Todos os efeitos (reset, load, permissões, assignments) são chaveados
- * por `selectionKey` (identidade semântica estável) e comparam com
- * `selectionKeyRef.current`/`activeRef.current` antes de aplicar
- * qualquer `setState`. Handlers de mutação (submit, mudança de status,
- * exclusão) capturam a chave da seleção no início e descartam o
- * resultado se a seleção mudar durante a operação.
+ * Ciclo de atividade (LV-…2.1.2):
+ *   - `activeRef` e `selectionKeyRef` são sincronizados DURANTE o render
+ *     (sem `useEffect`), fechando qualquer janela para uma promessa
+ *     antiga aplicar resultado após desativação.
+ *   - O reset é chaveado pela `activationKey` (união de `active` +
+ *     chave semântica). Mudança apenas de `referenceEpoch` ou recriação
+ *     equivalente de `selected` não reseta o formulário.
+ *   - `hasActiveSelection` habilita fechamento e retry em qualquer
+ *     detalhe ativo (loading/erro incluídos). `isInteractiveReady` só é
+ *     verdadeiro após `detail.kind === "ready"`.
+ *   - Os SEIS gates (`canCloseDetail`, `canEditItem`, `canOpenItemAction`,
+ *     `canConfirmStatusChange`, `canConfirmRemoval`,
+ *     `canRetryPermissionEvaluation`) desligam quando o detalhe está
+ *     inativo. Handlers usam exatamente os mesmos gates da UI.
+ *   - Cada operação assíncrona (submit / mutação) é dona da sua trava
+ *     até o próprio `finally`; o reset NÃO libera locks em andamento.
+ *     Tokens `submitOperationIdRef` / `mutationOperationIdRef` impedem
+ *     que um finalizador antigo desligue `setSubmitting`/`setMutating`
+ *     de uma operação posterior.
  */
+
 
 
 
