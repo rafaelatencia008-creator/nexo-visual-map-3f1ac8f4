@@ -637,9 +637,7 @@ function MonthView({
   nowEpoch: number;
   onPickDay: (d: Date) => void;
 }) {
-  const first = startOfMonth(anchor);
-  const gridStart = startOfWeek(first);
-  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+  const cells = buildMonthCells(anchor);
   const weekdayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const today = new Date();
 
