@@ -639,6 +639,12 @@ describe("LV-09.1B.6.3B.2.1.2 · Handlers gateados", () => {
 describe("LV-09.1B.6.3B.2.1.2 · Invalidação assíncrona", () => {
   it("70. submit captura startSelectionKey e usa stillSameSelection", () => {
     expect(CONTENT_SRC).toMatch(
+      /const startSelectionKey = currentActivityRef\.current\.selectionKey;/,
+    );
+    expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
+  });
+  it.skip("70-legacy", () => {
+    expect(CONTENT_SRC).toMatch(
       /const startSelectionKey = selectionKeyRef\.current;/,
     );
     expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
