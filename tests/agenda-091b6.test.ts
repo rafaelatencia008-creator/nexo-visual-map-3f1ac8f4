@@ -993,10 +993,11 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toContain("Tentar novamente");
     expect(DETAIL_SRC).toMatch(/\{hasPermEvalError && \(/);
   });
-  it("93. handlers exigem permissionAllowsAction antes de chamar o serviço", () => {
-    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permChangeStatus\)\) return/);
-    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(permRemove\)\) return/);
+  it("93. handlers exigem gates de permissão antes de chamar o serviço (LV-09.1B.6.3B.2.1.2)", () => {
+    expect(DETAIL_SRC).toMatch(/if \(!canConfirmStatusChange\) return;/);
+    expect(DETAIL_SRC).toMatch(/if \(!canConfirmRemoval\) return;/);
   });
+
 
   it("94. retryPermissions incrementa permAttempt", () => {
     expect(DETAIL_SRC).toMatch(/setPermAttempt\(\(n\) => n \+ 1\)/);
