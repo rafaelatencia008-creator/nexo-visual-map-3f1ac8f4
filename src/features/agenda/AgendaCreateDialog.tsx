@@ -151,13 +151,31 @@ export interface AgendaCreateDialogProps {
   readonly cases: readonly Case[];
   readonly initialCaseId?: CaseId;
   readonly onCreated: (created: AgendaCreatedItem) => void;
+  /**
+   * Define se o diálogo chama onOpenChange(false) depois de uma criação
+   * bem-sucedida. O padrão deve permanecer true (fecha após criar).
+   * Consumidores que já controlam navegação/rota após o sucesso podem
+   * passar `false` para evitar uma segunda navegação disparada pelo
+   * fechamento automático.
+   */
+  readonly closeAfterCreate?: boolean;
 }
 
 // ---- Componente principal -------------------------------------------------
 
 export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactElement {
-  const { open, onOpenChange, environment, context, cases, initialCaseId, onCreated } =
-    props;
+  const {
+    open,
+    onOpenChange,
+    environment,
+    context,
+    cases,
+    initialCaseId,
+    onCreated,
+    closeAfterCreate,
+  } = props;
+  const shouldCloseAfterCreate =
+    shouldCloseAgendaCreateAfterSuccess(closeAfterCreate);
 
   const [itemType, setItemType] = React.useState<ItemType>("deadline");
   const [deadlineForm, setDeadlineForm] = React.useState<CreateDeadlineFormState>(
