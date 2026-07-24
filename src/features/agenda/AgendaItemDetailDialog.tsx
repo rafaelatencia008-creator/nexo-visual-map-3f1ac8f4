@@ -1447,7 +1447,7 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingRemoval}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current && !mutating) {
+          if (!o && getMutationLockDecisions().canClose) {
             setPendingRemoval(false);
             setMutationError(null);
             setMutationConflict(null);
