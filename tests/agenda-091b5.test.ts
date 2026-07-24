@@ -955,6 +955,6 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     // deixariam de bater no cenário real.
     expect(String(SEED_CASE_ALFA_1_ID)).toContain("case");
     expect(String(SEED_CASE_BETA_1_ID)).toContain("case");
-    expect(String(SEED_ASSIGN_ALFA_1_ID)).toContain("assignment");
+    expect(String(SEED_ASSIGN_ALFA_1_ID)).toContain("assign");
   });
 });
