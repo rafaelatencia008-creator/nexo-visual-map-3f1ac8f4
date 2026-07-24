@@ -160,10 +160,13 @@ export function deriveEditUiState(inputs: EditUiInputs): EditUiState {
   const merged: Record<string, string> = { ...storedErrors };
   if (build && build.ok === false) {
     for (const [k, v] of Object.entries(build.errors)) {
-      if (merged[k]) continue;
+      if (merged[k] !== undefined) continue;
       // Regra progressiva: mostra o erro apenas se o campo foi tocado ou
-      // se já houve tentativa de submit.
-      if (attemptedSubmit || touched[k]) merged[k] = v as string;
+      // se já houve tentativa de submit. `build.errors` é parcial, então
+      // ignoramos entradas indefinidas sem casts.
+      if (v !== undefined && (attemptedSubmit || touched[k])) {
+        merged[k] = v;
+      }
     }
   }
   return { canSubmit, displayErrors: Object.freeze(merged) };
