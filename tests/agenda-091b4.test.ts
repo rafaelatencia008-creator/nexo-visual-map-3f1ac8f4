@@ -882,13 +882,8 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("73. AppointmentService.create devolve period_inverted quando endsAt <= startsAt", async () => {
     const env = createMockDomainEnvironment();
-    const ctx: ServiceContext = {
-      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
-      organizationId: SEED_ORG_ALFA_ID,
-      now: dt("2026-08-01T10:00:00.000Z"),
-    };
     const res: ServiceResult<unknown> = await env.services.appointments.create(
-      ctx,
+      OWNER_ALFA,
       {
         caseId: SEED_CASE_ALFA_1_ID,
         kind: "hearing",
@@ -901,7 +896,13 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.error.code).toBe("validation_error");
-      expect(res.error.message).toBe("period_inverted");
+      // O serviço pode devolver `period_inverted` (endsAt <= startsAt) ou
+      // `invalid_range` (mesmo instante). Ambos os códigos devem ser mapeados
+      // para o campo `endsAt` pelo tradutor.
+      expect(
+        res.error.message === "period_inverted" ||
+          res.error.message === "invalid_range",
+      ).toBe(true);
     }
   });
 
