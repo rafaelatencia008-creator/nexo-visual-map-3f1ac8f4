@@ -336,11 +336,11 @@ describe("LV-09.1B.5 — buildUpdateDeadlineInput", () => {
   });
 
   it("23. limpar responsável envia assignmentId: null", async () => {
-    // Prepara prazo COM assignment para poder limpá-lo.
+    // SEED_ASSIGN_ALFA_1_ID pertence a Case Alfa 2 (fixtures oficiais).
     const env = createMockDomainEnvironment();
     const d = ok(
       await env.services.deadlines.create(OWNER_ALFA, {
-        caseId: SEED_CASE_ALFA_1_ID,
+        caseId: SEED_CASE_ALFA_2_ID,
         kind: "internal",
         title: "P",
         dueAt: dt("2026-07-01T10:00:00.000Z"),
