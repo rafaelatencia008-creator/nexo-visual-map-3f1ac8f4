@@ -932,12 +932,13 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(slice).not.toMatch(/services\./);
   });
 
-  it("82. requestClose consulta getMutationLockDecisions()", () => {
+  it("82. requestClose consulta o gate canCloseDetail (LV-09.1B.6.3B.2.1.2)", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
+    expect(slice).toMatch(/if \(!canCloseDetail\) return;/);
   });
+
   it("83. Escape no diálogo principal bloqueia via getMutationLockDecisions", () => {
     expect(DETAIL_SRC).toMatch(
       /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/,
