@@ -78,11 +78,11 @@ export function isValidVersion(v: unknown): v is number {
 
 // ---- Metadados persistíveis (allow-list estrita) --------------------------
 
-export type EntityMetadata = {
+export type EntityMetadata = Readonly<{
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
   version: number;
-};
+}>;
 
 export const ENTITY_METADATA_ALLOWED_KEYS: ReadonlySet<string> = new Set([
   "createdAt",
@@ -95,6 +95,25 @@ export function isEntityMetadata(v: unknown): v is EntityMetadata {
   const m = v as Record<string, unknown>;
   if (!hasOnlyAllowedKeys(m, ENTITY_METADATA_ALLOWED_KEYS)) return false;
   return isIsoDateTime(m.createdAt) && isIsoDateTime(m.updatedAt) && isValidVersion(m.version);
+}
+
+// ---- Comparação cronológica de IsoDateTime --------------------------------
+
+/**
+ * Converte um `IsoDateTime` válido em milissegundos desde o Unix Epoch.
+ * Determinístico e agnóstico de fuso: representações diferentes do mesmo
+ * instante (por exemplo, `-03:00` e `Z`) produzem o mesmo número.
+ */
+export function isoDateTimeToEpoch(value: IsoDateTime): number {
+  return Date.parse(value);
+}
+
+/**
+ * Comparador cronológico estável para `IsoDateTime`. Segue a convenção
+ * de comparadores (negativo, zero, positivo).
+ */
+export function compareIsoDateTime(a: IsoDateTime, b: IsoDateTime): number {
+  return isoDateTimeToEpoch(a) - isoDateTimeToEpoch(b);
 }
 
 // ---- Escopos ---------------------------------------------------------------

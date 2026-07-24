@@ -26,6 +26,7 @@ import {
   containsForbiddenKey,
   hasOnlyAllowedKeys,
   isIsoDateTime,
+  isoDateTimeToEpoch,
   isValidVersion,
   type IsoDateTime,
 } from "../core/common";
@@ -163,7 +164,8 @@ function assignmentInCase(
 }
 
 function compareDeadlines(a: Deadline, b: Deadline): number {
-  if (a.dueAt !== b.dueAt) return a.dueAt < b.dueAt ? -1 : 1;
+  const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
+  if (t !== 0) return t;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
@@ -225,7 +227,7 @@ export function createDeadlineServiceMock(
       if (
         opts.rangeFrom !== undefined &&
         opts.rangeTo !== undefined &&
-        opts.rangeFrom > opts.rangeTo
+        isoDateTimeToEpoch(opts.rangeFrom) > isoDateTimeToEpoch(opts.rangeTo)
       ) {
         return invalid<PageResult<Deadline>>("range_inverted");
       }
@@ -271,8 +273,8 @@ export function createDeadlineServiceMock(
         if (d.organizationId !== orgId) return false;
         if (!accessibleCaseIds.has(d.caseId)) return false;
         if (opts.caseId !== undefined && d.caseId !== opts.caseId) return false;
-        if (opts.rangeFrom !== undefined && d.dueAt < opts.rangeFrom) return false;
-        if (opts.rangeTo !== undefined && d.dueAt > opts.rangeTo) return false;
+        if (opts.rangeFrom !== undefined && isoDateTimeToEpoch(d.dueAt) < isoDateTimeToEpoch(opts.rangeFrom)) return false;
+        if (opts.rangeTo !== undefined && isoDateTimeToEpoch(d.dueAt) > isoDateTimeToEpoch(opts.rangeTo)) return false;
         if (statusesArr && !statusesArr.includes(d.status)) return false;
         if (kindsArr && !kindsArr.includes(d.kind)) return false;
         if (prioArr && !prioArr.includes(d.priority)) return false;

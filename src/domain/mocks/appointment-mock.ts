@@ -24,6 +24,7 @@ import {
   containsForbiddenKey,
   hasOnlyAllowedKeys,
   isIsoDateTime,
+  isoDateTimeToEpoch,
   isValidVersion,
 } from "../core/common";
 import type {
@@ -159,7 +160,8 @@ function assignmentInCase(
   return !!a && a.organizationId === orgId && a.caseId === caseId;
 }
 function compareAppointments(a: Appointment, b: Appointment): number {
-  if (a.startsAt !== b.startsAt) return a.startsAt < b.startsAt ? -1 : 1;
+  const t = isoDateTimeToEpoch(a.startsAt) - isoDateTimeToEpoch(b.startsAt);
+  if (t !== 0) return t;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 function validateEnumArray<T extends string>(
@@ -221,7 +223,7 @@ export function createAppointmentServiceMock(
       if (
         opts.rangeFrom !== undefined &&
         opts.rangeTo !== undefined &&
-        opts.rangeFrom > opts.rangeTo
+        isoDateTimeToEpoch(opts.rangeFrom) > isoDateTimeToEpoch(opts.rangeTo)
       ) {
         return invalid<PageResult<Appointment>>("range_inverted");
       }
@@ -266,9 +268,9 @@ export function createAppointmentServiceMock(
         if (a.organizationId !== orgId) return false;
         if (!accessibleCaseIds.has(a.caseId)) return false;
         if (opts.caseId !== undefined && a.caseId !== opts.caseId) return false;
-        // Interseção com [rangeFrom, rangeTo]
-        if (opts.rangeFrom !== undefined && a.endsAt < opts.rangeFrom) return false;
-        if (opts.rangeTo !== undefined && a.startsAt > opts.rangeTo) return false;
+        // Interseção com [rangeFrom, rangeTo] pelo instante real.
+        if (opts.rangeFrom !== undefined && isoDateTimeToEpoch(a.endsAt) < isoDateTimeToEpoch(opts.rangeFrom)) return false;
+        if (opts.rangeTo !== undefined && isoDateTimeToEpoch(a.startsAt) > isoDateTimeToEpoch(opts.rangeTo)) return false;
         if (statusesArr && !statusesArr.includes(a.status)) return false;
         if (kindsArr && !kindsArr.includes(a.kind)) return false;
         if (modesArr && !modesArr.includes(a.mode)) return false;
@@ -316,7 +318,7 @@ export function createAppointmentServiceMock(
       if (!isIsoDateTime(raw.startsAt))
         return invalid<Appointment>("invalid_starts_at");
       if (!isIsoDateTime(raw.endsAt)) return invalid<Appointment>("invalid_ends_at");
-      if (raw.startsAt >= raw.endsAt)
+      if (isoDateTimeToEpoch(raw.startsAt) >= isoDateTimeToEpoch(raw.endsAt))
         return invalid<Appointment>("period_inverted");
       const title = validateTitle(raw.title);
       if (title === null) return invalid<Appointment>("invalid_title");
@@ -425,7 +427,7 @@ export function createAppointmentServiceMock(
         if (!isIsoDateTime(raw.endsAt)) return invalid<Appointment>("invalid_ends_at");
         if (raw.endsAt !== current.endsAt) { nextEndsAt = raw.endsAt; changed = true; }
       }
-      if (nextStartsAt >= nextEndsAt) return invalid<Appointment>("period_inverted");
+      if (isoDateTimeToEpoch(nextStartsAt) >= isoDateTimeToEpoch(nextEndsAt)) return invalid<Appointment>("period_inverted");
       if (raw.mode !== undefined) {
         if (!isAppointmentMode(raw.mode)) return invalid<Appointment>("invalid_mode");
         if (raw.mode !== current.mode) { nextMode = raw.mode; changed = true; }

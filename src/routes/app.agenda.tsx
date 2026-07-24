@@ -29,6 +29,7 @@ import type {
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
+import { isoDateTimeToEpoch } from "@/domain/core/common";
 
 // ============================================================================
 // LV-09.1B.1 — Estrutura da tela /app/agenda.
@@ -315,11 +316,17 @@ function AgendaPage() {
     const deadlines = state.data.deadlines
       .filter((d) => isInRange(d.dueAt, range.from, range.to))
       .slice()
-      .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+      .sort((a, b) => {
+        const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
+        return t !== 0 ? t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
     const appointments = state.data.appointments
       .filter((a) => isInRange(a.startsAt, range.from, range.to))
       .slice()
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+      .sort((a, b) => {
+        const t = isoDateTimeToEpoch(a.startsAt) - isoDateTimeToEpoch(b.startsAt);
+        return t !== 0 ? t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
     return { deadlines, appointments };
   }, [state, range]);
 
@@ -329,10 +336,13 @@ function AgendaPage() {
     return state.data.deadlines
       .filter(
         (d) =>
-          d.status === "pending" && new Date(d.dueAt).getTime() >= now,
+          d.status === "pending" && isoDateTimeToEpoch(d.dueAt) >= now,
       )
       .slice()
-      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+      .sort((a, b) => {
+        const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
+        return t !== 0 ? t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      })
       .slice(0, 5);
   }, [state]);
 
