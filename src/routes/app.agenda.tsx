@@ -22,7 +22,13 @@ import {
   Search,
   X,
   SlidersHorizontal,
+  Plus,
 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AgendaCreateDialog,
+  type AgendaCreatedItem,
+} from "@/features/agenda/AgendaCreateDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
