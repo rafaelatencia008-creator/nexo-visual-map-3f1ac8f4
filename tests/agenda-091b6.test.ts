@@ -843,3 +843,252 @@ describe("LV-09.1B.6 — regressões de fonte", () => {
     expect(DETAIL_SRC).toMatch(/RotateCcw/);
   });
 });
+
+// =========================================================================
+// 11) LV-09.1B.6.1 — Fechamento técnico (builders + fonte)
+// =========================================================================
+
+describe("LV-09.1B.6.1 — fechamento técnico", () => {
+  it("71. buildPendingRemovalMarker reserva a próxima geração", () => {
+    const m = buildPendingRemovalMarker(7, { id: "dl-x", type: "deadline" });
+    expect(m.requiredGeneration).toBe(8);
+    expect(m.id).toBe("dl-x");
+    expect(m.type).toBe("deadline");
+  });
+  it("72. buildPendingRemovalMarker devolve marcador congelado", () => {
+    const m = buildPendingRemovalMarker(1, { id: "ap-x", type: "appointment" });
+    expect(Object.isFrozen(m)).toBe(true);
+  });
+  it("73. ready gen 2 com requiredGeneration 3 retorna wait (barreira real)", () => {
+    const r = resolvePendingRemovalAction(
+      { id: "dl-x", type: "deadline", requiredGeneration: 3 },
+      { kind: "ready", generation: 2 },
+      new Set<string>(),
+      new Set<string>(),
+    );
+    expect(r.kind).toBe("wait");
+  });
+
+  it("74. conflict remove preserva expected/actual", () => {
+    const conflict = buildMutationConflict("remove", {
+      kind: "conflict",
+      message: AGENDA_MUTATION_MESSAGES.conflict,
+      expectedVersion: 2,
+      actualVersion: 5,
+    });
+    expect(conflict).not.toBeNull();
+    if (!conflict) throw new Error("expected conflict");
+    expect(conflict.operation).toBe("remove");
+    expect(conflict.expected).toBe(2);
+    expect(conflict.actual).toBe(5);
+  });
+  it("75. conflict change_status preserva expected/actual", () => {
+    const conflict = buildMutationConflict("change_status", {
+      kind: "conflict",
+      message: AGENDA_MUTATION_MESSAGES.conflict,
+      expectedVersion: 4,
+      actualVersion: 9,
+    });
+    expect(conflict).not.toBeNull();
+    if (!conflict) throw new Error("expected conflict");
+    expect(conflict.operation).toBe("change_status");
+    expect(conflict.expected).toBe(4);
+    expect(conflict.actual).toBe(9);
+  });
+  it("76. builder devolve null quando o erro não é conflito", () => {
+    const conflict = buildMutationConflict("remove", {
+      kind: "forbidden",
+      message: AGENDA_MUTATION_MESSAGES.forbidden,
+    });
+    expect(conflict).toBeNull();
+  });
+
+  it("77. permissionAllowsAction: só 'allowed' habilita", () => {
+    expect(permissionAllowsAction("allowed")).toBe(true);
+    expect(permissionAllowsAction("denied")).toBe(false);
+    expect(permissionAllowsAction("unknown")).toBe(false);
+    expect(permissionAllowsAction("loading")).toBe(false);
+    expect(permissionAllowsAction("error")).toBe(false);
+  });
+
+  it("78. AgendaItemDetailDialog usa MutationConflict e buildMutationConflict", () => {
+    expect(DETAIL_SRC).toMatch(/MutationConflict/);
+    expect(DETAIL_SRC).toMatch(/buildMutationConflict/);
+  });
+  it("79. Diálogos oferecem 'Continuar revisando' e 'Recarregar dados'", () => {
+    expect(DETAIL_SRC).toContain("Continuar revisando");
+    expect(DETAIL_SRC).toContain("Recarregar dados");
+  });
+  it("80. reloadAfterMutationConflict aciona setReload", () => {
+    expect(DETAIL_SRC).toMatch(/reloadAfterMutationConflict/);
+    const idx = DETAIL_SRC.indexOf("reloadAfterMutationConflict");
+    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    expect(slice).toMatch(/setReload/);
+  });
+  it("81. keepReviewingMutation não chama serviço", () => {
+    expect(DETAIL_SRC).toMatch(/keepReviewingMutation/);
+    const idx = DETAIL_SRC.indexOf("const keepReviewingMutation");
+    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    expect(slice).not.toMatch(/services\./);
+  });
+
+  it("82. requestClose considera mutationInFlightRef", () => {
+    const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
+    expect(idx).toBeGreaterThan(-1);
+    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    expect(slice).toMatch(/mutationInFlightRef\.current/);
+  });
+  it("83. Escape no diálogo principal bloqueia durante mutação", () => {
+    expect(DETAIL_SRC).toMatch(
+      /submittingRef\.current \|\| mutationInFlightRef\.current \|\| mutating/,
+    );
+  });
+  it("84. botão Fechar chama requestClose e desabilita durante mutating", () => {
+    expect(DETAIL_SRC).toMatch(/onClick=\{requestClose\}/);
+    expect(DETAIL_SRC).toMatch(/disabled=\{submitting \|\| mutating\}/);
+  });
+  it("85. botão Editar desabilita quando mutating", () => {
+    expect(DETAIL_SRC).toMatch(/perm !== "allowed" \|\| mutating/);
+  });
+  it("86. Escape nos AlertDialog de confirmação bloqueia durante mutação", () => {
+    const escBlocks = DETAIL_SRC.match(
+      /mutationInFlightRef\.current \|\| mutating\) e\.preventDefault/g,
+    ) ?? [];
+    expect(escBlocks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("87. detalhe exibe 'Cumprido em' quando completedAt está presente", () => {
+    expect(DETAIL_SRC).toContain("Cumprido em");
+    const idx = DETAIL_SRC.indexOf("Cumprido em");
+    const slice = DETAIL_SRC.slice(Math.max(0, idx - 200), idx + 200);
+    expect(slice).toMatch(/d\.completedAt !== undefined/);
+  });
+
+  it("88. confirmação de status mostra Item / Estado / Novo estado / Versão atual", () => {
+    expect(DETAIL_SRC).toContain("Estado atual:");
+    expect(DETAIL_SRC).toContain("Novo estado:");
+    expect(DETAIL_SRC).toContain("Versão atual:");
+    expect(DETAIL_SRC).toMatch(/detail\.loaded\.item\.metadata\.version/);
+  });
+  it("89. confirmação de exclusão mostra texto e opções oficiais", () => {
+    expect(DETAIL_SRC).toContain(
+      "Esta ação remove o item da Agenda e não pode ser desfeita.",
+    );
+    expect(DETAIL_SRC).toContain("Excluir prazo?");
+    expect(DETAIL_SRC).toContain("Excluir compromisso?");
+    expect(DETAIL_SRC).toContain("Manter item");
+  });
+  it("90. botão destrutivo tem estilo destrutivo", () => {
+    expect(DETAIL_SRC).toMatch(/bg-destructive text-destructive-foreground/);
+  });
+
+  it("91. permissão diferencia error de denied", () => {
+    expect(DETAIL_SRC).toMatch(/setter\("error"\)/);
+    expect(DETAIL_SRC).toMatch(/res\.data\.allowed \? "allowed" : "denied"/);
+  });
+  it("92. UI oferece 'Tentar novamente' quando permissão em error", () => {
+    expect(DETAIL_SRC).toContain("Não foi possível verificar esta permissão.");
+    expect(DETAIL_SRC).toContain("Tentar novamente");
+    expect(DETAIL_SRC).toMatch(
+      /permChangeStatus === "error" \|\| permRemove === "error"/,
+    );
+  });
+  it("93. handlers exigem 'allowed' antes de chamar o serviço", () => {
+    expect(DETAIL_SRC).toMatch(/if \(permChangeStatus !== "allowed"\) return;/);
+    expect(DETAIL_SRC).toMatch(/if \(permRemove !== "allowed"\) return;/);
+  });
+
+  it("94. retryPermissions incrementa permAttempt", () => {
+    expect(DETAIL_SRC).toMatch(/setPermAttempt\(\(n\) => n \+ 1\)/);
+    expect(DETAIL_SRC).toMatch(/permAttempt/);
+  });
+
+  it("95. ItemActionsSection não usa casts em ações", () => {
+    const idxSec = DETAIL_SRC.indexOf("function ItemActionsSection(");
+    expect(idxSec).toBeGreaterThan(-1);
+    const section = DETAIL_SRC.slice(idxSec, idxSec + 4000);
+    expect(section).not.toMatch(/as DeadlineStatusAction/);
+    expect(section).not.toMatch(/as AppointmentStatusAction/);
+  });
+  it("96. Nenhum 'as any' / 'as never' / @ts-* no diálogo", () => {
+    expect(DETAIL_SRC).not.toMatch(/as any\b/);
+    expect(DETAIL_SRC).not.toMatch(/as never\b/);
+    expect(DETAIL_SRC).not.toMatch(/@ts-ignore|@ts-nocheck/);
+  });
+
+  it("97. rota da Agenda consome resolvePendingRemovalAction", () => {
+    expect(AGENDA_ROUTE_SRC).toMatch(/resolvePendingRemovalAction/);
+    expect(AGENDA_ROUTE_SRC).toMatch(/buildPendingRemovalMarker/);
+  });
+  it("98. rota mantém estado pendingRemoval baseado em PendingRemovalItem", () => {
+    expect(AGENDA_ROUTE_SRC).toMatch(/PendingRemovalItem/);
+    expect(AGENDA_ROUTE_SRC).toMatch(/setPendingRemoval/);
+  });
+  it("99. handleDeleted na rota constrói marcador com geração atual", () => {
+    const idx = AGENDA_ROUTE_SRC.indexOf(
+      "const handleDeleted = React.useCallback",
+    );
+    expect(idx).toBeGreaterThan(-1);
+    const slice = AGENDA_ROUTE_SRC.slice(idx, idx + 900);
+    expect(slice).toMatch(
+      /buildPendingRemovalMarker\(loadGenerationRef\.current/,
+    );
+    expect(slice).toMatch(/setPendingRemoval/);
+    expect(slice).toMatch(/setSelected\(null\)/);
+    expect(slice).toMatch(/setReloadKey/);
+  });
+  it("100. foco após exclusão vai para newItemButtonRef (elemento estável)", () => {
+    const idx = AGENDA_ROUTE_SRC.indexOf(
+      "const handleDeleted = React.useCallback",
+    );
+    const slice = AGENDA_ROUTE_SRC.slice(idx, idx + 900);
+    expect(slice).toMatch(/newItemButtonRef\.current\?\.focus/);
+    expect(slice).not.toMatch(/lastTriggerRef\.current\?\.focus/);
+  });
+  it("101. rota tem efeito que consome resolvePendingRemovalAction", () => {
+    const idx = AGENDA_ROUTE_SRC.indexOf("resolvePendingRemovalAction(");
+    expect(idx).toBeGreaterThan(-1);
+    const slice = AGENDA_ROUTE_SRC.slice(Math.max(0, idx - 400), idx + 600);
+    expect(slice).toMatch(/pendingRemoval/);
+    expect(slice).toMatch(/setPendingRemoval\(null\)/);
+  });
+
+  it("102. onDeleted é invocado com type/caseId/id no diálogo", () => {
+    const idxs: number[] = [];
+    let from = 0;
+    for (;;) {
+      const i = DETAIL_SRC.indexOf("onDeleted({", from);
+      if (i < 0) break;
+      idxs.push(i);
+      from = i + 1;
+    }
+    expect(idxs.length).toBeGreaterThanOrEqual(2);
+    for (const i of idxs) {
+      const s = DETAIL_SRC.slice(i, i + 200);
+      expect(s).toMatch(/type:\s*"(deadline|appointment)"/);
+      expect(s).toMatch(/caseId:/);
+      expect(s).toMatch(/id:/);
+    }
+  });
+
+  it("103. remoção com conflito preserva conflict tipado como 'remove'", () => {
+    expect(DETAIL_SRC).toMatch(/buildMutationConflict\("remove", t\)/);
+    expect(DETAIL_SRC).toMatch(/buildMutationConflict\("change_status", t\)/);
+  });
+  it("104. abertura de status/exclusão limpa erros e conflitos prévios", () => {
+    expect(DETAIL_SRC).toMatch(
+      /setMutationError\(null\);\s*setMutationConflict\(null\);\s*setPendingStatus/,
+    );
+    expect(DETAIL_SRC).toMatch(
+      /setMutationError\(null\);\s*setMutationConflict\(null\);\s*setPendingRemoval\(true\)/,
+    );
+  });
+  it("105. remoção só executa quando pendingRemoval está aberto e permRemove='allowed'", () => {
+    const idx = DETAIL_SRC.indexOf("const confirmRemoval");
+    expect(idx).toBeGreaterThan(-1);
+    const slice = DETAIL_SRC.slice(idx, idx + 900);
+    expect(slice).toMatch(/mutationInFlightRef\.current/);
+    expect(slice).toMatch(/permRemove !== "allowed"/);
+    expect(slice).toMatch(/if \(!pendingRemoval\) return/);
+  });
+});
