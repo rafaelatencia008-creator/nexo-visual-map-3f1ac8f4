@@ -101,6 +101,10 @@ import {
   type AgendaItemFilter,
   type AgendaLifecycleFilter,
 } from "@/features/agenda/filters";
+import {
+  resolveCreatedItemVisibility,
+  type PendingCreatedItem,
+} from "@/features/agenda/created-visibility";
 
 // ============================================================================
 // Tela oficial /app/agenda.
@@ -184,9 +188,9 @@ type AgendaData = {
 };
 
 type LoadState =
-  | { kind: "loading" }
-  | { kind: "ready"; data: AgendaData }
-  | { kind: "error"; message: string };
+  | { kind: "loading"; generation: number }
+  | { kind: "ready"; generation: number; data: AgendaData }
+  | { kind: "error"; generation: number; message: string };
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 20;
@@ -390,19 +394,21 @@ type CasesState =
 function AgendaPage() {
   const { environment, context } = useMockDomain();
   const [filters, setFilters] = React.useState<AgendaFilters>(EMPTY_AGENDA_FILTERS);
-  const [state, setState] = React.useState<LoadState>({ kind: "loading" });
+  const [state, setState] = React.useState<LoadState>({
+    kind: "loading",
+    generation: 0,
+  });
   const [casesState, setCasesState] = React.useState<CasesState>({ kind: "loading" });
   const [mode, setMode] = React.useState<ViewMode>("week");
   const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
   const [showMore, setShowMore] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
-  const [pendingCreated, setPendingCreated] = React.useState<{
-    id: string;
-    type: "deadline" | "appointment";
-  } | null>(null);
+  const [pendingCreated, setPendingCreated] =
+    React.useState<PendingCreatedItem | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
+  const loadGenerationRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
@@ -438,18 +444,19 @@ function AgendaPage() {
 
   // Recarrega prazos/compromissos ao alterar filtros. Descarta respostas obsoletas.
   React.useEffect(() => {
-    const id = ++requestIdRef.current;
-    setState({ kind: "loading" });
+    const gen = ++loadGenerationRef.current;
+    requestIdRef.current = gen;
+    setState({ kind: "loading", generation: gen });
     fetchAgenda(environment, context, filters)
       .then((data) => {
-        if (!mountedRef.current || id !== requestIdRef.current) return;
-        setState({ kind: "ready", data });
+        if (!mountedRef.current || gen !== loadGenerationRef.current) return;
+        setState({ kind: "ready", generation: gen, data });
       })
       .catch((error: unknown) => {
-        if (!mountedRef.current || id !== requestIdRef.current) return;
+        if (!mountedRef.current || gen !== loadGenerationRef.current) return;
         const message =
           error instanceof Error ? error.message : "Falha ao carregar agenda.";
-        setState({ kind: "error", message });
+        setState({ kind: "error", generation: gen, message });
       });
   }, [environment, context, filters, reloadKey]);
 
@@ -546,7 +553,14 @@ function AgendaPage() {
 
   const handleCreated = React.useCallback(
     (created: AgendaCreatedItem) => {
-      setPendingCreated({ id: String(created.item.id), type: created.type });
+      // Reserva a próxima geração de recarga: somente uma consulta iniciada
+      // *depois* desta chamada poderá resolver a visibilidade do item.
+      const requiredGeneration = loadGenerationRef.current + 1;
+      setPendingCreated({
+        id: String(created.item.id),
+        type: created.type,
+        requiredGeneration,
+      });
       setReloadKey((k) => k + 1);
       // Retorna o foco ao botão que abriu o diálogo.
       window.setTimeout(() => {
@@ -556,23 +570,34 @@ function AgendaPage() {
     [],
   );
 
-  // Após a recarga concluir, avalia se o item criado aparece na visualização
-  // atual. Se não aparecer (filtros/período), sinaliza ao usuário.
+  const visibleDeadlineIds = React.useMemo(
+    () => new Set(visible.deadlines.map((d) => String(d.id))),
+    [visible.deadlines],
+  );
+  const visibleAppointmentIds = React.useMemo(
+    () => new Set(visible.appointments.map((a) => String(a.id))),
+    [visible.appointments],
+  );
+
+  // Após a recarga *da geração correta* concluir, avalia se o item criado
+  // aparece na visualização atual. Consulta em andamento, erro ou geração
+  // obsoleta mantêm o marcador pendente ("wait").
   React.useEffect(() => {
     if (!pendingCreated) return;
-    if (state.kind !== "ready") return;
-    const list =
-      pendingCreated.type === "deadline"
-        ? visible.deadlines
-        : visible.appointments;
-    const found = list.some((it) => String(it.id) === pendingCreated.id);
-    if (!found) {
+    const decision = resolveCreatedItemVisibility(
+      pendingCreated,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision === "wait") return;
+    if (decision === "hidden") {
       toast.info(
         "Item criado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
       );
     }
     setPendingCreated(null);
-  }, [pendingCreated, state, visible]);
+  }, [pendingCreated, state, visibleDeadlineIds, visibleAppointmentIds]);
 
   return (
     <div className="space-y-6">
