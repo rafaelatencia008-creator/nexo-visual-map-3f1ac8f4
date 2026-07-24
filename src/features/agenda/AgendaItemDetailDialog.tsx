@@ -311,6 +311,10 @@ export function AgendaItemDetailDialog(
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
   const mutationInFlightRef = React.useRef(false);
+  const mutationLock = React.useMemo(
+    () => bindSingleFlightLockToRef(mutationInFlightRef),
+    [],
+  );
 
   React.useEffect(() => {
     mountedRef.current = true;
