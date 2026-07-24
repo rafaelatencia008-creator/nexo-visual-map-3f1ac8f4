@@ -222,7 +222,7 @@ export function isAppointment(v: unknown): v is Appointment {
   if (!isValidOptionalString(a.description, AGENDA_DESCRIPTION_MAX)) return false;
   if (!isIsoDateTime(a.startsAt)) return false;
   if (!isIsoDateTime(a.endsAt)) return false;
-  if (!(a.endsAt > a.startsAt)) return false;
+  if (!(isoDateTimeToEpoch(a.endsAt) > isoDateTimeToEpoch(a.startsAt))) return false;
   if (!isAppointmentMode(a.mode)) return false;
   if (!isValidOptionalString(a.location, APPOINTMENT_LOCATION_MAX)) return false;
   if (a.assignmentId !== undefined && !isAssignmentId(a.assignmentId)) return false;
