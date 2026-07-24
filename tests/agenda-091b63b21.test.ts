@@ -414,23 +414,20 @@ describe("LV-09.1B.6.3B.2.1.1 · isInteractive e gates", () => {
     );
   });
 
-  it("60. Seis gates de UI multiplicam isInteractive quando pertinente", () => {
-    expect(CONTENT_SRC).toMatch(/canEditItem\s*=\s*\n?\s*isInteractive/);
-    expect(CONTENT_SRC).toMatch(
-      /canOpenItemAction\s*=\s*\n?\s*isInteractive/,
+  it("60. lockDecisions é gateado por isInteractive fechando gates funcionais", () => {
+    expect(CONTENT_SRC).toMatch(/const lockDecisions = isInteractive/);
+    expect(CONTENT_SRC).toMatch(/canEnterEdit: false/);
+    expect(CONTENT_SRC).toMatch(/canOpenConfirmation: false/);
+    expect(CONTENT_SRC).toMatch(/canRetryPermissions: false/);
+  });
+
+  it("60b. rawLockDecisions preserva a decisão original do lock", () => {
+    expect(CONTENT_SRC).toContain(
+      "const rawLockDecisions = getMutationLockDecisions()",
     );
-    expect(CONTENT_SRC).toMatch(
-      /canConfirmStatusChange\s*=\s*\n?\s*isInteractive/,
-    );
-    expect(CONTENT_SRC).toMatch(
-      /canConfirmRemoval\s*=\s*\n?\s*isInteractive/,
-    );
-    expect(CONTENT_SRC).toMatch(
-      /canRetryPermissionEvaluation\s*=\s*\n?\s*isInteractive/,
-    );
-    expect(CONTENT_SRC).toMatch(/canCloseDetail\s*=\s*active/);
   });
 });
+
 
 describe("LV-09.1B.6.3B.2.1.1 · Mutações assíncronas protegidas", () => {
   it("61. submit captura startSelectionKey e usa stillSameSelection", () => {
