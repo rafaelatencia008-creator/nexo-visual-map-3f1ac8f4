@@ -154,7 +154,9 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 
 - Este DEC não altera o comportamento de validação, permissões, submit,
   transição de status, exclusão, tratamento de conflito ou single-flight
-  lock: essas regras vivem exclusivamente no Content e são compartilhadas
-  entre wrapper e página.
+  lock. Nesta parcela A, essas regras continuam preservadas dentro dos
+  diálogos existentes (`AgendaCreateDialog` e `AgendaItemDetailDialog`).
+  A parcela B realizará a extração para `AgendaCreateContent` e
+  `AgendaItemDetailContent` sem alterar nenhuma dessas regras.
 - Este DEC não introduz nenhuma nova regra de permissão nem novo
   contrato de serviço.
