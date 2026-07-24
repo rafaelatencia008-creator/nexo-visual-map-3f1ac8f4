@@ -634,7 +634,7 @@ export function AgendaItemDetailDialog(
   const submit = React.useCallback(async () => {
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
-    if (perm !== "allowed") return;
+    if (!permissionAllowsAction(perm)) return;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
