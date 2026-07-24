@@ -443,3 +443,27 @@ export function guardAppointmentService(
       ),
   };
 }
+
+// ---- LV-09.2A: Communications ---------------------------------------------
+
+import type { CommunicationService } from "../services/communication-service";
+
+export function guardCommunicationService(
+  store: MockStore,
+  s: CommunicationService,
+): CommunicationService {
+  return {
+    getById: (ctx, cid, apptId, id) =>
+      enforceWithCase(store, ctx, "communication.read", cid, () =>
+        s.getById(ctx, cid, apptId, id),
+      ),
+    listByAppointment: (ctx, cid, apptId, opts) =>
+      enforceWithCase(store, ctx, "communication.list", cid, () =>
+        s.listByAppointment(ctx, cid, apptId, opts),
+      ),
+    create: (ctx, input) =>
+      enforceFromInputCase(store, ctx, "communication.create", input, () =>
+        s.create(ctx, input),
+      ),
+  };
+}
