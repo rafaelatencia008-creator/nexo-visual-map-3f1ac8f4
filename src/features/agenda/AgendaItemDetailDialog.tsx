@@ -881,7 +881,7 @@ export function AgendaItemDetailDialog(
   ]);
 
   const reloadAfterMutationConflict = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canOpenConfirmation) return;
     const eff = resolveMutationConflictAction("reload");
     if (eff.closeConfirmation) {
       setPendingStatus(null);
