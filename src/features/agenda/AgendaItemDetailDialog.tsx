@@ -94,6 +94,12 @@ import {
   type TranslatedUpdateError,
 } from "./edit-form";
 import { getDeadlinePresentation } from "./visual-state";
+import {
+  reduceConflictAction,
+  resolveDetailLoadResponse,
+  resolveDiscardIntent,
+  type DetailStateSnapshot,
+} from "./detail-reducers";
 
 // ---- Tipos públicos -----------------------------------------------------
 
