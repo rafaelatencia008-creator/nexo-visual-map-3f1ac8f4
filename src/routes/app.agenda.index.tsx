@@ -718,6 +718,13 @@ function AgendaPage() {
             </span>
           </div>
           <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ to: "/app/disponibilidade" })}
+          >
+            Verificar disponibilidade
+          </Button>
+          <Button
             ref={newItemButtonRef}
             type="button"
             onClick={() =>
