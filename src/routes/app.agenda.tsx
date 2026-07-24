@@ -29,6 +29,7 @@ import type {
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
+import { isoDateTimeToEpoch } from "@/domain/core/common";
 
 // ============================================================================
 // LV-09.1B.1 — Estrutura da tela /app/agenda.
