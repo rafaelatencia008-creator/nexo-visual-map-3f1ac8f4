@@ -790,7 +790,7 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
           caseId: SEED_CASE_ALFA_1_ID,
           kind: "internal",
           title: `p${i}`,
-          dueAt: `2026-08-${String(day).padStart(2, "0")}T10:00:00.000Z` as never,
+          dueAt: dt(`2026-08-${String(day).padStart(2, "0")}T10:00:00.000Z`),
           priority: "normal",
         }),
       );
