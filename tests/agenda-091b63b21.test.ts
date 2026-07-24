@@ -439,13 +439,13 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
 // ===========================================================================
 
 describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
-  it("S1. Rota de detalhe importa AgendaItemDetailDialog", () => {
-    expect(ROUTE_DETAIL_SRC).toMatch(/from "@\/features\/agenda\/AgendaItemDetailDialog"/);
-    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailDialog\b/);
+  it("S1. Rota de detalhe importa AgendaItemDetailContent (LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).toMatch(/from "@\/features\/agenda\/AgendaItemDetailContent"/);
+    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailContent\b/);
   });
-  it("S2. Rota de detalhe NÃO importa AgendaItemDetailContent", () => {
-    expect(ROUTE_DETAIL_SRC).not.toMatch(/from "@\/features\/agenda\/AgendaItemDetailContent"/);
-    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailContent\b/);
+  it("S2. Rota de detalhe NÃO importa AgendaItemDetailDialog (LV-09.1B.6.3B.2.2)", () => {
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/from "@\/features\/agenda\/AgendaItemDetailDialog"/);
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailDialog\b/);
   });
   it("S3. AgendaItemDetailDialog continua wrapper fino (delegação ao Content)", () => {
     expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
