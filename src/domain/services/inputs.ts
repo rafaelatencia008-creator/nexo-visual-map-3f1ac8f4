@@ -365,3 +365,18 @@ export type ChangeAppointmentStatusInput = Readonly<{
   status: AppointmentStatus;
   expectedVersion: number;
 }>;
+
+// ---- Communication (LV-09.2A) ----------------------------------------------
+
+export type CreateCommunicationInput = Readonly<{
+  caseId: CaseId;
+  appointmentId: AppointmentId;
+  kind: CommunicationKind;
+  channel: CommunicationChannel;
+  outcome: CommunicationOutcome;
+  direction: CommunicationDirection;
+  subject?: string;
+  note?: string;
+  recipientLabel?: string;
+  occurredAt: IsoDateTime;
+}>;
