@@ -106,6 +106,10 @@ import {
   type PendingCreatedItem,
 } from "@/features/agenda/created-visibility";
 import {
+  buildPendingUpdateMarker,
+  resolvePendingUpdateAction,
+} from "@/features/agenda/detail-reducers";
+import {
   AgendaItemDetailDialog,
   type AgendaItemUpdated,
   type SelectedAgendaItem,
