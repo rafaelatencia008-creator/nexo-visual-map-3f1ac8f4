@@ -152,10 +152,10 @@ describe("Escopo — parcela B pendente (só criação extraída) e LV-09.1B.7 a
     ).toBe(true);
   });
 
-  it("/app/disponibilidade não existe (LV-09.1B.7.2 pendente)", () => {
+  it("/app/disponibilidade existe (LV-09.1B.7.2 concluída)", () => {
     expect(
       existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("tests/agenda-091b7.test.ts existe", () => {

@@ -208,8 +208,8 @@ describe("LV-09.1B.6.3B.2.2 · Wrapper e escopo intocado", () => {
   it("39. resolvedor permanece inalterado (arquivo existe)", () => {
     expect(existsSync(resolve(__dirname, "..", RESOLVE_PATH))).toBe(true);
   });
-  it("40. rota /app/disponibilidade ausente; motor consultivo existe (LV-09.1B.7.1)", () => {
-    expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
+  it("40. rota /app/disponibilidade existe; motor consultivo existe (LV-09.1B.7.1/.7.2)", () => {
+    expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(true);
     expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(true);
   });
   it("41. domínio, serviços e mocks permanecem inalterados (pastas existem)", () => {

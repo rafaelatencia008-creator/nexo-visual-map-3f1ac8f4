@@ -561,8 +561,8 @@ describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7.1 iniciada — motor consultivo)
   it("28. tests/agenda-091b7.test.ts existe", () => {
     expect(existsSync("tests/agenda-091b7.test.ts")).toBe(true);
   });
-  it("29. não há rota /app/disponibilidade (LV-09.1B.7.2 não iniciada)", () => {
-    expect(existsSync("src/routes/app.disponibilidade.tsx")).toBe(false);
+  it("29. rota /app/disponibilidade existe (LV-09.1B.7.2 concluída)", () => {
+    expect(existsSync("src/routes/app.disponibilidade.tsx")).toBe(true);
   });
 });
 
