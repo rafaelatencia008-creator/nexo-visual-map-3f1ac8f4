@@ -136,6 +136,9 @@ type AssignmentsState =
   | { kind: "ready"; items: readonly Assignment[] }
   | { kind: "error"; message: string };
 
+const ASSIGNMENTS_PAGE_LIMIT = 100;
+const ASSIGNMENTS_MAX_PAGES = 20;
+
 export type AgendaCreatedItem =
   | { readonly type: "deadline"; readonly item: Deadline }
   | { readonly type: "appointment"; readonly item: Appointment };
