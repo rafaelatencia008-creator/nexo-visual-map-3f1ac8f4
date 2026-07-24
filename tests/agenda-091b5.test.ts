@@ -1540,8 +1540,19 @@ describe("LV-09.1B.5.1 — [OBSOLETO na LV-09.1B.6]", () => {
     expect(DETAIL_SRC).toMatch(/>\s*Excluir\s*</);
   });
 
-  it("124. rota app.agenda não navega para uma rota de detalhe própria", () => {
-    expect(AGENDA_ROUTE_SRC).not.toMatch(/to:\s*["'`]\/app\/agenda\/[^"'`]+["'`]/);
+  it("124. [ATUALIZADO na LV-09.1B.6.3A] rota canônica de detalhe é /app/agenda/$appointmentId", () => {
+    // A rota canônica de detalhe de compromisso foi introduzida na
+    // LV-09.1B.6.3A. Este teste passa a validar que a única rota de
+    // detalhe navegada a partir do índice é a oficial.
+    const matches = AGENDA_ROUTE_SRC.match(
+      /to:\s*["'`]\/app\/agenda\/[^"'`]+["'`]/g,
+    ) ?? [];
+    for (const m of matches) {
+      expect(
+        m.includes("/app/agenda/$appointmentId") ||
+          m.includes("/app/agenda/novo"),
+      ).toBe(true);
+    }
   });
 
   it("125. builders de update não expõem campo 'status'", async () => {
