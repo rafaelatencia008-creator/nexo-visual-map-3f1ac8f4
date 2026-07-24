@@ -98,7 +98,6 @@ import {
   reduceConflictAction,
   resolveDetailLoadResponse,
   resolveDiscardIntent,
-  type DetailStateSnapshot,
 } from "./detail-reducers";
 
 // ---- Tipos públicos -----------------------------------------------------
