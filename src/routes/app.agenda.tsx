@@ -1643,11 +1643,29 @@ function AppointmentCard({
       : presentation.state === "cancelled"
         ? XCircle
         : CalendarDays;
+  const clickable = typeof onOpen === "function";
+  const activate = (ev: React.SyntheticEvent) => {
+    if (onOpen) onOpen(appointment, ev);
+  };
   return (
     <article
       aria-label={`Compromisso — ${appointment.title}`}
-      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? activate : undefined}
+      onKeyDown={
+        clickable
+          ? (ev) => {
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                activate(ev);
+              }
+            }
+          : undefined
+      }
+      className={`relative flex gap-3 overflow-hidden rounded-lg border p-3 pl-4 ${presentation.containerClass} ${clickable ? "cursor-pointer transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
     >
+
       <span
         aria-hidden
         className={`absolute inset-y-0 left-0 w-1 ${presentation.accentClass}`}
