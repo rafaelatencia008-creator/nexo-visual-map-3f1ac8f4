@@ -896,13 +896,10 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.error.code).toBe("validation_error");
-      // O serviço pode devolver `period_inverted` (endsAt <= startsAt) ou
-      // `invalid_range` (mesmo instante). Ambos os códigos devem ser mapeados
-      // para o campo `endsAt` pelo tradutor.
-      expect(
-        res.error.message === "period_inverted" ||
-          res.error.message === "invalid_range",
-      ).toBe(true);
+      // LV-09.1B.4.2: exige exatamente `period_inverted`, sem ambiguidade.
+      expect(res.error.message).toBe("period_inverted");
+      const translated = translateAgendaServiceError(res.error);
+      expect(translated.field).toBe("endsAt");
     }
   });
 
