@@ -500,7 +500,8 @@ describe("LV-09.1B.6.3A.1 · rotas canônicas file-based", () => {
   it("18. rota canônica de criação existe", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda/novo")');
-    expect(src).toContain("AgendaCreateDialog");
+    // LV-09.1B.6.3B.1 — a rota agora monta AgendaCreateContent diretamente.
+    expect(src).toContain("AgendaCreateContent");
   });
 
   it("19. rota canônica de detalhe de compromisso existe", () => {

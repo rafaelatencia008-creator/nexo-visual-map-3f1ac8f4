@@ -827,7 +827,8 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
     );
     expect(indexSrc).toContain("Novo item");
     const novoSrc = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
-    expect(novoSrc).toContain("AgendaCreateDialog");
+    // LV-09.1B.6.3B.1 — a rota passou a montar diretamente AgendaCreateContent.
+    expect(novoSrc).toContain("AgendaCreateContent");
   });
 });
 
@@ -908,9 +909,9 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     }
   });
 
-  it("74. AgendaCreateDialog.tsx expõe constantes de paginação", () => {
+  it("74. AgendaCreateContent.tsx expõe constantes de paginação", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("ASSIGNMENTS_MAX_PAGES");
@@ -919,9 +920,9 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(src).toContain("ASSIGNMENTS_MAX_PAGES = 20");
   });
 
-  it("75. AgendaCreateDialog usa cursor e nextCursor no loop de assignments", () => {
+  it("75. AgendaCreateContent usa cursor e nextCursor no loop de assignments", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("nextCursor");
@@ -930,18 +931,18 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(src).toContain('status !== "active"');
   });
 
-  it("76. AgendaCreateDialog descarta respostas obsoletas via requestId", () => {
+  it("76. AgendaCreateContent descarta respostas obsoletas via requestId", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("assignmentsReqIdRef");
     expect(src).toMatch(/reqId\s*!==\s*assignmentsReqIdRef\.current/);
   });
 
-  it("77. AgendaCreateDialog deduplica assignments por ID", () => {
+  it("77. AgendaCreateContent deduplica assignments por ID", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("new Set");
@@ -982,7 +983,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("79. AssignmentSelect declara aria-invalid, aria-describedby e aria-busy", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("aria-invalid");
@@ -992,7 +993,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("80. AssignmentSelect oferece botão Tentar novamente", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("Tentar novamente");
@@ -1002,7 +1003,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("81. IDs exclusivos de erro do responsável nos dois formulários", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain("err-d-assignee");
@@ -1051,9 +1052,9 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     expect(chunk.includes("toast.info")).toBe(false);
   });
 
-  it("86. AgendaCreateDialog anuncia carregamento de responsáveis via sr-only + aria-live", () => {
+  it("86. AgendaCreateContent anuncia carregamento de responsáveis via sr-only + aria-live", () => {
     const src = readFileSync(
-      "src/features/agenda/AgendaCreateDialog.tsx",
+      "src/features/agenda/AgendaCreateContent.tsx",
       "utf8",
     );
     expect(src).toContain('aria-live="polite"');
