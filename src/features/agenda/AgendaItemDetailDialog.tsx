@@ -641,7 +641,7 @@ export function AgendaItemDetailDialog(
       const merged: Record<string, string> = { ...errors };
       for (const [k, v] of Object.entries(currentBuildResult.errors)) {
         if (merged[k]) continue;
-        if (attemptedSubmit || touched[k] || touched[fieldToTouchKey(k)]) {
+        if (attemptedSubmit || touched[k]) {
           merged[k] = v;
         }
       }
