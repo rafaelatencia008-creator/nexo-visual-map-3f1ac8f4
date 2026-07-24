@@ -715,6 +715,16 @@ function AgendaPage() {
         onCreated={handleCreated}
       />
 
+      <AgendaItemDetailDialog
+        selected={selected}
+        onClose={closeDetail}
+        environment={environment}
+        context={context}
+        cases={accessibleCases}
+        onUpdated={handleUpdated}
+      />
+
+
 
       <AgendaFiltersBar
         filters={filters}
