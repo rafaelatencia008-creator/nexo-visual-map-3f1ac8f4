@@ -848,9 +848,15 @@ function DeadlineFields(props: {
           onChange={(v) => onChange("assignmentId", v as AssignmentId | "")}
           assignments={assignments}
           disabled={disabled}
+          fieldError={errors.assignmentId}
+          errorMessageId="err-d-assignee"
+          loadErrorMessageId="err-d-assignee-load"
+          onRetry={onRetryAssignments}
         />
         {errors.assignmentId && (
-          <p className="text-xs text-destructive">{errors.assignmentId}</p>
+          <p id="err-d-assignee" className="text-xs text-destructive">
+            {errors.assignmentId}
+          </p>
         )}
       </div>
     </div>
