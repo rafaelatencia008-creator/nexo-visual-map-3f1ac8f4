@@ -8,7 +8,16 @@
  */
 
 import * as React from "react";
-import { AlertCircle, Loader2, Pencil } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Flag,
+  Loader2,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
