@@ -1,14 +1,13 @@
 /**
- * LV-09.1B.6.3A — Fundação das rotas canônicas da Agenda.
+ * LV-09.1B.6.3A / .3A.1 — Fundação das rotas canônicas da Agenda.
  *
  * Testes comportamentais do resolvedor puro de `appointmentId` e testes
- * estruturais mínimos das rotas file-based (existência dos arquivos e
- * declarações canônicas de `createFileRoute`). Nenhuma dependência de
- * Git, filesystem externo ou snapshot visual.
+ * estruturais mínimos das rotas file-based e do DEC-AGE-001.
+ * Sem dependência de Git, filesystem externo ou snapshot visual.
  */
 
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { createMockDomainEnvironment } from "@/domain/mocks";
 import {
@@ -21,10 +20,13 @@ import type { ServiceContext } from "@/domain/services/context";
 import type { ServiceResult } from "@/domain/services/result";
 import { isIsoDateTime, type IsoDateTime } from "@/domain/core/common";
 import type { Appointment } from "@/domain/core/agenda";
-import type { AppointmentService, AppointmentListOptions }
-  from "@/domain/services/appointment-service";
+import type {
+  AppointmentService,
+  AppointmentListOptions,
+} from "@/domain/services/appointment-service";
 import type { PageResult } from "@/domain/services/pagination";
-import type { AppointmentId, CaseId } from "@/domain/core/ids";
+import { isAppointmentId } from "@/domain/core/ids";
+import type { AppointmentId } from "@/domain/core/ids";
 
 import { resolveAppointmentRoute } from "@/features/agenda/resolve-appointment-route";
 
@@ -58,12 +60,49 @@ async function makeAppointment(env: ReturnType<typeof createMockDomainEnvironmen
   return ok(r);
 }
 
+function baseAppointmentService(): AppointmentService {
+  return {
+    async create() {
+      throw new Error("nope");
+    },
+    async getById() {
+      throw new Error("nope");
+    },
+    async list(
+      _ctx,
+      _opts?: AppointmentListOptions,
+    ): Promise<ServiceResult<PageResult<Appointment>>> {
+      throw new Error("nope");
+    },
+    async update() {
+      throw new Error("nope");
+    },
+    async changeStatus() {
+      throw new Error("nope");
+    },
+    async remove() {
+      throw new Error("nope");
+    },
+  };
+}
+
+function fakeApt(id: string): Appointment {
+  return {
+    id: id as AppointmentId,
+  } as unknown as Appointment;
+}
+
+const VALID_ID_A = "appt_route_test_a";
+const VALID_ID_B = "appt_route_test_b";
+const VALID_ID_MISSING = "appt_route_missing_xyz";
+
 // ---- Resolvedor de rota --------------------------------------------------
 
-describe("LV-09.1B.6.3A · resolveAppointmentRoute", () => {
-  it("1. retorna 'found' quando o compromisso existe no escopo do usuário", async () => {
+describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
+  it("1. ID válido encontrado retorna 'found'", async () => {
     const env = createMockDomainEnvironment();
     const created = await makeAppointment(env);
+    expect(isAppointmentId(String(created.id))).toBe(true);
     const r = await resolveAppointmentRoute(
       env.services.appointments,
       OWNER_ALFA,
@@ -72,221 +111,406 @@ describe("LV-09.1B.6.3A · resolveAppointmentRoute", () => {
     expect(r.kind).toBe("found");
     if (r.kind !== "found") throw new Error("unreachable");
     expect(String(r.appointment.id)).toBe(String(created.id));
-    expect(r.appointment.caseId).toBe(SEED_CASE_ALFA_1_ID);
   });
 
-  it("2. retorna 'not_found' quando o ID não existe", async () => {
+  it("2. ID válido ausente retorna 'not_found'", async () => {
     const env = createMockDomainEnvironment();
     await makeAppointment(env);
     const r = await resolveAppointmentRoute(
       env.services.appointments,
       OWNER_ALFA,
-      "apt_this_id_does_not_exist",
+      VALID_ID_MISSING,
     );
     expect(r.kind).toBe("not_found");
   });
 
-  it("3. retorna 'not_found' para item fora do escopo (não fabrica 'forbidden')", async () => {
-    // Item fora do escopo simplesmente não aparece na listagem. O
-    // resolvedor devolve 'not_found', não 'forbidden'.
+  it("3. ID sintaticamente inválido retorna 'not_found'", async () => {
     const env = createMockDomainEnvironment();
-    // Cria um compromisso no OWNER_ALFA e resolve com um contexto que
-    // não enxerga esse caso: usamos um userId qualquer que não é membro.
-    const created = await makeAppointment(env);
-    const strangerCtx: ServiceContext = {
-      ...OWNER_ALFA,
-      // Mesmo org: o compromisso existe, mas para um caso do OWNER.
-      // Como o único appointment criado é o do owner, testamos que um ID
-      // conhecido é 'found' e um ID desconhecido é 'not_found'.
-      // O invariante essencial: nunca surge 'forbidden' sem que o serviço
-      // devolva explicitamente esse código.
-    };
-    const r1 = await resolveAppointmentRoute(
-      env.services.appointments,
-      strangerCtx,
-      String(created.id),
-    );
-    expect(["found", "not_found"]).toContain(r1.kind);
-    const r2 = await resolveAppointmentRoute(
-      env.services.appointments,
-      OWNER_ALFA,
-      "apt_missing_id",
-    );
-    expect(r2.kind).toBe("not_found");
-  });
-
-  it("4. paginação: encontra o item mesmo com múltiplas páginas", async () => {
-    const env = createMockDomainEnvironment();
-    // Cria vários compromissos e resolve o último.
-    let last: Appointment | null = null;
-    for (let i = 0; i < 5; i++) {
-      const day = 10 + i;
-      const r = await env.services.appointments.create(OWNER_ALFA, {
-        caseId: SEED_CASE_ALFA_1_ID,
-        kind: "meeting",
-        title: `Reunião ${i}`,
-        startsAt: dt(`2026-08-${day}T13:00:00.000Z`),
-        endsAt: dt(`2026-08-${day}T14:00:00.000Z`),
-        mode: "remote",
-      });
-      last = ok(r);
+    for (const bad of ["", "apt_x", "case_1", "not-an-id", "123"]) {
+      const r = await resolveAppointmentRoute(env.services.appointments, OWNER_ALFA, bad);
+      expect(r.kind).toBe("not_found");
     }
-    if (!last) throw new Error("no appointment");
-    const r = await resolveAppointmentRoute(
-      env.services.appointments,
-      OWNER_ALFA,
-      String(last.id),
-      { pageLimit: 2, maxPages: 10 },
-    );
-    expect(r.kind).toBe("found");
   });
 
-  it("5. propaga código explícito quando o serviço retorna erro (não silencia)", async () => {
-    // Fake service que retorna 'forbidden' explicitamente.
+  it("4. ID inválido executa zero chamadas ao serviço", async () => {
+    let calls = 0;
     const fake: AppointmentService = {
-      async create() { throw new Error("nope"); },
-      async getById() { throw new Error("nope"); },
-      async list(_ctx, _opts?: AppointmentListOptions):
-        Promise<ServiceResult<PageResult<Appointment>>> {
+      ...baseAppointmentService(),
+      async list() {
+        calls++;
+        return {
+          ok: true,
+          data: { items: [] as readonly Appointment[] },
+        } as ServiceResult<PageResult<Appointment>>;
+      },
+    };
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, "invalid_id");
+    expect(r.kind).toBe("not_found");
+    expect(calls).toBe(0);
+  });
+
+  it("5. 'forbidden' explícito do serviço permanece 'error'", async () => {
+    const fake: AppointmentService = {
+      ...baseAppointmentService(),
+      async list() {
         return { ok: false, error: { code: "forbidden", message: "sem acesso" } };
       },
-      async update() { throw new Error("nope"); },
-      async changeStatus() { throw new Error("nope"); },
-      async remove() { throw new Error("nope"); },
     };
-    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, "any");
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A);
     expect(r.kind).toBe("error");
     if (r.kind !== "error") throw new Error("unreachable");
     expect(r.source).toBe("appointments");
     expect(r.code).toBe("forbidden");
   });
 
-  it("6. não fabrica 'forbidden' quando o serviço apenas devolve página vazia", async () => {
+  it("6. página vazia retorna 'not_found' e não fabrica 'forbidden'", async () => {
     const fake: AppointmentService = {
-      async create() { throw new Error("nope"); },
-      async getById() { throw new Error("nope"); },
+      ...baseAppointmentService(),
       async list() {
         return {
           ok: true,
           data: { items: [] as readonly Appointment[] },
         } as ServiceResult<PageResult<Appointment>>;
       },
-      async update() { throw new Error("nope"); },
-      async changeStatus() { throw new Error("nope"); },
-      async remove() { throw new Error("nope"); },
     };
-    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, "apt_x");
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A);
     expect(r.kind).toBe("not_found");
   });
 
-  it("7. respeita maxPages: se o item só aparece após o limite, devolve 'not_found'", async () => {
-    let calls = 0;
+  it("7. múltiplas páginas encontram o item", async () => {
+    let call = 0;
     const fake: AppointmentService = {
-      async create() { throw new Error("nope"); },
-      async getById() { throw new Error("nope"); },
+      ...baseAppointmentService(),
       async list() {
-        calls++;
-        // Sempre indica que há próxima página.
+        call++;
+        if (call === 1) {
+          return {
+            ok: true,
+            data: {
+              items: [fakeApt("appt_other_1")] as readonly Appointment[],
+              nextCursor: "c1",
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        }
+        if (call === 2) {
+          return {
+            ok: true,
+            data: {
+              items: [fakeApt("appt_other_2")] as readonly Appointment[],
+              nextCursor: "c2",
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        }
+        return {
+          ok: true,
+          data: {
+            items: [fakeApt(VALID_ID_A)] as readonly Appointment[],
+          },
+        } as ServiceResult<PageResult<Appointment>>;
+      },
+    };
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
+      pageLimit: 1,
+      maxPages: 10,
+    });
+    expect(r.kind).toBe("found");
+    expect(call).toBe(3);
+  });
+
+  it("8. IDs repetidos em páginas diferentes são deduplicados", async () => {
+    let call = 0;
+    const fake: AppointmentService = {
+      ...baseAppointmentService(),
+      async list() {
+        call++;
+        if (call === 1) {
+          return {
+            ok: true,
+            data: {
+              items: [fakeApt(VALID_ID_B)] as readonly Appointment[],
+              nextCursor: "c1",
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        }
+        if (call === 2) {
+          // Repete o mesmo id, ainda sem o alvo.
+          return {
+            ok: true,
+            data: {
+              items: [fakeApt(VALID_ID_B)] as readonly Appointment[],
+              nextCursor: "c2",
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        }
+        return {
+          ok: true,
+          data: {
+            items: [fakeApt(VALID_ID_A)] as readonly Appointment[],
+          },
+        } as ServiceResult<PageResult<Appointment>>;
+      },
+    };
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
+      maxPages: 5,
+    });
+    expect(r.kind).toBe("found");
+    // Deduplicação NÃO impediu que a 3ª página fosse consultada.
+    expect(call).toBe(3);
+  });
+
+  it("9. término normal do cursor retorna 'not_found'", async () => {
+    let call = 0;
+    const fake: AppointmentService = {
+      ...baseAppointmentService(),
+      async list() {
+        call++;
+        if (call === 1) {
+          return {
+            ok: true,
+            data: {
+              items: [fakeApt("appt_x")] as readonly Appointment[],
+              nextCursor: "c1",
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        }
+        return {
+          ok: true,
+          data: {
+            items: [fakeApt("appt_y")] as readonly Appointment[],
+          },
+        } as ServiceResult<PageResult<Appointment>>;
+      },
+    };
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A);
+    expect(r.kind).toBe("not_found");
+    expect(call).toBe(2);
+  });
+
+  it("10. maxPages com nextCursor pendente retorna 'error/internal_error'", async () => {
+    let call = 0;
+    const fake: AppointmentService = {
+      ...baseAppointmentService(),
+      async list() {
+        call++;
         return {
           ok: true,
           data: {
             items: [] as readonly Appointment[],
-            nextCursor: "next",
+            nextCursor: `c${call}`,
           },
         } as ServiceResult<PageResult<Appointment>>;
       },
-      async update() { throw new Error("nope"); },
-      async changeStatus() { throw new Error("nope"); },
-      async remove() { throw new Error("nope"); },
     };
-    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, "apt_x", {
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
       maxPages: 3,
     });
-    expect(r.kind).toBe("not_found");
-    expect(calls).toBe(3);
+    expect(r.kind).toBe("error");
+    if (r.kind !== "error") throw new Error("unreachable");
+    expect(r.code).toBe("internal_error");
+    expect(r.message).toBe("appointment_route_pagination_exhausted");
+    expect(call).toBe(3);
+  });
+
+  it("11. cursor repetido retorna 'error/internal_error' (anti-loop)", async () => {
+    let call = 0;
+    const fake: AppointmentService = {
+      ...baseAppointmentService(),
+      async list() {
+        call++;
+        return {
+          ok: true,
+          data: {
+            items: [] as readonly Appointment[],
+            nextCursor: "same",
+          },
+        } as ServiceResult<PageResult<Appointment>>;
+      },
+    };
+    const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
+      maxPages: 50,
+    });
+    expect(r.kind).toBe("error");
+    if (r.kind !== "error") throw new Error("unreachable");
+    expect(r.code).toBe("internal_error");
+    expect(r.message).toBe("appointment_route_pagination_cycle");
+    // Só a 2ª chamada expôs a repetição de cursor.
+    expect(call).toBe(2);
+  });
+
+  it("12. pageLimit inválido usa default seguro", async () => {
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      let receivedLimit: number | undefined;
+      const fake: AppointmentService = {
+        ...baseAppointmentService(),
+        async list(_ctx, opts) {
+          receivedLimit = opts?.page?.limit;
+          return {
+            ok: true,
+            data: { items: [] as readonly Appointment[] },
+          } as ServiceResult<PageResult<Appointment>>;
+        },
+      };
+      const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
+        pageLimit: bad,
+      });
+      expect(r.kind).toBe("not_found");
+      expect(receivedLimit).toBe(100);
+    }
+  });
+
+  it("13. maxPages inválido usa default seguro", async () => {
+    for (const bad of [0, -5, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      let calls = 0;
+      const fake: AppointmentService = {
+        ...baseAppointmentService(),
+        async list() {
+          calls++;
+          if (calls > 100) {
+            return {
+              ok: true,
+              data: { items: [] as readonly Appointment[] },
+            } as ServiceResult<PageResult<Appointment>>;
+          }
+          return {
+            ok: true,
+            data: {
+              items: [] as readonly Appointment[],
+              nextCursor: `c${calls}`,
+            },
+          } as ServiceResult<PageResult<Appointment>>;
+        },
+      };
+      const r = await resolveAppointmentRoute(fake, OWNER_ALFA, VALID_ID_A, {
+        maxPages: bad,
+      });
+      // default 50: esgota antes de terminar; retorna 'error'.
+      expect(r.kind).toBe("error");
+      expect(calls).toBe(50);
+    }
   });
 });
 
-// ---- Estrutura das rotas file-based -------------------------------------
+// ---- Rota /novo · caseId --------------------------------------------------
 
-describe("LV-09.1B.6.3A · rotas canônicas file-based", () => {
-  it("8. rota pai app.agenda.tsx é layout com Outlet e Provider", () => {
+describe("LV-09.1B.6.3A.1 · search caseId em /app/agenda/novo", () => {
+  it("14. search param caseId válido é aceito", () => {
+    const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
+    expect(src).toContain("isCaseId(search.caseId)");
+    expect(src).toContain("initialCaseId");
+  });
+
+  it("15. search param caseId inválido é ignorado (sem cast bruto)", () => {
+    const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
+    // Não pode existir cast direto `as CaseId`.
+    expect(src).not.toMatch(/as\s+CaseId/);
+  });
+});
+
+// ---- Estrutura das rotas file-based --------------------------------------
+
+describe("LV-09.1B.6.3A.1 · rotas canônicas file-based", () => {
+  it("16. rota pai app.agenda.tsx é layout com Outlet e Provider", () => {
     const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda")');
     expect(src).toContain("AgendaRouteStateProvider");
     expect(src).toContain("<Outlet />");
   });
 
-  it("9. rota índice existe e declara /app/agenda/", () => {
+  it("17. rota índice existe e declara /app/agenda/", () => {
     const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda/")');
     expect(src).toContain("useAgendaRouteState");
   });
 
-  it("10. rota canônica de criação existe", () => {
+  it("18. rota canônica de criação existe", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda/novo")');
     expect(src).toContain("AgendaCreateDialog");
   });
 
-  it("11. rota canônica de detalhe de compromisso existe", () => {
-    const src = readFileSync(
-      "src/routes/app.agenda.$appointmentId.tsx",
-      "utf8",
-    );
+  it("19. rota canônica de detalhe de compromisso existe", () => {
+    const src = readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8");
     expect(src).toContain('createFileRoute("/app/agenda/$appointmentId")');
     expect(src).toContain("resolveAppointmentRoute");
     expect(src).toContain("AgendaItemDetailDialog");
   });
 
-  it("12. routeTree.gen.ts reflete as três rotas canônicas", () => {
+  it("20. routeTree.gen.ts reflete as três rotas canônicas", () => {
     const gen = readFileSync("src/routeTree.gen.ts", "utf8");
     expect(gen.includes("/app/agenda/novo")).toBe(true);
     expect(gen.includes("/app/agenda/$appointmentId")).toBe(true);
     expect(gen.includes("/app/agenda/")).toBe(true);
   });
 
-  it("13. DEC-AGE-001 está documentado", () => {
-    const doc = readFileSync(
-      "docs/decisions/DEC-AGE-001-rotas-canonicas.md",
-      "utf8",
-    );
-    expect(doc).toContain("DEC-AGE-001");
-    expect(doc).toContain("/app/agenda/novo");
-    expect(doc).toContain("/app/agenda/$appointmentId");
-  });
-
-  it("14. rota pai não define botão Novo item nem monta diálogos", () => {
+  it("21. rota pai não define botão Novo item nem monta diálogos", () => {
     const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
     expect(src).not.toContain("Novo item");
     expect(src).not.toContain("AgendaCreateDialog");
     expect(src).not.toContain("AgendaItemDetailDialog");
   });
 
-  it("15. rota /novo navega de volta ao /app/agenda ao fechar", () => {
+  it("22. rota /novo navega de volta ao /app/agenda ao fechar", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
     expect(src).toContain('to: "/app/agenda"');
   });
 
-  it("16. rota /novo navega diretamente ao detalhe após criar compromisso", () => {
+  it("23. rota /novo navega diretamente ao detalhe após criar compromisso", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
     expect(src).toContain('to: "/app/agenda/$appointmentId"');
   });
 
-  it("17. rota /novo registra pendingCreated para prazo antes de navegar", () => {
+  it("24. rota /novo registra pendingCreated para prazo antes de navegar", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
     expect(src).toContain("setPendingCreated");
     expect(src).toContain("requiredGeneration");
   });
 
-  it("18. rota de detalhe oferece caminho de volta em not_found/erro", () => {
-    const src = readFileSync(
-      "src/routes/app.agenda.$appointmentId.tsx",
-      "utf8",
-    );
+  it("25. rota de detalhe oferece caminho de volta em not_found/erro", () => {
+    const src = readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8");
     expect(src).toContain("Voltar para a agenda");
-    // Estados discriminados presentes.
     expect(src).toContain('"not_found"');
     expect(src).toContain('"error"');
+  });
+});
+
+// ---- Escopo: arquivos antecipados da LV-09.1B.7 foram removidos ---------
+
+describe("LV-09.1B.6.3A.1 · escopo (LV-09.1B.7 não iniciada)", () => {
+  it("26. src/features/agenda/availability.ts não existe", () => {
+    expect(existsSync("src/features/agenda/availability.ts")).toBe(false);
+  });
+  it("27. src/features/agenda/check-appointment-availability.ts não existe", () => {
+    expect(existsSync("src/features/agenda/check-appointment-availability.ts")).toBe(false);
+  });
+  it("28. tests/agenda-091b7.test.ts não existe", () => {
+    expect(existsSync("tests/agenda-091b7.test.ts")).toBe(false);
+  });
+  it("29. não há rota /app/disponibilidade", () => {
+    expect(existsSync("src/routes/app.disponibilidade.tsx")).toBe(false);
+  });
+});
+
+// ---- DEC-AGE-001 reflete o estado real -----------------------------------
+
+describe("LV-09.1B.6.3A.1 · DEC-AGE-001", () => {
+  const dec = readFileSync("docs/decisions/DEC-AGE-001-rotas-canonicas.md", "utf8");
+  it("30. DEC menciona a condição transitória (diálogos montados diretamente)", () => {
+    expect(dec).toMatch(/transit[óo]ri/i);
+    expect(dec).toContain("AgendaCreateDialog");
+    expect(dec).toContain("AgendaItemDetailDialog");
+  });
+  it("31. DEC menciona a parcela B como pendente", () => {
+    expect(dec).toContain("LV-09.1B.6.3B");
+    expect(dec).toMatch(/pendente|n[ãa]o iniciad/i);
+  });
+  it("32. DEC não afirma que os componentes Content já existem", () => {
+    // Devem aparecer apenas como pendência (linhas com 'não'/'ainda não').
+    expect(dec).toMatch(
+      /ainda\s+n[ãa]o[^.]*AgendaCreateContent|AgendaCreateContent[^.]*ainda\s+n[ãa]o|n[ãa]o[^.]*criad[oa]s[^.]*AgendaCreateContent/i,
+    );
+  });
+  it("33. DEC informa que a LV-09.1B.7 não está iniciada", () => {
+    expect(dec).toContain("LV-09.1B.7");
+    expect(dec).toMatch(/n[ãa]o\s+(est[áa]|foi)\s+iniciad/i);
   });
 });

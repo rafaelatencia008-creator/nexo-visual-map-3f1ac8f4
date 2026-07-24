@@ -1,8 +1,56 @@
 # DEC-AGE-001 — Rotas canônicas da Agenda
 
-**Status:** aceito
+**Status:** aceito (parcela A entregue; parcela B pendente)
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3
+**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A e
+saneada na LV-09.1B.6.3A.1; parcela B (LV-09.1B.6.3B) ainda não iniciada.
+
+## Estado atual desta decisão
+
+### Entregue na parcela A (LV-09.1B.6.3A + .3A.1)
+
+- Rota pai `src/routes/app.agenda.tsx` como layout com `<Outlet />` e
+  `AgendaRouteStateProvider` compartilhado.
+- Calendário como rota índice `src/routes/app.agenda.index.tsx`.
+- Rota canônica de criação `src/routes/app.agenda.novo.tsx`.
+- Rota canônica de detalhe `src/routes/app.agenda.$appointmentId.tsx`.
+- Provider compartilhado com filtros, modo, âncora temporal, marcadores
+  `pendingCreated`/`pendingRemoval` e chave de recarga.
+- Resolvedor puro `resolve-appointment-route.ts` com guard sintático
+  (`isAppointmentId`), deduplicação de itens, detecção de ciclo de cursor
+  e retorno de erro ao esgotar `maxPages`.
+- Navegação canônica funcionando entre `/app/agenda`, `/app/agenda/novo`
+  e `/app/agenda/$appointmentId`.
+- Pós-criação de prazo atravessa a rota: `pendingCreated` é registrado no
+  estado compartilhado **antes** da navegação, preservando o aviso
+  "Ele não aparece na visualização atual".
+
+### Transitório nesta parcela
+
+Nesta parcela A, as páginas de rota ainda montam diretamente os diálogos
+existentes:
+
+- `/app/agenda/novo` monta `AgendaCreateDialog`.
+- `/app/agenda/$appointmentId` monta `AgendaItemDetailDialog`.
+
+Isso é intencional: mantém o comportamento oficial idêntico enquanto as
+rotas canônicas passam a existir.
+
+### Pendente da parcela B (LV-09.1B.6.3B)
+
+Ainda **não** foram criados:
+
+- `AgendaCreateContent` — corpo do fluxo de criação sem shell de diálogo.
+- `AgendaItemDetailContent` — corpo do fluxo de detalhe/edição sem shell
+  de diálogo.
+
+Como os componentes `Content` ainda não existem, os diálogos
+`AgendaCreateDialog` e `AgendaItemDetailDialog` **ainda não são wrappers
+finos**. A LV-09.1B.6.3 permanece **aberta** e só será encerrada quando a
+parcela B extrair esses `Content` e transformar os diálogos em wrappers.
+
+A LV-09.1B.7 (motor consultivo de disponibilidade) **não está iniciada**.
+Qualquer artefato antecipado dessa etapa foi removido na LV-09.1B.6.3A.1.
 
 ## Contexto
 
@@ -22,7 +70,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 
 1. **Reconciliação das rotas canônicas.** As três rotas passam a existir de
    forma explícita no roteamento file-based do TanStack Router:
-
    - `src/routes/app.agenda.tsx` — rota pai (layout com `<Outlet />`) que
      hospeda o `AgendaRouteStateProvider` compartilhado.
    - `src/routes/app.agenda.index.tsx` — calendário e listagem.
@@ -32,7 +79,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
 2. **Reuso de conteúdo por extração, não por duplicação.** As implementações
    funcionais dos fluxos de criação e de detalhe/edição foram extraídas em
    dois componentes reutilizáveis:
-
    - `AgendaCreateContent` — corpo completo do fluxo de criação, sem
      shell de diálogo.
    - `AgendaItemDetailContent` — corpo completo do fluxo de detalhe/edição,
@@ -61,7 +107,6 @@ compromisso, e navegação natural pelo botão de voltar do navegador.
    acessíveis para localizar o `Appointment` correspondente a um
    `appointmentId` de URL. O resultado é uma união discriminada com
    exatamente três estados:
-
    - `{ kind: "found"; appointment }`
    - `{ kind: "not_found" }`
    - `{ kind: "error"; source: "appointments"; code? }`
