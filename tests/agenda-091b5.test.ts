@@ -1134,17 +1134,22 @@ describe("LV-09.1B.5.1 — botão Salvar derivado da validade", () => {
     expect(r.ok && r.changed === true).toBe(true);
   });
 
-  it("84. AgendaItemDetailDialog usa canSubmit derivado do builder", () => {
-    expect(DETAIL_SRC).toContain("canSubmit");
-    expect(DETAIL_SRC).toContain("currentBuildResult");
+  it("84. AgendaItemDetailDialog importa e consome deriveEditUiState (canSubmit único)", () => {
+    expect(DETAIL_SRC).toContain("deriveEditUiState");
+    expect(DETAIL_SRC).toMatch(/const\s+canSubmit\s*=\s*editUiState\.canSubmit/);
     expect(DETAIL_SRC).toMatch(/disabled=\{!canSubmit\}/);
+    // Não deve existir cálculo manual duplicado de canSubmit.
+    const manualCanSubmit = DETAIL_SRC.match(
+      /const\s+canSubmit\s*=\s*\n?\s*mode\s*===\s*"edit"/,
+    );
+    expect(manualCanSubmit).toBeNull();
   });
 });
 
 describe("LV-09.1B.5.1 — validação progressiva (touched / attemptedSubmit)", () => {
   it("85. AgendaItemDetailDialog mantém estado touched", () => {
     expect(DETAIL_SRC).toMatch(/setTouched\(/);
-    expect(DETAIL_SRC).toContain("touched[k]");
+    expect(DETAIL_SRC).toContain("touched");
   });
 
   it("86. AgendaItemDetailDialog mantém estado attemptedSubmit", () => {
@@ -1152,9 +1157,18 @@ describe("LV-09.1B.5.1 — validação progressiva (touched / attemptedSubmit)",
     expect(DETAIL_SRC).toContain("setAttemptedSubmit");
   });
 
-  it("87. mensagens de erro só aparecem quando o campo foi tocado ou após submit", () => {
-    // heurística estrutural: displayErrors filtra por (attemptedSubmit || touched[k])
-    expect(DETAIL_SRC).toMatch(/attemptedSubmit\s*\|\|\s*touched\[k\]/);
+  it("87. displayErrors vem de deriveEditUiState (sem duplicação manual)", () => {
+    // Estrutural mínimo: o componente consome displayErrors do helper.
+    expect(DETAIL_SRC).toMatch(
+      /const\s+displayErrors\s*=\s*editUiState\.displayErrors/,
+    );
+    // A regra progressiva (`attemptedSubmit || touched[k]`) vive apenas no
+    // helper puro `deriveEditUiState`, exercitada pelos testes comportamentais
+    // 133–135 e 162–164. O componente não deve reintroduzi-la manualmente.
+    const manualLoop = DETAIL_SRC.match(
+      /for\s*\(const\s*\[\s*k\s*,\s*v\s*\]\s+of\s+Object\.entries\(currentBuildResult\.errors\)/,
+    );
+    expect(manualLoop).toBeNull();
   });
 
   it("88. onBlurField é passado para DeadlineEditFields e AppointmentEditFields", () => {
