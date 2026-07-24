@@ -1,10 +1,22 @@
 /**
- * LV-09.1B.7.2 — Página consultiva de disponibilidade (SCR-AGE-004).
+ * LV-09.1B.7.2 / LV-09.1B.7.2.1 — Página consultiva de disponibilidade (SCR-AGE-004).
  *
  * Consulta o motor aprovado `checkAppointmentAvailability` e apresenta
  * disponibilidade, conflitos ou motivos de indeterminação. NÃO cria,
  * altera, cancela, conclui ou remove compromissos. NÃO reinterpreta a
  * regra de sobreposição — apenas exibe a decisão retornada pelo motor.
+ *
+ * Correção LV-09.1B.7.2.1:
+ *   - Ciclo consultivo delegado ao helper puro em
+ *     `./availability-consultation-state`. Nenhuma mutação direta de
+ *     `requestIdRef` / `inFlightRef` — a sessão vive numa única `ref`.
+ *   - Sem casts inseguros (`as never`, `as CaseId`): narrowing por
+ *     `isCaseId` e tipagem `IsoDateTime` em `formatDateTime`.
+ *   - Campo Responsável sempre expõe o mesmo `SelectTrigger` com
+ *     `id="availability-assignment"`. Placeholder e `disabled` variam
+ *     com o estado de carga.
+ *   - Estado indeterminado `invalid_interval` também é comunicado nos
+ *     inputs de data via `aria-invalid` e `aria-describedby`.
  */
 
 import * as React from "react";
@@ -27,12 +39,10 @@ import {
 import type { ServiceContext } from "@/domain/services/context";
 import type { Assignment } from "@/domain/core/assignment";
 import type { Case } from "@/domain/core/case";
-import { isoDateTimeToEpoch } from "@/domain/core/common";
+import { isoDateTimeToEpoch, type IsoDateTime } from "@/domain/core/common";
+import { isCaseId } from "@/domain/core/ids";
 
-import {
-  checkAppointmentAvailability,
-  type CheckAppointmentAvailabilityInput,
-} from "./check-appointment-availability";
+import { checkAppointmentAvailability } from "./check-appointment-availability";
 import type {
   AppointmentAvailabilityConflict,
   AppointmentAvailabilityIndeterminateReason,
@@ -44,13 +54,21 @@ import {
   type AvailabilityFormState,
 } from "./availability-form";
 import {
+  beginAvailabilityConsultation,
+  completeAvailabilityConsultation,
+  createAvailabilityConsultationSession,
+  invalidateAvailabilityConsultation,
+  isAvailabilityConsultationCurrent,
+  type AvailabilityConsultationOwner,
+  type AvailabilityConsultationSession,
+} from "./availability-consultation-state";
+import {
   formatAvailabilityAssignmentLabel,
   loadActiveAssignmentsForCase,
   loadAvailabilityCases,
   type AvailabilityOptionsResult,
   type AvailabilityPageEnvironment,
 } from "./availability-options";
-import type { CaseId } from "@/domain/core/ids";
 
 export interface AgendaAvailabilityContentProps {
   readonly environment: AvailabilityPageEnvironment;
@@ -83,10 +101,17 @@ const DATETIME_FMT = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
-function formatDateTime(iso: string): string {
-  const epoch = isoDateTimeToEpoch(iso as never);
+function formatDateTime(iso: IsoDateTime): string {
+  const epoch = isoDateTimeToEpoch(iso);
   if (!Number.isFinite(epoch)) return iso;
   return DATETIME_FMT.format(new Date(epoch));
+}
+
+const INTERVAL_ERROR_ID = "availability-interval-error";
+
+function joinDescribedBy(...ids: readonly (string | undefined)[]): string | undefined {
+  const kept = ids.filter((v): v is string => typeof v === "string" && v.length > 0);
+  return kept.length === 0 ? undefined : kept.join(" ");
 }
 
 export function AgendaAvailabilityContent(
@@ -106,8 +131,9 @@ export function AgendaAvailabilityContent(
   const [view, setView] = React.useState<AvailabilityViewState>({ kind: "idle" });
 
   const mountedRef = React.useRef(true);
-  const requestIdRef = React.useRef(0);
-  const inFlightRef = React.useRef(false);
+  const sessionRef = React.useRef<AvailabilityConsultationSession>(
+    createAvailabilityConsultationSession(),
+  );
   const casesReqIdRef = React.useRef(0);
   const assignmentsReqIdRef = React.useRef(0);
   const resultPanelRef = React.useRef<HTMLDivElement | null>(null);
@@ -146,14 +172,16 @@ export function AgendaAvailabilityContent(
 
   // ---- Carregar vínculos -------------------------------------------------
   React.useEffect(() => {
-    if (form.caseId.length === 0) {
+    const rawCaseId = form.caseId;
+    if (rawCaseId.length === 0 || !isCaseId(rawCaseId)) {
       setAssignments({ kind: "idle" });
       return;
     }
+    const caseId = rawCaseId;
     const reqId = ++assignmentsReqIdRef.current;
     let cancelled = false;
     setAssignments({ kind: "loading" });
-    loadActiveAssignmentsForCase(environment, context, form.caseId as CaseId)
+    loadActiveAssignmentsForCase(environment, context, caseId)
       .then((r: AvailabilityOptionsResult<Assignment>) => {
         if (cancelled || !mountedRef.current) return;
         if (reqId !== assignmentsReqIdRef.current) return;
@@ -175,8 +203,7 @@ export function AgendaAvailabilityContent(
 
   // ---- Handlers ---------------------------------------------------------
   const invalidateResult = React.useCallback(() => {
-    requestIdRef.current += 1;
-    inFlightRef.current = false;
+    sessionRef.current = invalidateAvailabilityConsultation(sessionRef.current);
     setView({ kind: "idle" });
   }, []);
 
@@ -223,45 +250,22 @@ export function AgendaAvailabilityContent(
     [invalidateResult],
   );
 
-  const runConsultation = React.useCallback(
-    (input: CheckAppointmentAvailabilityInput, reqId: number) => {
-      checkAppointmentAvailability(environment, context, input)
-        .then((decision) => {
-          if (!mountedRef.current) return;
-          if (reqId !== requestIdRef.current) return;
-          inFlightRef.current = false;
-          if (decision.kind === "available") {
-            setView({ kind: "available", requestId: reqId });
-          } else if (decision.kind === "conflict") {
-            setView({
-              kind: "conflict",
-              requestId: reqId,
-              conflicts: decision.conflicts,
-            });
-          } else {
-            setView({
-              kind: "indeterminate",
-              requestId: reqId,
-              reason: decision.reason,
-            });
-          }
-        })
-        .catch(() => {
-          if (!mountedRef.current) return;
-          if (reqId !== requestIdRef.current) return;
-          inFlightRef.current = false;
-          setView({
-            kind: "indeterminate",
-            requestId: reqId,
-            reason: "consultation_failed",
-          });
-        });
+  const applyConsultationResult = React.useCallback(
+    (
+      owner: AvailabilityConsultationOwner,
+      apply: (reqId: number) => AvailabilityViewState,
+    ) => {
+      if (!isAvailabilityConsultationCurrent(mountedRef.current, sessionRef.current, owner)) {
+        return;
+      }
+      sessionRef.current = completeAvailabilityConsultation(sessionRef.current, owner);
+      setView(apply(owner.requestId));
     },
-    [environment, context],
+    [],
   );
 
   const handleSubmit = React.useCallback(() => {
-    if (inFlightRef.current) return;
+    if (sessionRef.current.inFlight) return;
     const built = buildAvailabilityConsultationInput(form);
     if (!built.ok) {
       setErrors(built.errors);
@@ -278,11 +282,30 @@ export function AgendaAvailabilityContent(
       return;
     }
     setErrors({});
-    const reqId = ++requestIdRef.current;
-    inFlightRef.current = true;
-    setView({ kind: "checking", requestId: reqId });
-    runConsultation(built.input, reqId);
-  }, [form, assignments, runConsultation]);
+    const outcome = beginAvailabilityConsultation(sessionRef.current, built.input);
+    if (outcome.kind === "blocked") return;
+    sessionRef.current = outcome.session;
+    const owner = outcome.owner;
+    setView({ kind: "checking", requestId: owner.requestId });
+
+    checkAppointmentAvailability(environment, context, built.input)
+      .then((decision) => {
+        applyConsultationResult(owner, (reqId) => {
+          if (decision.kind === "available") return { kind: "available", requestId: reqId };
+          if (decision.kind === "conflict") {
+            return { kind: "conflict", requestId: reqId, conflicts: decision.conflicts };
+          }
+          return { kind: "indeterminate", requestId: reqId, reason: decision.reason };
+        });
+      })
+      .catch(() => {
+        applyConsultationResult(owner, (reqId) => ({
+          kind: "indeterminate",
+          requestId: reqId,
+          reason: "consultation_failed",
+        }));
+      });
+  }, [applyConsultationResult, assignments, context, environment, form]);
 
   // ---- Foco no resultado -------------------------------------------------
   React.useEffect(() => {
@@ -299,6 +322,31 @@ export function AgendaAvailabilityContent(
   }, [view.kind, view]);
 
   const isChecking = view.kind === "checking";
+
+  // ---- Derivações do campo Responsável ----------------------------------
+  const caseSelected = form.caseId.length > 0;
+  const assignmentDisabled =
+    !caseSelected ||
+    assignments.kind !== "ready" ||
+    assignments.items.length === 0 ||
+    isChecking;
+  const assignmentPlaceholder = !caseSelected
+    ? "Selecione primeiro um processo"
+    : assignments.kind === "loading"
+      ? "Carregando responsáveis…"
+      : assignments.kind === "error"
+        ? "Não foi possível carregar responsáveis"
+        : assignments.kind === "ready" && assignments.items.length === 0
+          ? "Nenhum responsável ativo neste processo"
+          : "Selecione um responsável";
+  const assignmentItems: readonly Assignment[] =
+    assignments.kind === "ready" ? assignments.items : [];
+
+  const intervalError =
+    view.kind === "indeterminate" && view.reason === "invalid_interval";
+  const startInvalid = errors.startsAt !== undefined || intervalError;
+  const endInvalid = errors.endsAt !== undefined || intervalError;
+  const intervalDescriptor = intervalError ? INTERVAL_ERROR_ID : undefined;
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
@@ -383,20 +431,34 @@ export function AgendaAvailabilityContent(
             )}
           </div>
 
-          {/* Responsável */}
+          {/* Responsável — trigger único, placeholder/disabled variam por estado */}
           <div className="space-y-1.5">
             <Label htmlFor="availability-assignment">
               Responsável <span aria-hidden>*</span>
             </Label>
-            {form.caseId.length === 0 && (
-              <p className="text-sm text-muted-foreground">Selecione primeiro um processo</p>
-            )}
-            {form.caseId.length > 0 && assignments.kind === "loading" && (
-              <p className="text-sm text-muted-foreground" aria-live="polite">
-                Carregando responsáveis…
-              </p>
-            )}
-            {form.caseId.length > 0 && assignments.kind === "error" && (
+            <Select
+              value={form.assignmentId}
+              onValueChange={handleAssignmentChange}
+              disabled={assignmentDisabled}
+            >
+              <SelectTrigger
+                id="availability-assignment"
+                aria-invalid={errors.assignmentId !== undefined}
+                aria-describedby={
+                  errors.assignmentId ? "availability-assignment-error" : undefined
+                }
+              >
+                <SelectValue placeholder={assignmentPlaceholder} />
+              </SelectTrigger>
+              <SelectContent>
+                {assignmentItems.map((a) => (
+                  <SelectItem key={String(a.id)} value={String(a.id)}>
+                    {formatAvailabilityAssignmentLabel(a)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {caseSelected && assignments.kind === "error" && (
               <div role="alert" className="text-sm text-destructive space-y-2">
                 <p>Não foi possível carregar responsáveis</p>
                 <Button
@@ -409,35 +471,6 @@ export function AgendaAvailabilityContent(
                 </Button>
               </div>
             )}
-            {form.caseId.length > 0 &&
-              assignments.kind === "ready" &&
-              assignments.items.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhum responsável ativo neste processo
-                </p>
-              )}
-            {form.caseId.length > 0 &&
-              assignments.kind === "ready" &&
-              assignments.items.length > 0 && (
-                <Select value={form.assignmentId} onValueChange={handleAssignmentChange}>
-                  <SelectTrigger
-                    id="availability-assignment"
-                    aria-invalid={errors.assignmentId !== undefined}
-                    aria-describedby={
-                      errors.assignmentId ? "availability-assignment-error" : undefined
-                    }
-                  >
-                    <SelectValue placeholder="Selecione um responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignments.items.map((a) => (
-                      <SelectItem key={String(a.id)} value={String(a.id)}>
-                        {formatAvailabilityAssignmentLabel(a)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
             {errors.assignmentId && (
               <p
                 id="availability-assignment-error"
@@ -460,8 +493,11 @@ export function AgendaAvailabilityContent(
                 type="datetime-local"
                 value={form.startsAtLocal}
                 onChange={(e) => handleFieldChange("startsAtLocal", e.target.value)}
-                aria-invalid={errors.startsAt !== undefined}
-                aria-describedby={errors.startsAt ? "availability-start-error" : undefined}
+                aria-invalid={startInvalid}
+                aria-describedby={joinDescribedBy(
+                  errors.startsAt ? "availability-start-error" : undefined,
+                  intervalDescriptor,
+                )}
               />
               {errors.startsAt && (
                 <p id="availability-start-error" role="alert" className="text-sm text-destructive">
@@ -478,8 +514,11 @@ export function AgendaAvailabilityContent(
                 type="datetime-local"
                 value={form.endsAtLocal}
                 onChange={(e) => handleFieldChange("endsAtLocal", e.target.value)}
-                aria-invalid={errors.endsAt !== undefined}
-                aria-describedby={errors.endsAt ? "availability-end-error" : undefined}
+                aria-invalid={endInvalid}
+                aria-describedby={joinDescribedBy(
+                  errors.endsAt ? "availability-end-error" : undefined,
+                  intervalDescriptor,
+                )}
               />
               {errors.endsAt && (
                 <p id="availability-end-error" role="alert" className="text-sm text-destructive">
@@ -487,6 +526,15 @@ export function AgendaAvailabilityContent(
                 </p>
               )}
             </div>
+            {intervalError && (
+              <p
+                id={INTERVAL_ERROR_ID}
+                role="alert"
+                className="text-sm text-destructive sm:col-span-2"
+              >
+                O término deve ser posterior ao início.
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end">
