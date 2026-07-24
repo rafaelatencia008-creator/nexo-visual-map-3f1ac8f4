@@ -932,15 +932,15 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(slice).not.toMatch(/services\./);
   });
 
-  it("82. requestClose considera mutationInFlightRef", () => {
+  it("82. requestClose consulta getMutationLockDecisions()", () => {
     const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
     expect(idx).toBeGreaterThan(-1);
     const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/mutationInFlightRef\.current/);
+    expect(slice).toMatch(/getMutationLockDecisions\(\)\.canClose/);
   });
-  it("83. Escape no diálogo principal bloqueia durante mutação", () => {
+  it("83. Escape no diálogo principal bloqueia via getMutationLockDecisions", () => {
     expect(DETAIL_SRC).toMatch(
-      /submittingRef\.current \|\| mutationInFlightRef\.current \|\| mutating/,
+      /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/,
     );
   });
   it("84. botão Fechar chama requestClose e desabilita durante mutating", () => {
@@ -950,9 +950,9 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
   it("85. botão Editar desabilita quando mutating", () => {
     expect(DETAIL_SRC).toMatch(/perm !== "allowed" \|\| mutating/);
   });
-  it("86. Escape nos AlertDialog de confirmação bloqueia durante mutação", () => {
+  it("86. Escape nos AlertDialog de confirmação bloqueia via lock decisions", () => {
     const escBlocks = DETAIL_SRC.match(
-      /mutationInFlightRef\.current \|\| mutating\) e\.preventDefault/g,
+      /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/g,
     ) ?? [];
     expect(escBlocks.length).toBeGreaterThanOrEqual(2);
   });
