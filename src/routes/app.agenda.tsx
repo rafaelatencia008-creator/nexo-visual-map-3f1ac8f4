@@ -613,6 +613,68 @@ function AgendaPage() {
     setPendingCreated(null);
   }, [pendingCreated, state, visibleDeadlineIds, visibleAppointmentIds]);
 
+  // Mesma estratégia de geração para itens atualizados (LV-09.1B.5).
+  React.useEffect(() => {
+    if (!pendingUpdated) return;
+    const decision = resolveCreatedItemVisibility(
+      pendingUpdated,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision === "wait") return;
+    if (decision === "hidden") {
+      toast.info(
+        "Item atualizado com sucesso. Ele não aparece na visualização atual por causa do período ou dos filtros selecionados.",
+      );
+    }
+    setPendingUpdated(null);
+  }, [pendingUpdated, state, visibleDeadlineIds, visibleAppointmentIds]);
+
+  const handleUpdated = React.useCallback((updated: AgendaItemUpdated) => {
+    const requiredGeneration = loadGenerationRef.current + 1;
+    setPendingUpdated({
+      id: String(updated.item.id),
+      type: updated.type,
+      requiredGeneration,
+    });
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  const openDeadline = React.useCallback(
+    (d: Deadline, ev?: React.SyntheticEvent) => {
+      if (ev?.currentTarget instanceof HTMLElement) {
+        lastTriggerRef.current = ev.currentTarget;
+      }
+      setSelected({
+        type: "deadline",
+        caseId: d.caseId,
+        id: d.id as DeadlineId,
+      });
+    },
+    [],
+  );
+  const openAppointment = React.useCallback(
+    (a: Appointment, ev?: React.SyntheticEvent) => {
+      if (ev?.currentTarget instanceof HTMLElement) {
+        lastTriggerRef.current = ev.currentTarget;
+      }
+      setSelected({
+        type: "appointment",
+        caseId: a.caseId,
+        id: a.id as AppointmentId,
+      });
+    },
+    [],
+  );
+  const closeDetail = React.useCallback(() => {
+    setSelected(null);
+    window.setTimeout(() => {
+      lastTriggerRef.current?.focus?.();
+    }, 0);
+  }, []);
+
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
