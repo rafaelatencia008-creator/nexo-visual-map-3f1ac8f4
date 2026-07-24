@@ -59,6 +59,8 @@ import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.nov
 import { Route as AppPeritosNovoRouteImport } from './routes/app.peritos.novo'
 import { Route as AppPericiasNovaRouteImport } from './routes/app.pericias.nova'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
+import { Route as AppAgendaNovoRouteImport } from './routes/app.agenda.novo'
+import { Route as AppAgendaAppointmentIdRouteImport } from './routes/app.agenda.$appointmentId'
 import { Route as AppProcessosIdIndexRouteImport } from './routes/app.processos.$id.index'
 import { Route as AppPeritosIdIndexRouteImport } from './routes/app.peritos.$id.index'
 import { Route as AppPericiasIdIndexRouteImport } from './routes/app.pericias.$id.index'
@@ -319,6 +321,16 @@ const AppClientesNovoRoute = AppClientesNovoRouteImport.update({
   path: '/clientes/novo',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgendaNovoRoute = AppAgendaNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => AppAgendaRoute,
+} as any)
+const AppAgendaAppointmentIdRoute = AppAgendaAppointmentIdRouteImport.update({
+  id: '/$appointmentId',
+  path: '/$appointmentId',
+  getParentRoute: () => AppAgendaRoute,
+} as any)
 const AppProcessosIdIndexRoute = AppProcessosIdIndexRouteImport.update({
   id: '/processos/$id/',
   path: '/processos/$id/',
@@ -402,6 +414,8 @@ export interface FileRoutesByFullPath {
   '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
+  '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
+  '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -459,6 +473,8 @@ export interface FileRoutesByTo {
   '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app': typeof AppIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
+  '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
+  '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -520,6 +536,8 @@ export interface FileRoutesById {
   '/onboarding/revisao': typeof OnboardingRevisaoRoute
   '/app/': typeof AppIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
+  '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
+  '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
@@ -582,6 +600,8 @@ export interface FileRouteTypes {
     | '/onboarding/revisao'
     | '/app/'
     | '/onboarding/'
+    | '/app/agenda/$appointmentId'
+    | '/app/agenda/novo'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -639,6 +659,8 @@ export interface FileRouteTypes {
     | '/onboarding/revisao'
     | '/app'
     | '/onboarding'
+    | '/app/agenda/$appointmentId'
+    | '/app/agenda/novo'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -699,6 +721,8 @@ export interface FileRouteTypes {
     | '/onboarding/revisao'
     | '/app/'
     | '/onboarding/'
+    | '/app/agenda/$appointmentId'
+    | '/app/agenda/novo'
     | '/app/clientes/novo'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
@@ -1092,6 +1116,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesNovoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/agenda/novo': {
+      id: '/app/agenda/novo'
+      path: '/novo'
+      fullPath: '/app/agenda/novo'
+      preLoaderRoute: typeof AppAgendaNovoRouteImport
+      parentRoute: typeof AppAgendaRoute
+    }
+    '/app/agenda/$appointmentId': {
+      id: '/app/agenda/$appointmentId'
+      path: '/$appointmentId'
+      fullPath: '/app/agenda/$appointmentId'
+      preLoaderRoute: typeof AppAgendaAppointmentIdRouteImport
+      parentRoute: typeof AppAgendaRoute
+    }
     '/app/processos/$id/': {
       id: '/app/processos/$id/'
       path: '/processos/$id'
@@ -1152,10 +1190,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppAgendaRouteChildren {
+  AppAgendaAppointmentIdRoute: typeof AppAgendaAppointmentIdRoute
+  AppAgendaNovoRoute: typeof AppAgendaNovoRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
 }
 
 const AppAgendaRouteChildren: AppAgendaRouteChildren = {
+  AppAgendaAppointmentIdRoute: AppAgendaAppointmentIdRoute,
+  AppAgendaNovoRoute: AppAgendaNovoRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
 }
 
