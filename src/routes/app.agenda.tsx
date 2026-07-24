@@ -110,6 +110,11 @@ import {
   resolvePendingUpdateAction,
 } from "@/features/agenda/detail-reducers";
 import {
+  buildPendingRemovalMarker,
+  resolvePendingRemovalAction,
+  type PendingRemovalItem,
+} from "@/features/agenda/item-mutations";
+import {
   AgendaItemDetailDialog,
   type AgendaItemUpdated,
   type SelectedAgendaItem,
