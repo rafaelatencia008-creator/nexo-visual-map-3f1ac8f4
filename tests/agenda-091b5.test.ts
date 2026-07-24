@@ -116,7 +116,7 @@ async function makeAppointment(env: ReturnType<typeof createMockDomainEnvironmen
   );
 }
 
-const AGENDA_ROUTE_SRC = readFileSync("src/routes/app.agenda.tsx", "utf8");
+const AGENDA_ROUTE_SRC = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
 const DETAIL_SRC = readFileSync(
   "src/features/agenda/AgendaItemDetailDialog.tsx",
   "utf8",
@@ -852,13 +852,12 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     expect(AGENDA_ROUTE_SRC).toContain('ev.key === " "');
   });
 
-  it("62. rota /app/agenda continua sendo a única — nenhuma rota nova foi criada", () => {
-    // Não pode existir rota separada de detalhe de item da agenda.
-    // O detalhe abre em diálogo dentro da própria página.
+  it("62. detalhe de compromisso é a única rota canônica de detalhe da Agenda", () => {
+    // Atualizado na LV-09.1B.6.3A: a rota canônica /app/agenda/$appointmentId
+    // passou a existir. Nenhuma outra variante de rota de detalhe é permitida.
     const forbiddenFiles = [
       "src/routes/app.agenda.$id.tsx",
       "src/routes/app.agenda.$deadlineId.tsx",
-      "src/routes/app.agenda.$appointmentId.tsx",
       "src/routes/app.agenda.detalhe.tsx",
     ];
     for (const f of forbiddenFiles) {
@@ -870,6 +869,10 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
       }
       expect(exists).toBe(false);
     }
+    // A rota canônica de compromisso deve existir.
+    expect(() =>
+      readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8"),
+    ).not.toThrow();
   });
 
   it("63. página da agenda integra AgendaItemDetailDialog", () => {
@@ -1537,8 +1540,19 @@ describe("LV-09.1B.5.1 — [OBSOLETO na LV-09.1B.6]", () => {
     expect(DETAIL_SRC).toMatch(/>\s*Excluir\s*</);
   });
 
-  it("124. rota app.agenda não navega para uma rota de detalhe própria", () => {
-    expect(AGENDA_ROUTE_SRC).not.toMatch(/to:\s*["'`]\/app\/agenda\/[^"'`]+["'`]/);
+  it("124. [ATUALIZADO na LV-09.1B.6.3A] rota canônica de detalhe é /app/agenda/$appointmentId", () => {
+    // A rota canônica de detalhe de compromisso foi introduzida na
+    // LV-09.1B.6.3A. Este teste passa a validar que a única rota de
+    // detalhe navegada a partir do índice é a oficial.
+    const matches = AGENDA_ROUTE_SRC.match(
+      /to:\s*["'`]\/app\/agenda\/[^"'`]+["'`]/g,
+    ) ?? [];
+    for (const m of matches) {
+      expect(
+        m.includes("/app/agenda/$appointmentId") ||
+          m.includes("/app/agenda/novo"),
+      ).toBe(true);
+    }
   });
 
   it("125. builders de update não expõem campo 'status'", async () => {

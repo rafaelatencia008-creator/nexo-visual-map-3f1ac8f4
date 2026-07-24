@@ -812,17 +812,22 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
 
   it("67. nenhuma nova rota foi criada em src/routes/", () => {
     // A LV-09.1B.4 não pode criar rotas.
+    // Atualizado na LV-09.1B.6.3A: as rotas canônicas /novo e /$appointmentId
+    // agora existem oficialmente. Este teste apenas garante que nenhuma
+    // variante fora do padrão canônico foi introduzida.
     const gen = readFileSync("src/routeTree.gen.ts", "utf8");
-    // Não deve haver nenhuma nova rota agenda.novo ou agenda.criar.
-    expect(gen.includes("agenda.novo")).toBe(false);
     expect(gen.includes("agenda.criar")).toBe(false);
     expect(gen.includes("agenda.new")).toBe(false);
   });
 
-  it("68. app.agenda.tsx contém botão Novo item e diálogo", () => {
-    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
-    expect(src).toContain("Novo item");
-    expect(src).toContain("AgendaCreateDialog");
+  it("68. rotas canônicas contêm botão Novo item (índice) e diálogo de criação (novo)", () => {
+    const indexSrc = readFileSync(
+      "src/routes/app.agenda.index.tsx",
+      "utf8",
+    );
+    expect(indexSrc).toContain("Novo item");
+    const novoSrc = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
+    expect(novoSrc).toContain("AgendaCreateDialog");
   });
 });
 
@@ -1023,13 +1028,13 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
   });
 
   it("83. app.agenda.tsx rastreia item pendente após criação", () => {
-    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
     expect(src).toContain("pendingCreated");
     expect(src).toContain("setPendingCreated");
   });
 
   it("84. app.agenda.tsx testa visibilidade contra visible.deadlines/appointments", () => {
-    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
     expect(src).toContain("visible.deadlines");
     expect(src).toContain("visible.appointments");
     expect(src).toContain(
@@ -1038,7 +1043,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
   });
 
   it("85. handleCreated não depende mais do range no aviso de invisibilidade", () => {
-    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
     // O aviso agora vive no efeito de visibilidade, não em handleCreated.
     const idx = src.indexOf("const handleCreated");
     expect(idx).toBeGreaterThan(-1);
@@ -1371,7 +1376,7 @@ describe("LV-09.1B.4.2 — resolveCreatedItemVisibility", () => {
   });
 
   it("110. app.agenda.tsx integra resolveCreatedItemVisibility (não decide por si só)", () => {
-    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
     expect(src).toContain("resolveCreatedItemVisibility");
     expect(src).toContain("loadGenerationRef");
     expect(src).toContain("requiredGeneration");
