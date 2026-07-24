@@ -809,12 +809,11 @@ export function AgendaItemDetailDialog(
   }, [pendingStatus, detail, permChangeStatus, environment, context, onUpdated]);
 
   const confirmRemoval = React.useCallback(async () => {
-    if (mutationInFlightRef.current) return;
     if (!pendingRemoval) return;
     if (detail.kind !== "ready") return;
-    if (permRemove !== "allowed") return;
+    if (!permissionAllowsAction(permRemove)) return;
     if (!selected) return;
-    mutationInFlightRef.current = true;
+    if (!mutationLock.tryAcquire()) return;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
