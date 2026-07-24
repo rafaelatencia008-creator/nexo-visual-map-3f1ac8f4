@@ -2,8 +2,10 @@
 
 **Status:** aceito (parcela A entregue; parcela B pendente)
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A e
-saneada na LV-09.1B.6.3A.1; parcela B (LV-09.1B.6.3B) ainda não iniciada.
+**Etapa:** LV-09.1B.6.3 (aberta) — parcela A concluída na LV-09.1B.6.3A,
+saneada na LV-09.1B.6.3A.1, coerência final na LV-09.1B.6.3A.2 e correção
+da navegação pós-criação na LV-09.1B.6.3A.3; parcela B (LV-09.1B.6.3B)
+ainda não iniciada.
 
 ## Estado atual desta decisão
 
@@ -30,7 +32,15 @@ saneada na LV-09.1B.6.3A.1; parcela B (LV-09.1B.6.3B) ainda não iniciada.
 Nesta parcela A, as páginas de rota ainda montam diretamente os diálogos
 existentes:
 
-- `/app/agenda/novo` monta `AgendaCreateDialog`.
+- `/app/agenda/novo` monta `AgendaCreateDialog` com
+  `closeAfterCreate={false}`. A rota canônica é a autoridade da navegação
+  pós-sucesso: ao criar um compromisso, navega para
+  `/app/agenda/$appointmentId`; ao criar um prazo, registra
+  `pendingCreated` no provider e navega uma única vez para `/app/agenda`.
+  O diálogo não dispara `onOpenChange(false)` após sucesso, evitando uma
+  segunda navegação. Cancelamento sem rascunho e descarte de rascunho
+  continuam chamando `onOpenChange(false)` normalmente, e a rota trata
+  esse fechamento como volta para `/app/agenda`.
 - `/app/agenda/$appointmentId` monta `AgendaItemDetailDialog`.
 
 Isso é intencional: mantém o comportamento oficial idêntico enquanto as

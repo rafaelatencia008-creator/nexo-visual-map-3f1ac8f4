@@ -98,6 +98,7 @@ function AgendaNovoPage() {
   return (
     <AgendaCreateDialog
       open
+      closeAfterCreate={false}
       onOpenChange={handleOpenChange}
       environment={environment}
       context={context}

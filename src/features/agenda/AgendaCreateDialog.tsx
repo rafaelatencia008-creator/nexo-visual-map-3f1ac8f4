@@ -63,6 +63,7 @@ import type { Assignment } from "@/domain/core/assignment";
 import type { AssignmentId, CaseId } from "@/domain/core/ids";
 import type { MockDomainEnvironment } from "@/domain/mocks";
 import type { ServiceContext } from "@/domain/services/context";
+import { shouldCloseAgendaCreateAfterSuccess } from "./create-surface-policy";
 
 import {
   AGENDA_DESCRIPTION_MAX,
@@ -151,13 +152,31 @@ export interface AgendaCreateDialogProps {
   readonly cases: readonly Case[];
   readonly initialCaseId?: CaseId;
   readonly onCreated: (created: AgendaCreatedItem) => void;
+  /**
+   * Define se o diálogo chama onOpenChange(false) depois de uma criação
+   * bem-sucedida. O padrão deve permanecer true (fecha após criar).
+   * Consumidores que já controlam navegação/rota após o sucesso podem
+   * passar `false` para evitar uma segunda navegação disparada pelo
+   * fechamento automático.
+   */
+  readonly closeAfterCreate?: boolean;
 }
 
 // ---- Componente principal -------------------------------------------------
 
 export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactElement {
-  const { open, onOpenChange, environment, context, cases, initialCaseId, onCreated } =
-    props;
+  const {
+    open,
+    onOpenChange,
+    environment,
+    context,
+    cases,
+    initialCaseId,
+    onCreated,
+    closeAfterCreate,
+  } = props;
+  const shouldCloseAfterCreate =
+    shouldCloseAgendaCreateAfterSuccess(closeAfterCreate);
 
   const [itemType, setItemType] = React.useState<ItemType>("deadline");
   const [deadlineForm, setDeadlineForm] = React.useState<CreateDeadlineFormState>(
@@ -408,14 +427,16 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
       }
       toast.success("Prazo criado com sucesso.");
       onCreated({ type: "deadline", item: res.data });
-      onOpenChange(false);
+      if (shouldCloseAfterCreate) {
+        onOpenChange(false);
+      }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false);
       }
       submittingRef.current = false;
     }
-  }, [deadlineForm, environment, context, onCreated, onOpenChange]);
+  }, [deadlineForm, environment, context, onCreated, onOpenChange, shouldCloseAfterCreate]);
 
   const submitAppointment = React.useCallback(async () => {
     if (submittingRef.current) return;
@@ -441,14 +462,16 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
       }
       toast.success("Compromisso criado com sucesso.");
       onCreated({ type: "appointment", item: res.data });
-      onOpenChange(false);
+      if (shouldCloseAfterCreate) {
+        onOpenChange(false);
+      }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false);
       }
       submittingRef.current = false;
     }
-  }, [appointmentForm, environment, context, onCreated, onOpenChange]);
+  }, [appointmentForm, environment, context, onCreated, onOpenChange, shouldCloseAfterCreate]);
 
   const permAllowed =
     itemType === "deadline" ? permDeadline === "allowed" : permAppointment === "allowed";
