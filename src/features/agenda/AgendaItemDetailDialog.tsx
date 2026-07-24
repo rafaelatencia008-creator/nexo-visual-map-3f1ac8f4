@@ -120,6 +120,13 @@ import {
   type PermissionEvalState,
   type TranslatedMutationError,
 } from "./item-mutations";
+import {
+  bindSingleFlightLockToRef,
+  deriveMutationLockDecisions,
+  hasPermissionEvaluationError,
+  resolveMutationConflictAction,
+  resolvePermissionEvaluation,
+} from "./item-mutation-reducers";
 
 // ---- Tipos públicos -----------------------------------------------------
 
