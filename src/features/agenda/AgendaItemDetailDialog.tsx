@@ -747,14 +747,7 @@ export function AgendaItemDetailDialog(
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
           if (t.kind === "conflict") {
-            setMutationConflict({
-              ...(t.expectedVersion !== undefined
-                ? { expected: t.expectedVersion }
-                : {}),
-              ...(t.actualVersion !== undefined
-                ? { actual: t.actualVersion }
-                : {}),
-            });
+            setMutationConflict(buildMutationConflict("change_status", t));
           }
           return;
         }
