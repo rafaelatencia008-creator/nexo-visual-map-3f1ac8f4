@@ -41,13 +41,17 @@ import type {
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
-import { isoDateTimeToEpoch } from "@/domain/core/common";
+import { isoDateTimeToEpoch, type IsoDateTime } from "@/domain/core/common";
 import {
   getAppointmentPresentation,
   getDeadlinePresentation,
   isDeadlineOverdue,
   type DeadlineVisualState,
 } from "@/features/agenda/visual-state";
+import {
+  buildMonthCells,
+  selectUpcomingDeadlines,
+} from "@/features/agenda/date-view";
 
 // ============================================================================
 // Tela oficial /app/agenda.
