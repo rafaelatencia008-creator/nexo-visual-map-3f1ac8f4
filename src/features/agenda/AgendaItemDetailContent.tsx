@@ -1341,7 +1341,7 @@ export const AgendaItemDetailContent = React.forwardRef<
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setReload((r) => r + 1)}
+                      onClick={retryDetail}
                     >
                       Tentar novamente
                     </Button>
