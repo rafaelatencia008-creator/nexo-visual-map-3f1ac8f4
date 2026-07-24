@@ -268,9 +268,9 @@ export function createAppointmentServiceMock(
         if (a.organizationId !== orgId) return false;
         if (!accessibleCaseIds.has(a.caseId)) return false;
         if (opts.caseId !== undefined && a.caseId !== opts.caseId) return false;
-        // Interseção com [rangeFrom, rangeTo]
-        if (opts.rangeFrom !== undefined && a.endsAt < opts.rangeFrom) return false;
-        if (opts.rangeTo !== undefined && a.startsAt > opts.rangeTo) return false;
+        // Interseção com [rangeFrom, rangeTo] pelo instante real.
+        if (opts.rangeFrom !== undefined && isoDateTimeToEpoch(a.endsAt) < isoDateTimeToEpoch(opts.rangeFrom)) return false;
+        if (opts.rangeTo !== undefined && isoDateTimeToEpoch(a.startsAt) > isoDateTimeToEpoch(opts.rangeTo)) return false;
         if (statusesArr && !statusesArr.includes(a.status)) return false;
         if (kindsArr && !kindsArr.includes(a.kind)) return false;
         if (modesArr && !modesArr.includes(a.mode)) return false;
