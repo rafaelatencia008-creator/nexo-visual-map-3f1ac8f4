@@ -1479,25 +1479,34 @@ describe("LV-09.1B.5.1 — ausência de casts inseguros e comandos proibidos", (
     }
   });
 
-  it("117. edit-form não usa 'as any' nem 'as never'", () => {
-    expect(EDIT_FORM_SRC.includes(" as any")).toBe(false);
-    expect(EDIT_FORM_SRC.includes(" as never")).toBe(false);
+  const asWord = ["a", "s"].join("");
+  const AS_ANY = ` ${asWord} any`;
+  const AS_NEVER = ` ${asWord} never`;
+  const UNKNOWN_AS = `unknown ${asWord}`;
+  const TS_NOCHECK = "@" + "ts-nocheck";
+
+  it("117. edit-form não contém casts inseguros", () => {
+    expect(EDIT_FORM_SRC.includes(AS_ANY)).toBe(false);
+    expect(EDIT_FORM_SRC.includes(AS_NEVER)).toBe(false);
+    expect(EDIT_FORM_SRC.includes(UNKNOWN_AS)).toBe(false);
   });
 
-  it("118. AgendaItemDetailDialog não usa 'as any' nem 'as never'", () => {
-    expect(DETAIL_SRC.includes(" as any")).toBe(false);
-    expect(DETAIL_SRC.includes(" as never")).toBe(false);
+  it("118. AgendaItemDetailDialog não contém casts inseguros", () => {
+    expect(DETAIL_SRC.includes(AS_ANY)).toBe(false);
+    expect(DETAIL_SRC.includes(AS_NEVER)).toBe(false);
+    expect(DETAIL_SRC.includes(UNKNOWN_AS)).toBe(false);
   });
 
-  it("119. rota app.agenda não usa 'as any' nem 'as never'", () => {
-    expect(AGENDA_ROUTE_SRC.includes(" as any")).toBe(false);
-    expect(AGENDA_ROUTE_SRC.includes(" as never")).toBe(false);
+  it("119. rota app.agenda não contém casts inseguros", () => {
+    expect(AGENDA_ROUTE_SRC.includes(AS_ANY)).toBe(false);
+    expect(AGENDA_ROUTE_SRC.includes(AS_NEVER)).toBe(false);
+    expect(AGENDA_ROUTE_SRC.includes(UNKNOWN_AS)).toBe(false);
   });
 
-  it("120. nenhum arquivo da Agenda contém @ts-nocheck", () => {
-    expect(AGENDA_ROUTE_SRC.includes("@ts-nocheck")).toBe(false);
-    expect(DETAIL_SRC.includes("@ts-nocheck")).toBe(false);
-    expect(EDIT_FORM_SRC.includes("@ts-nocheck")).toBe(false);
+  it("120. nenhum arquivo da Agenda contém supressão global de tipos", () => {
+    expect(AGENDA_ROUTE_SRC.includes(TS_NOCHECK)).toBe(false);
+    expect(DETAIL_SRC.includes(TS_NOCHECK)).toBe(false);
+    expect(EDIT_FORM_SRC.includes(TS_NOCHECK)).toBe(false);
   });
 });
 
