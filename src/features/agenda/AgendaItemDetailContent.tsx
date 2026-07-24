@@ -1,5 +1,6 @@
 /**
  * LV-09.1B.6.3B.2.1 — Corpo funcional do detalhe/edição de item da Agenda.
+ * LV-09.1B.6.3B.2.1.1 — Ciclo de atividade e invalidação assíncrona.
  *
  * Única implementação funcional do fluxo de detalhe. Não contém shell de
  * diálogo: pode ser montado dentro de `AgendaItemDetailDialog` (wrapper
@@ -7,7 +8,15 @@
  * LV-09.1B.6.3B.2.2). Consome exclusivamente os serviços oficiais
  * expostos por `MockDomainEnvironment`. Aplica concorrência otimista via
  * `expectedVersion` capturado no início da edição.
+ *
+ * Todos os efeitos (reset, load, permissões, assignments) são chaveados
+ * por `selectionKey` (identidade semântica estável) e comparam com
+ * `selectionKeyRef.current`/`activeRef.current` antes de aplicar
+ * qualquer `setState`. Handlers de mutação (submit, mudança de status,
+ * exclusão) capturam a chave da seleção no início e descartam o
+ * resultado se a seleção mudar durante a operação.
  */
+
 
 
 import * as React from "react";
