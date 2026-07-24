@@ -730,11 +730,12 @@ export const AgendaItemDetailContent = React.forwardRef<
           context,
           built.input,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           handleUpdateError(res.error);
           return;
         }
+
         toast.success("Prazo atualizado com sucesso.");
         const updated = res.data;
         setDetail({
