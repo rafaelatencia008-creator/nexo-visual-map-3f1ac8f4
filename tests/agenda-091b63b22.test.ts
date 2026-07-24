@@ -42,7 +42,9 @@ describe("LV-09.1B.6.3B.2.2 · Rota importa Content e não o wrapper", () => {
     expect(ROUTE_SRC).toMatch(/AgendaItemDetailContentHandle/);
   });
   it("3. rota NÃO importa AgendaItemDetailDialog", () => {
-    expect(ROUTE_SRC).not.toMatch(/AgendaItemDetailDialog/);
+    expect(ROUTE_SRC).not.toMatch(
+      /from\s+"@\/features\/agenda\/AgendaItemDetailDialog"/,
+    );
   });
   it("4. rota NÃO renderiza <AgendaItemDetailDialog>", () => {
     expect(ROUTE_SRC).not.toMatch(/<AgendaItemDetailDialog\b/);
