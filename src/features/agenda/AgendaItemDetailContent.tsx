@@ -405,6 +405,42 @@ export const AgendaItemDetailContent = React.forwardRef<
   // recriação equivalente de `selected` não invalida o formulário.
   const activationKey = buildAgendaDetailActivationKey(active, selectionKey);
 
+  // LV-09.1B.6.3B.2.1.3 — geração monotônica de atividade.
+  // Toda mudança da `activationKey` (ativação, troca de item, desativação)
+  // incrementa a geração DURANTE o render. Isso distingue o cenário
+  // A → B → A: a terceira sessão tem geração maior que a primeira, e
+  // resultados capturados na sessão inicial de A nunca contaminam a
+  // sessão final, mesmo com a chave semântica idêntica.
+  const previousActivationKeyRef = React.useRef<
+    AgendaDetailSelectionKey | null
+  >(activationKey);
+  const activityGenerationRef = React.useRef(0);
+  if (previousActivationKeyRef.current !== activationKey) {
+    previousActivationKeyRef.current = activationKey;
+    activityGenerationRef.current += 1;
+  }
+  const activityGeneration = activityGenerationRef.current;
+
+  // LV-09.1B.6.3B.2.1.3 — detalhe visível vinculado à sessão corrente.
+  // Um snapshot cuja geração/chave não é a corrente é órfão e apresentado
+  // como "loading" — mesmo que contenha um estado `ready` de outra sessão.
+  const detailIsCurrent =
+    detailSnapshot.activityGeneration === activityGeneration &&
+    detailSnapshot.selectionKey === selectionKey;
+  const detail: DetailState = detailIsCurrent
+    ? detailSnapshot.state
+    : { kind: "loading" };
+  // Setter estampado com a geração/chave correntes no momento da chamada.
+  // Chamado apenas após guardas assíncronos que já confirmam pertinência,
+  // ou pelo reset síncrono (que naturalmente estampa a sessão nova).
+  const setDetail = React.useCallback((state: DetailState): void => {
+    setDetailSnapshot({
+      activityGeneration: activityGenerationRef.current,
+      selectionKey: selectionKeyRef.current,
+      state,
+    });
+  }, []);
+
 
   const mutationInFlightRef = React.useRef(false);
   const mutationLock = React.useMemo(
@@ -433,12 +469,13 @@ export const AgendaItemDetailContent = React.forwardRef<
   // LV-09.1B.6.3B.2.1.2 — atividade/prontidão separadas do lock.
   // `hasActiveSelection` habilita fechamento e retry em qualquer detalhe
   // ativo (mesmo em loading/erro). `isInteractiveReady` só é verdadeiro
-  // após o carregamento bem-sucedido.
+  // após o carregamento bem-sucedido E vinculado à sessão corrente.
   const { hasActiveSelection, isInteractiveReady } =
     deriveAgendaDetailActivityState({
       active,
       hasSelection: selected !== null,
       selectionKey,
+      detailBelongsToCurrentActivity: detailIsCurrent,
       detailReady: detail.kind === "ready",
     });
 
