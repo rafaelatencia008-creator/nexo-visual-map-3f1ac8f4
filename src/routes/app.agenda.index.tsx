@@ -562,8 +562,6 @@ function AgendaPage() {
   const showUpcoming = shouldShowUpcomingPanel(filters);
   const totalVisible = visible.deadlines.length + visible.appointments.length;
 
-  const accessibleCases: readonly Case[] =
-    casesState.kind === "ready" ? casesState.items : [];
 
   const handleCreated = React.useCallback(
     (created: AgendaCreatedItem) => {
