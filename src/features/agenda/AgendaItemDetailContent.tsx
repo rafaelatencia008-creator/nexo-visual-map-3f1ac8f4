@@ -123,6 +123,12 @@ import {
   resolveMutationConflictAction,
   resolvePermissionEvaluation,
 } from "./item-mutation-reducers";
+import {
+  buildAgendaDetailSelectionKey,
+  type AgendaDetailSelectionKey,
+} from "./detail-activity";
+
+
 
 // ---- Tipos públicos -----------------------------------------------------
 
