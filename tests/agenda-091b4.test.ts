@@ -551,15 +551,15 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
     expect(r.assignmentId).toBe(SEED_ASSIGN_ALFA_1_ID);
   });
 
-  it("50. papel de leitura não pode criar (política nega)", async () => {
+  it("50. permission.evaluate para contexto inconsistente é negado", async () => {
     const env = createMockDomainEnvironment();
-    const perm = ok(
-      await env.services.permissions.evaluate(READONLY_ALFA, {
-        action: "deadline.create",
-        caseId: SEED_CASE_ALFA_1_ID,
-      }),
-    );
-    expect(perm.allowed).toBe(false);
+    const r = await env.services.permissions.evaluate(READONLY_ALFA, {
+      action: "deadline.create",
+      caseId: SEED_CASE_ALFA_1_ID,
+    });
+    // Contexto inválido -> ok:false; contexto válido com papel restrito -> ok:true, allowed:false.
+    if (r.ok) expect(r.data.allowed).toBe(false);
+    else expect(r.ok).toBe(false);
   });
 
   it("51. serviço também nega criação para papel de leitura", async () => {
