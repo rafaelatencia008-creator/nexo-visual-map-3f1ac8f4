@@ -956,6 +956,19 @@ export function AgendaItemDetailDialog(
     remove: permRemove,
   });
 
+  // Gates unificados da UI (fonte única). Todos os botões e handlers
+  // consomem estes valores em vez de recompor `submitting || mutating`.
+  const canCloseDetail = lockDecisions.canClose;
+  const canEditItem =
+    lockDecisions.canEnterEdit && permissionAllowsAction(perm);
+  const canOpenItemAction = lockDecisions.canOpenConfirmation;
+  const canConfirmStatusChange =
+    lockDecisions.canOpenConfirmation &&
+    permissionAllowsAction(permChangeStatus);
+  const canConfirmRemoval =
+    lockDecisions.canOpenConfirmation && permissionAllowsAction(permRemove);
+  const canRetryPermissionEvaluation = lockDecisions.canRetryPermissions;
+
 
 
   const caseById = React.useMemo(() => {
