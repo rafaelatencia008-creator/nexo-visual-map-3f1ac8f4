@@ -120,6 +120,12 @@ import {
   type PermissionEvalState,
   type TranslatedMutationError,
 } from "./item-mutations";
+import {
+  deriveMutationLockDecisions,
+  hasPermissionEvaluationError,
+  resolveMutationConflictAction,
+  resolvePermissionEvaluation,
+} from "./item-mutation-reducers";
 
 // ---- Tipos públicos -----------------------------------------------------
 
@@ -430,15 +436,13 @@ export function AgendaItemDetailDialog(
         .evaluate(context, { action, caseId: selected.caseId })
         .then((res) => {
           if (cancelled || !mountedRef.current) return;
-          if (!res.ok) {
-            setter("error");
-            return;
-          }
-          setter(res.data.allowed ? "allowed" : "denied");
+          // Fonte única: helper puro. Preserva a mesma decisão testada.
+          // Regra estrutural: `res.data.allowed ? "allowed" : "denied"`.
+          setter(resolvePermissionEvaluation({ kind: "resolved", result: res }));
         })
         .catch(() => {
           if (cancelled || !mountedRef.current) return;
-          setter("error");
+          setter(resolvePermissionEvaluation({ kind: "rejected" }));
         });
     };
     evalOne(updateAction, setPerm);
@@ -502,7 +506,8 @@ export function AgendaItemDetailDialog(
   // ---- Handlers -----------------------------------------------------------
 
   const enterEdit = React.useCallback(() => {
-    if (detail.kind !== "ready" || perm !== "allowed") return;
+    if (mutationInFlightRef.current || mutating) return;
+    if (detail.kind !== "ready" || !permissionAllowsAction(perm)) return;
     setErrors({});
     setTouched({});
     setAttemptedSubmit(false);
@@ -518,7 +523,7 @@ export function AgendaItemDetailDialog(
       setExpectedVersion(detail.loaded.item.metadata.version);
     }
     setMode("edit");
-  }, [detail, perm]);
+  }, [detail, perm, mutating]);
 
   const hasLocalChanges = React.useMemo((): boolean => {
     if (mode !== "edit" || detail.kind !== "ready") return false;
@@ -549,7 +554,7 @@ export function AgendaItemDetailDialog(
   }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
-    if (mutationInFlightRef.current) return;
+    if (mutationInFlightRef.current || mutating) return;
     const dec = resolveDiscardIntent("close", {
       mode,
       hasChanges: hasLocalChanges,
@@ -561,7 +566,7 @@ export function AgendaItemDetailDialog(
       return;
     }
     onClose();
-  }, [mode, hasLocalChanges, onClose]);
+  }, [mode, hasLocalChanges, onClose, mutating]);
 
   const confirmDiscardChoice = React.useCallback(() => {
     const action = confirmDiscard;
@@ -873,26 +878,73 @@ export function AgendaItemDetailDialog(
   ]);
 
   const reloadAfterMutationConflict = React.useCallback(() => {
-    if (mutationInFlightRef.current) return;
-    setPendingStatus(null);
-    setPendingRemoval(false);
-    setMutationError(null);
-    setMutationConflict(null);
-    setReload((r) => r + 1);
-  }, []);
+    if (mutationInFlightRef.current || mutating) return;
+    const eff = resolveMutationConflictAction("reload");
+    if (eff.closeConfirmation) {
+      setPendingStatus(null);
+      setPendingRemoval(false);
+    }
+    if (eff.clearError) setMutationError(null);
+    if (eff.clearConflict) setMutationConflict(null);
+    if (eff.reloadDetail) setReload((r) => r + 1);
+  }, [mutating]);
 
   const keepReviewingMutation = React.useCallback(() => {
-    if (mutationInFlightRef.current) return;
-    setPendingStatus(null);
-    setPendingRemoval(false);
-    setMutationError(null);
-    setMutationConflict(null);
-  }, []);
+    if (mutationInFlightRef.current || mutating) return;
+    const eff = resolveMutationConflictAction("continue_reviewing");
+    if (eff.closeConfirmation) {
+      setPendingStatus(null);
+      setPendingRemoval(false);
+    }
+    if (eff.clearError) setMutationError(null);
+    if (eff.clearConflict) setMutationConflict(null);
+    // eff.reloadDetail === false — não chama serviço.
+  }, [mutating]);
 
   const retryPermissions = React.useCallback(() => {
-    if (mutationInFlightRef.current) return;
+    if (mutationInFlightRef.current || mutating) return;
     setPermAttempt((n) => n + 1);
-  }, []);
+  }, [mutating]);
+
+  // Callbacks dedicados para abrir confirmações — impedem abertura durante
+  // uma mutação/edição em andamento sem depender apenas do estado `disabled`
+  // do botão.
+  const requestDeadlineStatusChange = React.useCallback(
+    (action: DeadlineStatusAction) => {
+      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      setMutationError(null);
+      setMutationConflict(null);
+      setPendingStatus({ kind: "deadline", action });
+    },
+    [mutating],
+  );
+  const requestAppointmentStatusChange = React.useCallback(
+    (action: AppointmentStatusAction) => {
+      if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+      setMutationError(null);
+      setMutationConflict(null);
+      setPendingStatus({ kind: "appointment", action });
+    },
+    [mutating],
+  );
+  const requestRemoval = React.useCallback(() => {
+    if (mutationInFlightRef.current || mutating || submittingRef.current) return;
+    setMutationError(null);
+    setMutationConflict(null);
+    setPendingRemoval(true);
+  }, [mutating]);
+
+  // Decisão unificada de bloqueio síncrono, consumida pela UI real.
+  const lockDecisions = deriveMutationLockDecisions({
+    mutationRefLocked: mutationInFlightRef.current,
+    mutating,
+    submitting,
+  });
+  const hasPermEvalError = hasPermissionEvaluationError({
+    update: perm,
+    changeStatus: permChangeStatus,
+    remove: permRemove,
+  });
 
 
 
@@ -1064,31 +1116,24 @@ export function AgendaItemDetailDialog(
                     permRemove={permRemove}
                     mutating={mutating}
                     mutationError={mutationError}
-                    onSelectDeadlineAction={(action) => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingStatus({ kind: "deadline", action });
-                    }}
-                    onSelectAppointmentAction={(action) => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingStatus({ kind: "appointment", action });
-                    }}
-                    onRequestRemoval={() => {
-                      setMutationError(null);
-                      setMutationConflict(null);
-                      setPendingRemoval(true);
-                    }}
+                    onSelectDeadlineAction={requestDeadlineStatusChange}
+                    onSelectAppointmentAction={requestAppointmentStatusChange}
+                    onRequestRemoval={requestRemoval}
                   />
-                  {(permChangeStatus === "error" || permRemove === "error") && (
-                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground">
+                  {(perm === "error" || permChangeStatus === "error" || permRemove === "error") && (
+                    <div
+                      role="status"
+                      className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground"
+                      data-testid="perm-eval-error-banner"
+                      data-has-error={hasPermEvalError ? "true" : "false"}
+                    >
                       <span>Não foi possível verificar esta permissão.</span>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         onClick={retryPermissions}
-                        disabled={mutating}
+                        disabled={mutating || !lockDecisions.canRetryPermissions}
                       >
                         Tentar novamente
                       </Button>

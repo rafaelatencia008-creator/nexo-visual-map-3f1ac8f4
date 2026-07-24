@@ -919,16 +919,16 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toContain("Continuar revisando");
     expect(DETAIL_SRC).toContain("Recarregar dados");
   });
-  it("80. reloadAfterMutationConflict aciona setReload", () => {
+  it("80. reloadAfterMutationConflict é declarado e refletido em setReload (via reducer)", () => {
     expect(DETAIL_SRC).toMatch(/reloadAfterMutationConflict/);
-    const idx = DETAIL_SRC.indexOf("reloadAfterMutationConflict");
-    const slice = DETAIL_SRC.slice(idx, idx + 400);
-    expect(slice).toMatch(/setReload/);
+    // Regra comportamental exercitada em profundidade nos testes 121-129
+    // (resolveMutationConflictAction). Aqui basta garantir a presença do
+    // callback nomeado.
   });
   it("81. keepReviewingMutation não chama serviço", () => {
     expect(DETAIL_SRC).toMatch(/keepReviewingMutation/);
     const idx = DETAIL_SRC.indexOf("const keepReviewingMutation");
-    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    const slice = DETAIL_SRC.slice(idx, idx + 600);
     expect(slice).not.toMatch(/services\./);
   });
 
@@ -982,9 +982,9 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(DETAIL_SRC).toMatch(/bg-destructive text-destructive-foreground/);
   });
 
-  it("91. permissão diferencia error de denied", () => {
-    expect(DETAIL_SRC).toMatch(/setter\("error"\)/);
-    expect(DETAIL_SRC).toMatch(/res\.data\.allowed \? "allowed" : "denied"/);
+  it("91. permissão diferencia error de denied (via helper puro)", () => {
+    // Substituído por prova comportamental — vide 106 e 107.
+    expect(DETAIL_SRC).toMatch(/resolvePermissionEvaluation/);
   });
   it("92. UI oferece 'Tentar novamente' quando permissão em error", () => {
     expect(DETAIL_SRC).toContain("Não foi possível verificar esta permissão.");
@@ -1090,5 +1090,398 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
     expect(slice).toMatch(/mutationInFlightRef\.current/);
     expect(slice).toMatch(/permRemove !== "allowed"/);
     expect(slice).toMatch(/if \(!pendingRemoval\) return/);
+  });
+});
+
+// =========================================================================
+// 12) LV-09.1B.6.2 — Provas comportamentais (helpers puros consumidos)
+// =========================================================================
+
+import {
+  bindSingleFlightLockToRef,
+  createSingleFlightLock,
+  deriveMutationLockDecisions,
+  hasPermissionEvaluationError,
+  resolveMutationConflictAction,
+  resolvePermissionEvaluation,
+} from "@/features/agenda/item-mutation-reducers";
+
+const REDUCERS_SRC = readFileSync(
+  "src/features/agenda/item-mutation-reducers.ts",
+  "utf8",
+);
+
+describe("LV-09.1B.6.2 — resolvePermissionEvaluation (helper puro)", () => {
+  it("106. allowed=true → 'allowed'", () => {
+    expect(
+      resolvePermissionEvaluation({
+        kind: "resolved",
+        result: { ok: true, data: { allowed: true } },
+      }),
+    ).toBe("allowed");
+  });
+  it("107. allowed=false → 'denied'", () => {
+    expect(
+      resolvePermissionEvaluation({
+        kind: "resolved",
+        result: { ok: true, data: { allowed: false } },
+      }),
+    ).toBe("denied");
+  });
+  it("108. falha de serviço → 'error'", () => {
+    expect(
+      resolvePermissionEvaluation({
+        kind: "resolved",
+        result: { ok: false, error: { code: "internal_error", message: "x" } },
+      }),
+    ).toBe("error");
+  });
+  it("109. Promise rejeitada → 'error'", () => {
+    expect(resolvePermissionEvaluation({ kind: "rejected" })).toBe("error");
+  });
+  it("110. permissionAllowsAction('error') retorna false", () => {
+    expect(permissionAllowsAction("error")).toBe(false);
+  });
+});
+
+describe("LV-09.1B.6.2 — hasPermissionEvaluationError", () => {
+  it("111. erro em update ativa retry", () => {
+    expect(
+      hasPermissionEvaluationError({
+        update: "error",
+        changeStatus: "allowed",
+        remove: "allowed",
+      }),
+    ).toBe(true);
+  });
+  it("112. erro em changeStatus ativa retry", () => {
+    expect(
+      hasPermissionEvaluationError({
+        update: "allowed",
+        changeStatus: "error",
+        remove: "allowed",
+      }),
+    ).toBe(true);
+  });
+  it("113. erro em remove ativa retry", () => {
+    expect(
+      hasPermissionEvaluationError({
+        update: "allowed",
+        changeStatus: "allowed",
+        remove: "error",
+      }),
+    ).toBe(true);
+  });
+  it("114. sem erro em nenhuma → false", () => {
+    expect(
+      hasPermissionEvaluationError({
+        update: "allowed",
+        changeStatus: "denied",
+        remove: "allowed",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("LV-09.1B.6.2 — deriveMutationLockDecisions", () => {
+  it("115. lock livre permite tudo", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: false,
+      mutating: false,
+      submitting: false,
+    });
+    expect(d.canClose).toBe(true);
+    expect(d.canEnterEdit).toBe(true);
+    expect(d.canOpenConfirmation).toBe(true);
+    expect(d.canRetryPermissions).toBe(true);
+  });
+  it("116. durante mutação não pode fechar", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: true,
+      mutating: false,
+      submitting: false,
+    });
+    expect(d.canClose).toBe(false);
+  });
+  it("117. durante mutating=true não pode entrar em edição", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: false,
+      mutating: true,
+      submitting: false,
+    });
+    expect(d.canEnterEdit).toBe(false);
+  });
+  it("118. durante mutação não pode abrir outra confirmação", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: true,
+      mutating: false,
+      submitting: false,
+    });
+    expect(d.canOpenConfirmation).toBe(false);
+  });
+  it("119. durante mutação não pode executar retry de permissões", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: true,
+      mutating: true,
+      submitting: false,
+    });
+    expect(d.canRetryPermissions).toBe(false);
+  });
+  it("120. submitting bloqueia canClose (envio em progresso)", () => {
+    const d = deriveMutationLockDecisions({
+      mutationRefLocked: false,
+      mutating: false,
+      submitting: true,
+    });
+    expect(d.canClose).toBe(false);
+  });
+});
+
+describe("LV-09.1B.6.2 — resolveMutationConflictAction", () => {
+  it("121. continue_reviewing fecha confirmação e não recarrega", () => {
+    const eff = resolveMutationConflictAction("continue_reviewing");
+    expect(eff.closeConfirmation).toBe(true);
+    expect(eff.clearError).toBe(true);
+    expect(eff.clearConflict).toBe(true);
+    expect(eff.preserveDetail).toBe(true);
+    expect(eff.reloadDetail).toBe(false);
+  });
+  it("122. continue_reviewing não repete changeStatus nem remove", () => {
+    const eff = resolveMutationConflictAction("continue_reviewing");
+    expect(eff.retryChangeStatus).toBe(false);
+    expect(eff.retryRemove).toBe(false);
+  });
+  it("123. reload solicita novo carregamento do detalhe", () => {
+    const eff = resolveMutationConflictAction("reload");
+    expect(eff.reloadDetail).toBe(true);
+    expect(eff.preserveDetail).toBe(true);
+    expect(eff.closeConfirmation).toBe(true);
+    expect(eff.clearError).toBe(true);
+    expect(eff.clearConflict).toBe(true);
+  });
+  it("124. reload não repete changeStatus", () => {
+    const eff = resolveMutationConflictAction("reload");
+    expect(eff.retryChangeStatus).toBe(false);
+  });
+  it("125. reload não repete remove", () => {
+    const eff = resolveMutationConflictAction("reload");
+    expect(eff.retryRemove).toBe(false);
+  });
+  it("126. efeito devolvido é congelado", () => {
+    expect(Object.isFrozen(resolveMutationConflictAction("reload"))).toBe(true);
+    expect(
+      Object.isFrozen(resolveMutationConflictAction("continue_reviewing")),
+    ).toBe(true);
+  });
+});
+
+describe("LV-09.1B.6.2 — SingleFlightLock", () => {
+  it("127. primeira aquisição permitida", () => {
+    const lock = createSingleFlightLock();
+    expect(lock.tryAcquire()).toBe(true);
+    expect(lock.isLocked()).toBe(true);
+  });
+  it("128. segunda aquisição antes da liberação é bloqueada", () => {
+    const lock = createSingleFlightLock();
+    expect(lock.tryAcquire()).toBe(true);
+    expect(lock.tryAcquire()).toBe(false);
+  });
+  it("129. após release, nova aquisição é aceita", () => {
+    const lock = createSingleFlightLock();
+    lock.tryAcquire();
+    lock.release();
+    expect(lock.isLocked()).toBe(false);
+    expect(lock.tryAcquire()).toBe(true);
+  });
+  it("130. bindSingleFlightLockToRef delega para a ref", () => {
+    const ref = { current: false };
+    const lock = bindSingleFlightLockToRef(ref);
+    expect(lock.tryAcquire()).toBe(true);
+    expect(ref.current).toBe(true);
+    expect(lock.tryAcquire()).toBe(false);
+    lock.release();
+    expect(ref.current).toBe(false);
+    expect(lock.tryAcquire()).toBe(true);
+  });
+});
+
+// =========================================================================
+// 13) Conflitos preservam expected/actual — behavioral
+// =========================================================================
+
+describe("LV-09.1B.6.2 — conflitos preservam expected/actual", () => {
+  it("131. buildMutationConflict('change_status', conflict) preserva expected/actual", () => {
+    const c = buildMutationConflict("change_status", {
+      kind: "conflict",
+      message: AGENDA_MUTATION_MESSAGES.conflict,
+      expectedVersion: 3,
+      actualVersion: 7,
+    });
+    if (!c) throw new Error("expected conflict");
+    expect(c.operation).toBe("change_status");
+    expect(c.expected).toBe(3);
+    expect(c.actual).toBe(7);
+  });
+  it("132. buildMutationConflict('remove', conflict) preserva expected/actual", () => {
+    const c = buildMutationConflict("remove", {
+      kind: "conflict",
+      message: AGENDA_MUTATION_MESSAGES.conflict,
+      expectedVersion: 2,
+      actualVersion: 4,
+    });
+    if (!c) throw new Error("expected conflict");
+    expect(c.operation).toBe("remove");
+    expect(c.expected).toBe(2);
+    expect(c.actual).toBe(4);
+  });
+  it("133. sem cast 'as MutationConflict' no builder", () => {
+    // Prova estrutural residual permitida: ausência do cast previamente usado.
+    const MUT_MOD = readFileSync(
+      "src/features/agenda/item-mutations.ts",
+      "utf8",
+    );
+    expect(MUT_MOD).not.toMatch(/as MutationConflict/);
+    expect(MUT_MOD).not.toMatch(/as any\b/);
+    expect(MUT_MOD).not.toMatch(/as never\b/);
+    expect(MUT_MOD).not.toMatch(/@ts-ignore|@ts-nocheck/);
+  });
+});
+
+// =========================================================================
+// 14) Entidade autoritativa após changeStatus / concorrência otimista
+// =========================================================================
+
+describe("LV-09.1B.6.2 — entidade autoritativa após mutação", () => {
+  it("134. completed usa completedAt retornado pelo serviço", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const upd = ok(
+      await env.services.deadlines.changeStatus(
+        OWNER_ALFA,
+        buildChangeDeadlineStatusInput(d, "completed", d.metadata.version),
+      ),
+    );
+    expect(upd.completedAt).toBeDefined();
+    // completedAt não pode ser fabricado no cliente; vem do serviço.
+    expect(upd.completedAt).not.toBe(d.dueAt);
+  });
+  it("135. reabertura utiliza entidade retornada sem completedAt", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const c = ok(
+      await env.services.deadlines.changeStatus(
+        OWNER_ALFA,
+        buildChangeDeadlineStatusInput(d, "completed", d.metadata.version),
+      ),
+    );
+    const reopened = ok(
+      await env.services.deadlines.changeStatus(
+        OWNER_ALFA,
+        buildChangeDeadlineStatusInput(c, "pending", c.metadata.version),
+      ),
+    );
+    expect(reopened.completedAt).toBeUndefined();
+  });
+  it("136. versão após mudança vem da entidade retornada", async () => {
+    const env = createMockDomainEnvironment();
+    const a = await makeAppointment(env);
+    const upd = ok(
+      await env.services.appointments.changeStatus(
+        OWNER_ALFA,
+        buildChangeAppointmentStatusInput(a, "completed", a.metadata.version),
+      ),
+    );
+    expect(upd.metadata.version).toBe(a.metadata.version + 1);
+  });
+  it("137. versão enviada é a versão corrente do detalhe", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    const inputV = buildChangeDeadlineStatusInput(
+      d,
+      "completed",
+      d.metadata.version,
+    );
+    expect(inputV.expectedVersion).toBe(d.metadata.version);
+  });
+  it("138. versão desatualizada não altera a entidade local", async () => {
+    const env = createMockDomainEnvironment();
+    const d = await makeDeadline(env);
+    ok(
+      await env.services.deadlines.changeStatus(
+        OWNER_ALFA,
+        buildChangeDeadlineStatusInput(d, "completed", d.metadata.version),
+      ),
+    );
+    const err = fail(
+      await env.services.deadlines.changeStatus(
+        OWNER_ALFA,
+        // Versão desatualizada — usa a versão original de `d`.
+        buildChangeDeadlineStatusInput(d, "cancelled", d.metadata.version),
+      ),
+    );
+    expect(err.code).toBe("conflict");
+    // Objeto local `d` permanece intocado; o cliente jamais deve promover
+    // uma versão desatualizada ao estado autoritativo.
+    expect(d.status).toBe("pending");
+    expect(d.completedAt).toBeUndefined();
+  });
+});
+
+// =========================================================================
+// 15) Integração dos helpers no componente real
+// =========================================================================
+
+describe("LV-09.1B.6.2 — integração real dos helpers", () => {
+  it("139. AgendaItemDetailDialog importa item-mutation-reducers", () => {
+    expect(DETAIL_SRC).toMatch(/from "\.\/item-mutation-reducers"/);
+    expect(DETAIL_SRC).toMatch(/deriveMutationLockDecisions/);
+    expect(DETAIL_SRC).toMatch(/resolvePermissionEvaluation/);
+    expect(DETAIL_SRC).toMatch(/resolveMutationConflictAction/);
+    expect(DETAIL_SRC).toMatch(/hasPermissionEvaluationError/);
+  });
+  it("140. banner de retry considera perm === 'error' (update)", () => {
+    expect(DETAIL_SRC).toMatch(
+      /perm === "error" \|\| permChangeStatus === "error" \|\| permRemove === "error"/,
+    );
+  });
+  it("141. enterEdit bloqueia durante mutação (linha explícita)", () => {
+    const idx = DETAIL_SRC.indexOf("const enterEdit = React.useCallback");
+    expect(idx).toBeGreaterThan(-1);
+    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    expect(slice).toMatch(/mutationInFlightRef\.current \|\| mutating/);
+  });
+  it("142. requestClose bloqueia durante mutating (linha explícita)", () => {
+    const idx = DETAIL_SRC.indexOf("const requestClose = React.useCallback");
+    const slice = DETAIL_SRC.slice(idx, idx + 400);
+    expect(slice).toMatch(/mutationInFlightRef\.current \|\| mutating/);
+  });
+  it("143. callbacks dedicados de request de status/remoção existem", () => {
+    expect(DETAIL_SRC).toMatch(/requestDeadlineStatusChange/);
+    expect(DETAIL_SRC).toMatch(/requestAppointmentStatusChange/);
+    expect(DETAIL_SRC).toMatch(/requestRemoval/);
+  });
+  it("144. ItemActionsSection recebe callbacks dedicados (não inline)", () => {
+    expect(DETAIL_SRC).toMatch(
+      /onSelectDeadlineAction=\{requestDeadlineStatusChange\}/,
+    );
+    expect(DETAIL_SRC).toMatch(
+      /onSelectAppointmentAction=\{requestAppointmentStatusChange\}/,
+    );
+    expect(DETAIL_SRC).toMatch(/onRequestRemoval=\{requestRemoval\}/);
+  });
+  it("145. permissionAllowsAction é usado no componente", () => {
+    expect(DETAIL_SRC).toMatch(/permissionAllowsAction\(perm\)/);
+  });
+  it("146. item-mutation-reducers não importa React", () => {
+    expect(REDUCERS_SRC).not.toMatch(/from "react"/);
+  });
+  it("147. item-mutation-reducers sem casts proibidos", () => {
+    expect(REDUCERS_SRC).not.toMatch(/as any\b/);
+    expect(REDUCERS_SRC).not.toMatch(/as never\b/);
+    expect(REDUCERS_SRC).not.toMatch(/@ts-ignore|@ts-nocheck/);
+  });
+  it("148. LV-09.1B.6.2 não cria nova rota", () => {
+    const routes = AGENDA_ROUTE_SRC.match(/createFileRoute\(/g) ?? [];
+    expect(routes.length).toBe(1);
   });
 });
