@@ -898,9 +898,9 @@ describe("LV-09.1B.7.1 · provas estruturais", () => {
     const src = read("src/domain/mocks/appointment-mock.ts");
     expect(src).not.toMatch(/availability/);
   });
-  it("65. routeTree.gen.ts não menciona disponibilidade", () => {
+  it("65. routeTree.gen.ts registra /app/disponibilidade (LV-09.1B.7.2)", () => {
     const src = read("src/routeTree.gen.ts");
-    expect(src).not.toMatch(/disponibilidade/i);
+    expect(src).toMatch(/disponibilidade/i);
   });
 });
 
