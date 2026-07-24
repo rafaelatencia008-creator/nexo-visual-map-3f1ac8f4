@@ -390,19 +390,94 @@ describe("LV-09.1B.6.3A.1 · resolveAppointmentRoute", () => {
   });
 });
 
-// ---- Rota /novo · caseId --------------------------------------------------
+// ---- Rota /novo · helper resolveAgendaNovoCaseId --------------------------
 
-describe("LV-09.1B.6.3A.1 · search caseId em /app/agenda/novo", () => {
-  it("14. search param caseId válido é aceito", () => {
-    const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
-    expect(src).toContain("isCaseId(search.caseId)");
-    expect(src).toContain("initialCaseId");
+import { resolveAgendaNovoCaseId } from "@/features/agenda/route-params";
+import { buildDomainId, isCaseId as _isCaseId } from "@/domain/core/ids";
+
+describe("LV-09.1B.6.3A.2 · resolveAgendaNovoCaseId (helper puro)", () => {
+  const validCaseId = buildDomainId("case", "alfa_1");
+
+  it("14a. um CaseId oficial válido é retornado", () => {
+    const r = resolveAgendaNovoCaseId(String(validCaseId));
+    expect(r).toBe(validCaseId);
+    expect(_isCaseId(r)).toBe(true);
   });
 
-  it("15. search param caseId inválido é ignorado (sem cast bruto)", () => {
+  it("14b. string vazia retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("")).toBeUndefined();
+  });
+
+  it("14c. string com prefixo incorreto retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("person_alfa_1")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("appt_alfa_1")).toBeUndefined();
+  });
+
+  it("14d. string malformada retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId("case_")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("case_ !!")).toBeUndefined();
+    expect(resolveAgendaNovoCaseId("not-an-id")).toBeUndefined();
+  });
+
+  it("14e. null retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(null)).toBeUndefined();
+  });
+
+  it("14f. undefined retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(undefined)).toBeUndefined();
+  });
+
+  it("14g. número retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId(0)).toBeUndefined();
+    expect(resolveAgendaNovoCaseId(42)).toBeUndefined();
+    expect(resolveAgendaNovoCaseId(Number.NaN)).toBeUndefined();
+  });
+
+  it("14h. objeto retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId({})).toBeUndefined();
+    expect(resolveAgendaNovoCaseId({ caseId: String(validCaseId) })).toBeUndefined();
+  });
+
+  it("14i. array retorna undefined", () => {
+    expect(resolveAgendaNovoCaseId([])).toBeUndefined();
+    expect(resolveAgendaNovoCaseId([String(validCaseId)])).toBeUndefined();
+  });
+
+  it("14j. chamadas repetidas são determinísticas", () => {
+    const a = resolveAgendaNovoCaseId(String(validCaseId));
+    const b = resolveAgendaNovoCaseId(String(validCaseId));
+    expect(a).toBe(b);
+    expect(resolveAgendaNovoCaseId("nope")).toBe(resolveAgendaNovoCaseId("nope"));
+  });
+
+  it("14k. a função não lança para nenhuma entrada", () => {
+    const inputs: unknown[] = [
+      null,
+      undefined,
+      "",
+      "case_ok",
+      123,
+      {},
+      [],
+      Symbol("x"),
+      () => 0,
+      BigInt(1),
+    ];
+    for (const v of inputs) {
+      expect(() => resolveAgendaNovoCaseId(v)).not.toThrow();
+    }
+  });
+});
+
+describe("LV-09.1B.6.3A.2 · integração com validateSearch em /app/agenda/novo", () => {
+  it("15. app.agenda.novo.tsx usa resolveAgendaNovoCaseId dentro de validateSearch", () => {
     const src = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
-    // Não pode existir cast direto `as CaseId`.
+    expect(src).toContain("resolveAgendaNovoCaseId");
+    expect(src).toContain("validateSearch");
+    // O helper é referenciado dentro de validateSearch, e nenhum cast bruto sobrevive.
+    expect(src).toMatch(/validateSearch[\s\S]*resolveAgendaNovoCaseId\(search\.caseId\)/);
     expect(src).not.toMatch(/as\s+CaseId/);
+    expect(src).not.toMatch(/as\s+unknown\s+as\s+CaseId/);
   });
 });
 
