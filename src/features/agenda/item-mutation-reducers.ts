@@ -8,7 +8,7 @@
 
 import type { PermissionEvalState } from "./item-mutations";
 import type { ServiceResult } from "@/domain/services/result";
-import type { PermissionEvaluation } from "@/domain/services/permissions";
+import type { PermissionDecision } from "@/domain/services/permissions";
 
 // ---------------------------------------------------------------------------
 // 1) Decisão pura de bloqueio síncrono
@@ -51,7 +51,7 @@ export function deriveMutationLockDecisions(
 // ---------------------------------------------------------------------------
 
 export type PermissionEvaluationOutcome =
-  | Readonly<{ kind: "resolved"; result: ServiceResult<PermissionEvaluation> }>
+  | Readonly<{ kind: "resolved"; result: ServiceResult<PermissionDecision> }>
   | Readonly<{ kind: "rejected" }>;
 
 /**
