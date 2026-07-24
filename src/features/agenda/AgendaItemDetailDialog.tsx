@@ -389,6 +389,8 @@ export function AgendaItemDetailDialog(
   const enterEdit = React.useCallback(() => {
     if (detail.kind !== "ready" || perm !== "allowed") return;
     setErrors({});
+    setTouched({});
+    setAttemptedSubmit(false);
     setGeneralError(null);
     setConflictState(null);
     if (detail.loaded.type === "deadline") {
