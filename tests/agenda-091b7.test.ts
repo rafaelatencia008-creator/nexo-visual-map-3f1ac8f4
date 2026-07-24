@@ -704,10 +704,6 @@ describe("LV-09.1B.7.1 · isolamento e ausência de efeitos", () => {
 // (F2) LV-09.1B.7.1.1 — Vínculo ao domínio oficial (conversor + limite)
 // =========================================================================
 
-import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
-import { isoDateTimeToEpoch as _isoDateTimeToEpoch } from "@/domain/core/common";
-void _isoDateTimeToEpoch;
-
 describe("LV-09.1B.7.1.1 · conversor temporal oficial e limite de página", () => {
   it("A1. AVAILABILITY_PAGE_LIMIT === PAGE_LIMIT_MAX", () => {
     expect(AVAILABILITY_PAGE_LIMIT).toBe(PAGE_LIMIT_MAX);
