@@ -427,7 +427,7 @@ export function createAppointmentServiceMock(
         if (!isIsoDateTime(raw.endsAt)) return invalid<Appointment>("invalid_ends_at");
         if (raw.endsAt !== current.endsAt) { nextEndsAt = raw.endsAt; changed = true; }
       }
-      if (nextStartsAt >= nextEndsAt) return invalid<Appointment>("period_inverted");
+      if (isoDateTimeToEpoch(nextStartsAt) >= isoDateTimeToEpoch(nextEndsAt)) return invalid<Appointment>("period_inverted");
       if (raw.mode !== undefined) {
         if (!isAppointmentMode(raw.mode)) return invalid<Appointment>("invalid_mode");
         if (raw.mode !== current.mode) { nextMode = raw.mode; changed = true; }
