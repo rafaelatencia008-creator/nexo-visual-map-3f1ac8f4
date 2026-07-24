@@ -849,7 +849,7 @@ export const AgendaItemDetailContent = React.forwardRef<
         );
         const res =
           await environment.services.deadlines.changeStatus(context, input);
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
