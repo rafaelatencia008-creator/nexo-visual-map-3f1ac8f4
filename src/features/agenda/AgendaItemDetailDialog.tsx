@@ -549,6 +549,7 @@ export function AgendaItemDetailDialog(
   }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
     const dec = resolveDiscardIntent("close", {
       mode,
       hasChanges: hasLocalChanges,
