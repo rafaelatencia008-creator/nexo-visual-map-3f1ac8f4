@@ -1571,8 +1571,8 @@ function ItemActionsSection({
   onSelectAppointmentAction: (action: AppointmentStatusAction) => void;
   onRequestRemoval: () => void;
 }) {
-  const canStatus = permChangeStatus === "allowed";
-  const canRemove = permRemove === "allowed";
+  const canStatus = permissionAllowsAction(permChangeStatus);
+  const canRemove = permissionAllowsAction(permRemove);
   if (!canStatus && !canRemove) return null;
   const isDeadline = loaded.type === "deadline";
   const deadlineActions: readonly DeadlineStatusAction[] = isDeadline
