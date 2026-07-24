@@ -400,62 +400,86 @@ export const AgendaItemDetailContent = React.forwardRef<
   const detailReqIdRef = React.useRef(0);
   const assignReqIdRef = React.useRef(0);
   const submittingRef = React.useRef(false);
-  // LV-09.1B.6.3B.2.1.1 — snapshots síncronos para invalidação assíncrona.
-  // Respostas em voo comparam a chave capturada no início da chamada com
-  // `selectionKeyRef.current` no momento da resolução; se divergiram (ou
-  // o componente ficou inativo), o resultado é descartado sem tocar em
-  // `setState`.
-  // LV-09.1B.6.3B.2.1.2 — refs de atividade sincronizadas DURANTE o render.
-  // Sem useEffect: qualquer resposta que resolva imediatamente após um
-  // render com `active=false` já encontra `activeRef.current === false` e
-  // é descartada, sem janela para tocar `setState`.
-  const activeRef = React.useRef(active);
-  activeRef.current = active;
-  const selectionKeyRef = React.useRef<AgendaDetailSelectionKey | null>(
-    selectionKey,
-  );
-  selectionKeyRef.current = selectionKey;
 
   // LV-09.1B.6.3B.2.1.2 — chave de ativação combinada.
   // Reset depende apenas dela: mudança apenas de `referenceEpoch` ou
   // recriação equivalente de `selected` não invalida o formulário.
   const activationKey = buildAgendaDetailActivationKey(active, selectionKey);
 
-  // LV-09.1B.6.3B.2.1.3 — geração monotônica de atividade.
-  // Toda mudança da `activationKey` (ativação, troca de item, desativação)
-  // incrementa a geração DURANTE o render. Isso distingue o cenário
-  // A → B → A: a terceira sessão tem geração maior que a primeira, e
-  // resultados capturados na sessão inicial de A nunca contaminam a
-  // sessão final, mesmo com a chave semântica idêntica.
-  const previousActivationKeyRef = React.useRef<
-    AgendaDetailSelectionKey | null
-  >(activationKey);
-  const activityGenerationRef = React.useRef(0);
-  if (previousActivationKeyRef.current !== activationKey) {
-    previousActivationKeyRef.current = activationKey;
-    activityGenerationRef.current += 1;
-  }
-  const activityGeneration = activityGenerationRef.current;
+  // LV-09.1B.6.3B.2.1.3.1 — sessão de atividade em state + derivação pura.
+  // A geração NÃO é incrementada por mutação de ref durante o render. A
+  // sessão confirmada vive em state; cada render deriva uma sessão
+  // candidata via `deriveAgendaDetailRenderSession`. Um render abandonado
+  // (React 18+) apenas calcula um candidato — a próxima render volta a
+  // derivar a partir da sessão confirmada anterior.
+  const [committedActivitySession, setCommittedActivitySession] =
+    React.useState<AgendaDetailActivitySession>(() =>
+      createAgendaDetailActivitySession(activationKey),
+    );
+  const renderActivitySession = deriveAgendaDetailRenderSession(
+    committedActivitySession,
+    activationKey,
+  );
+  const activityGeneration = renderActivitySession.generation;
+
+  // LV-…2.1.3.1 — ref única de atividade corrente, sincronizada APENAS no
+  // commit. Nenhuma mutação de ref ocorre no corpo do render. Handlers e
+  // respostas assíncronas leem `currentActivityRef.current` para validar
+  // se ainda pertencem à sessão confirmada.
+  const currentActivityRef = React.useRef<AgendaDetailRuntimeActivity>({
+    active,
+    selectionKey,
+    activityGeneration,
+  });
+
+  useCommitLayoutEffect(() => {
+    if (
+      committedActivitySession.activationKey !==
+        renderActivitySession.activationKey ||
+      committedActivitySession.generation !==
+        renderActivitySession.generation
+    ) {
+      setCommittedActivitySession(renderActivitySession);
+    }
+  }, [committedActivitySession, renderActivitySession]);
+
+  useCommitLayoutEffect(() => {
+    currentActivityRef.current = {
+      active,
+      selectionKey,
+      activityGeneration,
+    };
+  }, [active, selectionKey, activityGeneration]);
 
   // LV-09.1B.6.3B.2.1.3 — detalhe visível vinculado à sessão corrente.
   // Um snapshot cuja geração/chave não é a corrente é órfão e apresentado
   // como "loading" — mesmo que contenha um estado `ready` de outra sessão.
+  // Usa `renderActivitySession.generation` (não a ref) para que o primeiro
+  // render de B já esconda o snapshot de A antes do segundo render.
   const detailIsCurrent =
     detailSnapshot.activityGeneration === activityGeneration &&
     detailSnapshot.selectionKey === selectionKey;
   const detail: DetailState = detailIsCurrent
     ? detailSnapshot.state
     : { kind: "loading" };
-  // Setter estampado com a geração/chave correntes no momento da chamada.
-  // Chamado apenas após guardas assíncronos que já confirmam pertinência,
-  // ou pelo reset síncrono (que naturalmente estampa a sessão nova).
-  const setDetail = React.useCallback((state: DetailState): void => {
-    setDetailSnapshot({
-      activityGeneration: activityGenerationRef.current,
-      selectionKey: selectionKeyRef.current,
-      state,
-    });
-  }, []);
+
+  // LV-…2.1.3.1 — proprietário derivado do render corrente. Uma closure
+  // assíncrona da sessão A carimba qualquer snapshot como pertencente a A
+  // (fecha sobre o `detailOwner` desta render), mesmo diante de falha
+  // futura de um guard.
+  const detailOwner = React.useMemo(
+    () => ({
+      activityGeneration,
+      selectionKey,
+    }),
+    [activityGeneration, selectionKey],
+  );
+  const setDetail = React.useCallback(
+    (state: DetailState): void => {
+      setDetailSnapshot({ ...detailOwner, state });
+    },
+    [detailOwner],
+  );
 
 
   const mutationInFlightRef = React.useRef(false);
