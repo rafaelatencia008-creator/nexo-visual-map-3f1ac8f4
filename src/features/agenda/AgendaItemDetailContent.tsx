@@ -699,9 +699,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (submittingRef.current) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(perm)) return;
+    if (!activeRef.current) return;
+    // LV-09.1B.6.3B.2.1.1 — captura chave da seleção para invalidar
+    // aplicação de resultados caso a seleção mude durante o submit.
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setAttemptedSubmit(true);
     setGeneralError(null);
     setConflictState(null);
+
 
     if (detail.loaded.type === "deadline" && dForm) {
       const built = buildUpdateDeadlineInput(
