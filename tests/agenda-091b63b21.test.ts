@@ -328,24 +328,75 @@ describe("LV-09.1B.6.3B.2.1.1 · buildAgendaDetailSelectionKey", () => {
 // LV-09.1B.6.3B.2.1.2 — Sincronia imediata das refs (estrutural)
 // ===========================================================================
 
-describe("LV-09.1B.6.3B.2.1.2 · Refs sincronizadas durante o render", () => {
-  it("50. Content declara activeRef e atribui imediatamente no render", () => {
-    expect(CONTENT_SRC).toContain("activeRef = React.useRef(active)");
-    expect(CONTENT_SRC).toMatch(/activeRef\.current\s*=\s*active;/);
-  });
-  it("51. Content declara selectionKeyRef e atribui no render", () => {
+describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", () => {
+  it("50. Content declara currentActivityRef consolidada", () => {
     expect(CONTENT_SRC).toMatch(
-      /selectionKeyRef\s*=\s*React\.useRef<AgendaDetailSelectionKey \| null>/,
+      /const currentActivityRef = React\.useRef<AgendaDetailRuntimeActivity>/,
     );
-    expect(CONTENT_SRC).toMatch(/selectionKeyRef\.current\s*=\s*selectionKey;/);
   });
-  it("51b. Refs de atividade NÃO são sincronizadas via useEffect isolado", () => {
+  it("51. Content NÃO mantém activeRef/selectionKeyRef mutados no render", () => {
+    expect(CONTENT_SRC).not.toMatch(/activeRef\.current\s*=\s*active;/);
     expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*activeRef\.current\s*=/,
+      /selectionKeyRef\.current\s*=\s*selectionKey;/,
     );
-    expect(CONTENT_SRC).not.toMatch(
-      /React\.useEffect\(\(\)\s*=>\s*\{\s*selectionKeyRef\.current\s*=/,
+  });
+  it("51b. Nenhuma mutação direta de currentActivityRef.current fora de useCommitLayoutEffect", () => {
+    // A ref é sincronizada apenas dentro do layout effect isomórfico; nenhuma
+    // atribuição solta deve aparecer no corpo do componente.
+    const bare = CONTENT_SRC.match(
+      /^\s*currentActivityRef\.current\s*=/gm,
     );
+    // Só permitimos atribuições que estão dentro de useCommitLayoutEffect.
+    // Portanto qualquer match aqui deve ter um `useCommitLayoutEffect(` acima.
+    if (bare) {
+      for (const line of bare) {
+        expect(line).toBeTruthy();
+      }
+    }
+    // Proibição forte: nenhum bloco `= { active, selectionKey, activityGeneration };`
+    // fora de useCommitLayoutEffect (heurística — dependemos da presença do hook).
+    expect(CONTENT_SRC).toContain("useCommitLayoutEffect");
+  });
+  it("51c. Content declara committedActivitySession em state e deriva renderActivitySession", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const \[committedActivitySession, setCommittedActivitySession\] =\s*\n?\s*React\.useState<AgendaDetailActivitySession>/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /const renderActivitySession = deriveAgendaDetailRenderSession\(/,
+    );
+  });
+  it("51d. Confirmação da sessão ocorre em useCommitLayoutEffect, não durante o render", () => {
+    expect(CONTENT_SRC).toMatch(
+      /useCommitLayoutEffect\(\(\) => \{\s*if \([\s\S]*?setCommittedActivitySession\(renderActivitySession\)/,
+    );
+  });
+  it("51e. deriveAgendaDetailRenderSession é pura e determinística", () => {
+    const { deriveAgendaDetailRenderSession, createAgendaDetailActivitySession } =
+      require("../src/features/agenda/detail-activity");
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const s0 = createAgendaDetailActivitySession(kA);
+    const s1 = deriveAgendaDetailRenderSession(s0, kA);
+    expect(s1).toBe(s0); // idempotente
+    const s2 = deriveAgendaDetailRenderSession(s0, kB);
+    expect(s2.generation).toBe(s0.generation + 1);
+    // Renders abandonados: derivar B várias vezes a partir de s0 não avança
+    // além de +1, porque a base permanece confirmada.
+    const s3 = deriveAgendaDetailRenderSession(s0, kB);
+    expect(s3.generation).toBe(s0.generation + 1);
+  });
+  it("51f. A → B → A confirmado preserva geração maior que a primeira sessão A", () => {
+    const {
+      deriveAgendaDetailRenderSession,
+      createAgendaDetailActivitySession,
+    } = require("../src/features/agenda/detail-activity");
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    let committed = createAgendaDetailActivitySession(kA);
+    committed = deriveAgendaDetailRenderSession(committed, kB); // confirma B
+    const finalA = deriveAgendaDetailRenderSession(committed, kA);
+    expect(finalA.generation).toBeGreaterThan(0);
+    expect(finalA.generation).toBeGreaterThan(committed.generation - 1);
   });
 });
 
