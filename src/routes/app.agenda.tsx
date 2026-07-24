@@ -1730,39 +1730,66 @@ function AppointmentCard({
 function WeekDeadlineItem({
   deadline,
   nowEpoch,
+  onOpen,
 }: {
   deadline: Deadline;
   nowEpoch: number;
+  onOpen?: (d: Deadline, ev?: React.SyntheticEvent) => void;
 }) {
   const presentation = getDeadlinePresentation(deadline, nowEpoch);
   const StateIcon = DEADLINE_STATE_ICON[presentation.state];
   const isDone =
     presentation.state === "cancelled" || presentation.state === "completed";
-  return (
-    <div
-      className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] ${presentation.containerClass}`}
-      title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
-      aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
-    >
+  const commonClass = `flex w-full items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] text-left ${presentation.containerClass}`;
+  const content = (
+    <>
       <StateIcon className="h-3 w-3 shrink-0" aria-hidden />
       <span className="shrink-0 font-medium">{formatTime(deadline.dueAt)}</span>
       <span className={`truncate ${isDone ? "line-through opacity-70" : ""}`}>
         {deadline.title}
       </span>
+    </>
+  );
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onOpen(deadline, ev);
+        }}
+        title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
+        aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
+        className={`${commonClass} transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div
+      className={commonClass}
+      title={`Prazo · ${presentation.stateLabel} · ${deadline.title}`}
+      aria-label={`Prazo ${presentation.stateLabel}: ${deadline.title}`}
+    >
+      {content}
     </div>
   );
 }
 
-function WeekAppointmentItem({ appointment }: { appointment: Appointment }) {
+function WeekAppointmentItem({
+  appointment,
+  onOpen,
+}: {
+  appointment: Appointment;
+  onOpen?: (a: Appointment, ev?: React.SyntheticEvent) => void;
+}) {
   const presentation = getAppointmentPresentation(appointment);
   const isDone =
     presentation.state === "cancelled" || presentation.state === "completed";
-  return (
-    <div
-      className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] ${presentation.containerClass}`}
-      title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
-      aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
-    >
+  const commonClass = `flex w-full items-center gap-1 truncate rounded border px-1.5 py-0.5 text-[11px] text-left ${presentation.containerClass}`;
+  const content = (
+    <>
       <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
       <span className="shrink-0 font-medium">
         {formatTime(appointment.startsAt)}
@@ -1770,9 +1797,35 @@ function WeekAppointmentItem({ appointment }: { appointment: Appointment }) {
       <span className={`truncate ${isDone ? "line-through opacity-70" : ""}`}>
         {appointment.title}
       </span>
+    </>
+  );
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onOpen(appointment, ev);
+        }}
+        title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
+        aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
+        className={`${commonClass} transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div
+      className={commonClass}
+      title={`Compromisso · ${presentation.stateLabel} · ${appointment.title}`}
+      aria-label={`Compromisso ${presentation.stateLabel}: ${appointment.title}`}
+    >
+      {content}
     </div>
   );
 }
+
 
 // ---- Próximos prazos ------------------------------------------------------
 
