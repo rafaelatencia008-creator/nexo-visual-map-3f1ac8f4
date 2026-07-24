@@ -710,13 +710,15 @@ export const AgendaItemDetailContent = React.forwardRef<
     let cancelled = false;
     const reqId = ++assignReqIdRef.current;
     const reqSelectionKey = selectionKey;
+    const reqActivityGeneration = activityGenerationRef.current;
     setAssignments({ kind: "loading" });
     const stillCurrent = (): boolean =>
       !cancelled &&
       mountedRef.current &&
       activeRef.current &&
       reqId === assignReqIdRef.current &&
-      selectionKeyRef.current === reqSelectionKey;
+      selectionKeyRef.current === reqSelectionKey &&
+      activityGenerationRef.current === reqActivityGeneration;
     (async () => {
       const collected: Assignment[] = [];
       const seen = new Set<string>();
