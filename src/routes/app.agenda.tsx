@@ -395,8 +395,11 @@ function AgendaPage() {
   const [mode, setMode] = React.useState<ViewMode>("week");
   const [anchor, setAnchor] = React.useState<Date>(() => startOfDay(new Date()));
   const [showMore, setShowMore] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [reloadKey, setReloadKey] = React.useState(0);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
+  const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
     mountedRef.current = true;
