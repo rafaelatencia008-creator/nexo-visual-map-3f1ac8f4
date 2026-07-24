@@ -1037,9 +1037,15 @@ function AppointmentFields(props: {
           onChange={(v) => onChange("assignmentId", v as AssignmentId | "")}
           assignments={assignments}
           disabled={disabled}
+          fieldError={errors.assignmentId}
+          errorMessageId="err-a-assignee"
+          loadErrorMessageId="err-a-assignee-load"
+          onRetry={onRetryAssignments}
         />
         {errors.assignmentId && (
-          <p className="text-xs text-destructive">{errors.assignmentId}</p>
+          <p id="err-a-assignee" className="text-xs text-destructive">
+            {errors.assignmentId}
+          </p>
         )}
       </div>
     </div>
