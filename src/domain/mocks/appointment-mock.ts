@@ -24,6 +24,7 @@ import {
   containsForbiddenKey,
   hasOnlyAllowedKeys,
   isIsoDateTime,
+  isoDateTimeToEpoch,
   isValidVersion,
 } from "../core/common";
 import type {
