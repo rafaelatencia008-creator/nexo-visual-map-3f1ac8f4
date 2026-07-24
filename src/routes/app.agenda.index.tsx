@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useAgendaRouteState } from "@/features/agenda/route-state";
 import * as React from "react";
 import {
   CalendarDays,
@@ -130,6 +131,17 @@ import type { AppointmentId, DeadlineId } from "@/domain/core/ids";
 // ============================================================================
 
 export const Route = createFileRoute("/app/agenda/")({
+  head: () => ({
+    meta: [
+      { title: "Agenda — Nexo Pericial 360" },
+      {
+        name: "description",
+        content:
+          "Calendário oficial de prazos e compromissos com visão diária, semanal e mensal.",
+      },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   head: () => ({
     meta: [
       { title: "Agenda — Nexo Pericial 360" },
