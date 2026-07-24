@@ -926,7 +926,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           detail.loaded.item.id,
           version,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
@@ -949,7 +949,7 @@ export const AgendaItemDetailContent = React.forwardRef<
           detail.loaded.item.id,
           version,
         );
-        if (!mountedRef.current) return;
+        if (!stillSameSelection()) return;
         if (!res.ok) {
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
