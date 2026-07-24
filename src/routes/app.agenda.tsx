@@ -642,6 +642,14 @@ function AgendaPage() {
     setReloadKey((k) => k + 1);
   }, []);
 
+  const handleDeleted = React.useCallback(() => {
+    setSelected(null);
+    setReloadKey((k) => k + 1);
+    window.setTimeout(() => {
+      lastTriggerRef.current?.focus?.();
+    }, 0);
+  }, []);
+
   const openDeadline = React.useCallback(
     (d: Deadline, ev?: React.SyntheticEvent) => {
       if (ev?.currentTarget instanceof HTMLElement) {
