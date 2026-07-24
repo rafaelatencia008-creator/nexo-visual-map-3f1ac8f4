@@ -245,7 +245,7 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
     let cancelled = false;
     setAssignments({ kind: "loading" });
     environment.services.assignments
-      .listByCase(context, currentCaseId as CaseId, { limit: 100, offset: 0 })
+      .listByCase(context, currentCaseId as CaseId, { limit: 100 })
       .then((res) => {
         if (cancelled || !mountedRef.current) return;
         if (!res.ok) {
