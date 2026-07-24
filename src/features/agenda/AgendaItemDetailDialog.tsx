@@ -1326,6 +1326,7 @@ function AppointmentEditFields({
   form,
   errors,
   onChange,
+  onBlurField,
   assignments,
   originalAssignmentId,
   disabled,
@@ -1334,6 +1335,7 @@ function AppointmentEditFields({
   form: EditAppointmentFormState;
   errors: Readonly<Record<string, string>>;
   onChange: (k: keyof EditAppointmentFormState, v: string) => void;
+  onBlurField: (k: keyof EditAppointmentFormState) => void;
   assignments: AssignmentsState;
   originalAssignmentId: string | null;
   disabled: boolean;
