@@ -943,12 +943,13 @@ describe("LV-09.1B.6.1 — fechamento técnico", () => {
       /if \(!getMutationLockDecisions\(\)\.canClose\) e\.preventDefault\(\)/,
     );
   });
-  it("84. botão Fechar chama requestClose e desabilita durante mutating", () => {
+  it("84. botão Fechar chama requestClose e desabilita via canCloseDetail", () => {
     expect(DETAIL_SRC).toMatch(/onClick=\{requestClose\}/);
-    expect(DETAIL_SRC).toMatch(/disabled=\{submitting \|\| mutating\}/);
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canCloseDetail\}/);
   });
-  it("85. botão Editar desabilita quando mutating", () => {
-    expect(DETAIL_SRC).toMatch(/perm !== "allowed" \|\| mutating/);
+  it("85. botão Editar desabilita via canEditItem", () => {
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canEditItem\}/);
+    expect(DETAIL_SRC).not.toMatch(/perm !== "allowed" \|\| mutating/);
   });
   it("86. Escape nos AlertDialog de confirmação bloqueia via lock decisions", () => {
     const escBlocks = DETAIL_SRC.match(
