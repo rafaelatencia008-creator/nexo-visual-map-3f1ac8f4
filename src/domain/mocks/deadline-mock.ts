@@ -164,7 +164,8 @@ function assignmentInCase(
 }
 
 function compareDeadlines(a: Deadline, b: Deadline): number {
-  if (a.dueAt !== b.dueAt) return a.dueAt < b.dueAt ? -1 : 1;
+  const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
+  if (t !== 0) return t;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
