@@ -1,12 +1,12 @@
 # DEC-AGE-001 — Rotas canônicas da Agenda
 
-**Status:** aceito (parcela A concluída; parcela B em andamento — criação
-extraída, detalhe ainda pendente)
+**Status:** aceito
 **Data:** 2026-07-24
-**Etapa:** LV-09.1B.6.3 (aberta) — parcela A entregue nas LV-09.1B.6.3A a
-LV-09.1B.6.3A.3; parcela B iniciada na LV-09.1B.6.3B.1 (extração do
-fluxo de criação); LV-09.1B.6.3B.2 (extração do detalhe) ainda não
-iniciada.
+**Etapa:** LV-09.1B.6.3 concluída; LV-09.1B.7.1 e LV-09.1B.7.1.1
+concluídas; LV-09.1B.7.2 concluída; correção LV-09.1B.7.2.1 concluída
+(tipagem segura, ciclo consultivo em helper puro
+`availability-consultation-state.ts`, `SelectTrigger` único para o
+Responsável e aria-linkage do erro de intervalo).
 
 ## Estado atual desta decisão
 
