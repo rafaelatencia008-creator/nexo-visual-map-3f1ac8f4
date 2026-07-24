@@ -643,12 +643,6 @@ describe("LV-09.1B.6.3B.2.1.2 · Invalidação assíncrona", () => {
     );
     expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
   });
-  it.skip("70-legacy", () => {
-    expect(CONTENT_SRC).toMatch(
-      /const startSelectionKey = selectionKeyRef\.current;/,
-    );
-    expect(CONTENT_SRC).toMatch(/const stillSameSelection = \(\)/);
-  });
   it("71. Mutação/remoção descartam resultados fora da seleção (>=4)", () => {
     const matches = CONTENT_SRC.match(/if \(!stillSameSelection\(\)\) return;/g);
     expect((matches ?? []).length).toBeGreaterThanOrEqual(4);
