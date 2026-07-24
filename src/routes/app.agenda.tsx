@@ -41,13 +41,17 @@ import type {
 import type { PageResult } from "@/domain/services/pagination";
 import type { ServiceContext } from "@/domain/services/context";
 import type { MockDomainEnvironment } from "@/domain/mocks";
-import { isoDateTimeToEpoch } from "@/domain/core/common";
+import { isoDateTimeToEpoch, type IsoDateTime } from "@/domain/core/common";
 import {
   getAppointmentPresentation,
   getDeadlinePresentation,
   isDeadlineOverdue,
   type DeadlineVisualState,
 } from "@/features/agenda/visual-state";
+import {
+  buildMonthCells,
+  selectUpcomingDeadlines,
+} from "@/features/agenda/date-view";
 
 // ============================================================================
 // Tela oficial /app/agenda.
@@ -263,8 +267,8 @@ function formatDayShort(d: Date): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-function isInRange(iso: string, from: Date, to: Date): boolean {
-  const t = isoDateTimeToEpoch(iso as never);
+function isInRange(iso: IsoDateTime, from: Date, to: Date): boolean {
+  const t = isoDateTimeToEpoch(iso);
   return t >= from.getTime() && t < to.getTime();
 }
 
@@ -356,18 +360,8 @@ function AgendaPage() {
   }, [state, range]);
 
   const upcomingDeadlines = React.useMemo(() => {
-    if (state.kind !== "ready") return [] as Deadline[];
-    return state.data.deadlines
-      .filter(
-        (d) =>
-          d.status === "pending" && isoDateTimeToEpoch(d.dueAt) >= nowEpoch,
-      )
-      .slice()
-      .sort((a, b) => {
-        const t = isoDateTimeToEpoch(a.dueAt) - isoDateTimeToEpoch(b.dueAt);
-        return t !== 0 ? t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-      })
-      .slice(0, 5);
+    if (state.kind !== "ready") return [] as readonly Deadline[];
+    return selectUpcomingDeadlines(state.data.deadlines, nowEpoch, 5);
   }, [state, nowEpoch]);
 
   return (
@@ -643,9 +637,7 @@ function MonthView({
   nowEpoch: number;
   onPickDay: (d: Date) => void;
 }) {
-  const first = startOfMonth(anchor);
-  const gridStart = startOfWeek(first);
-  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+  const cells = buildMonthCells(anchor);
   const weekdayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const today = new Date();
 
