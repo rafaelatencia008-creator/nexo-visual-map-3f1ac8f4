@@ -826,11 +826,18 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!pendingStatus) return;
     if (detail.kind !== "ready") return;
     if (!permissionAllowsAction(permChangeStatus)) return;
+    if (!activeRef.current) return;
     if (!mutationLock.tryAcquire()) return;
+    const startSelectionKey = selectionKeyRef.current;
+    const stillSameSelection = (): boolean =>
+      mountedRef.current &&
+      activeRef.current &&
+      selectionKeyRef.current === startSelectionKey;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
     try {
+
       if (
         pendingStatus.kind === "deadline" &&
         detail.loaded.type === "deadline"
