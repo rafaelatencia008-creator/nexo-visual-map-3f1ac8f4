@@ -720,8 +720,10 @@ function DeadlineFields(props: {
   ) => void;
   assignments: AssignmentsState;
   disabled: boolean;
+  onRetryAssignments: () => void;
 }): React.ReactElement {
-  const { form, errors, onChange, assignments, disabled } = props;
+  const { form, errors, onChange, assignments, disabled, onRetryAssignments } =
+    props;
   return (
     <div className="mt-4 grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
