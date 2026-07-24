@@ -1542,3 +1542,59 @@ describe("LV-09.1B.6.2.1 — integração real do single-flight lock", () => {
     expect(releases.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("LV-09.1B.6.2.2 — unificação final dos gates da UI", () => {
+  it("159. botão Fechar usa canCloseDetail", () => {
+    expect(DETAIL_SRC).toMatch(/const canCloseDetail = lockDecisions\.canClose/);
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canCloseDetail\}/);
+  });
+  it("160. botão Editar usa canEditItem derivado de canEnterEdit + permissionAllowsAction(perm)", () => {
+    expect(DETAIL_SRC).toMatch(
+      /const canEditItem =\s*lockDecisions\.canEnterEdit && permissionAllowsAction\(perm\)/,
+    );
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canEditItem\}/);
+  });
+  it("161. retry de permissões usa canRetryPermissionEvaluation", () => {
+    expect(DETAIL_SRC).toMatch(
+      /const canRetryPermissionEvaluation = lockDecisions\.canRetryPermissions/,
+    );
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canRetryPermissionEvaluation\}/);
+  });
+  it("162. confirmação de status usa canConfirmStatusChange", () => {
+    expect(DETAIL_SRC).toMatch(
+      /const canConfirmStatusChange =\s*lockDecisions\.canOpenConfirmation &&\s*permissionAllowsAction\(permChangeStatus\)/,
+    );
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canConfirmStatusChange\}/);
+  });
+  it("163. confirmação de exclusão usa canConfirmRemoval", () => {
+    expect(DETAIL_SRC).toMatch(
+      /const canConfirmRemoval =\s*lockDecisions\.canOpenConfirmation && permissionAllowsAction\(permRemove\)/,
+    );
+    expect(DETAIL_SRC).toMatch(/disabled=\{!canConfirmRemoval\}/);
+  });
+  it("164. ItemActionsSection recebe actionsDisabled derivado de canOpenItemAction", () => {
+    expect(DETAIL_SRC).toMatch(/const canOpenItemAction = lockDecisions\.canOpenConfirmation/);
+    expect(DETAIL_SRC).toMatch(/actionsDisabled=\{!canOpenItemAction\}/);
+    expect(DETAIL_SRC).not.toMatch(/<ItemActionsSection[\s\S]*?mutating=\{mutating\}/);
+  });
+  it("165. botões internos de ItemActionsSection usam actionsDisabled", () => {
+    const section = DETAIL_SRC.slice(DETAIL_SRC.indexOf("function ItemActionsSection"));
+    const matches = section.match(/disabled=\{actionsDisabled\}/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(3);
+    expect(section).not.toMatch(/disabled=\{mutating\}/);
+  });
+  it("166. submit() usa permissionAllowsAction(perm)", () => {
+    expect(DETAIL_SRC).toMatch(/if \(!permissionAllowsAction\(perm\)\) return;/);
+  });
+  it("167. não existe mais gate de edição com perm !== \"allowed\"", () => {
+    expect(DETAIL_SRC).not.toMatch(/perm !== "allowed" \|\| mutating/);
+    expect(DETAIL_SRC).not.toMatch(/if \(perm !== "allowed"\) return;/);
+  });
+  it("168. UI não reconstrói decisões principais usando submitting || mutating", () => {
+    expect(DETAIL_SRC).not.toMatch(/disabled=\{submitting \|\| mutating\}/);
+    expect(DETAIL_SRC).not.toMatch(
+      /disabled=\{mutating \|\| !permissionAllowsAction\(perm(?:ChangeStatus|Remove)\)\}/,
+    );
+  });
+});
+
