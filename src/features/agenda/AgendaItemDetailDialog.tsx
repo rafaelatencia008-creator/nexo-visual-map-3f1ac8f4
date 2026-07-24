@@ -286,6 +286,7 @@ export function AgendaItemDetailDialog(
   const [permChangeStatus, setPermChangeStatus] =
     React.useState<PermState>("unknown");
   const [permRemove, setPermRemove] = React.useState<PermState>("unknown");
+  const [permAttempt, setPermAttempt] = React.useState(0);
   const [pendingStatus, setPendingStatus] = React.useState<
     | Readonly<{ kind: "deadline"; action: DeadlineStatusAction }>
     | Readonly<{ kind: "appointment"; action: AppointmentStatusAction }>
@@ -295,10 +296,8 @@ export function AgendaItemDetailDialog(
   const [mutating, setMutating] = React.useState<boolean>(false);
   const [mutationError, setMutationError] =
     React.useState<TranslatedMutationError | null>(null);
-  const [statusConflict, setStatusConflict] = React.useState<{
-    expected?: number;
-    actual?: number;
-  } | null>(null);
+  const [mutationConflict, setMutationConflict] =
+    React.useState<MutationConflict>(null);
 
   const mountedRef = React.useRef(true);
   const detailReqIdRef = React.useRef(0);
