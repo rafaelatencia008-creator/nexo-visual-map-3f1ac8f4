@@ -18,10 +18,11 @@
  */
 
 import type { Appointment } from "@/domain/core/agenda";
-import type { IsoDateTime } from "@/domain/core/common";
+import { isoDateTimeToEpoch, type IsoDateTime } from "@/domain/core/common";
 import type { AppointmentId, AssignmentId } from "@/domain/core/ids";
 import type { AppointmentService } from "@/domain/services/appointment-service";
 import type { ServiceContext } from "@/domain/services/context";
+import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
 import {
   decisionAvailable,
   decisionConflict,
