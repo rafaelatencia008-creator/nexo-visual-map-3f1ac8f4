@@ -1504,10 +1504,13 @@ function ItemActionsSection({
   const canStatus = permChangeStatus === "allowed";
   const canRemove = permRemove === "allowed";
   if (!canStatus && !canRemove) return null;
-  const statusActions =
-    loaded.type === "deadline"
-      ? getDeadlineStatusActions(loaded.item.status)
-      : getAppointmentStatusActions(loaded.item.status);
+  const isDeadline = loaded.type === "deadline";
+  const deadlineActions: readonly DeadlineStatusAction[] = isDeadline
+    ? getDeadlineStatusActions(loaded.item.status)
+    : [];
+  const appointmentActions: readonly AppointmentStatusAction[] = !isDeadline
+    ? getAppointmentStatusActions(loaded.item.status)
+    : [];
 
   return (
     <section
@@ -1518,52 +1521,46 @@ function ItemActionsSection({
         Ações do item
       </div>
       <div className="flex flex-wrap gap-2">
-        {canStatus &&
-          statusActions.map((a) =>
-            loaded.type === "deadline" ? (
-              <Button
-                key={`d-${a.status}`}
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={mutating}
-                onClick={() =>
-                  onSelectDeadlineAction(a as DeadlineStatusAction)
-                }
-              >
-                {a.status === (loaded.item.status === "completed"
-                  ? "pending"
-                  : "completed") ? (
-                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
-                ) : a.status === "cancelled" ? (
-                  <Ban className="mr-2 h-4 w-4" aria-hidden />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
-                )}
-                {a.actionLabel}
-              </Button>
-            ) : (
-              <Button
-                key={`a-${a.status}`}
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={mutating}
-                onClick={() =>
-                  onSelectAppointmentAction(a as AppointmentStatusAction)
-                }
-              >
-                {a.status === "completed" ? (
-                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
-                ) : a.status === "cancelled" ? (
-                  <Ban className="mr-2 h-4 w-4" aria-hidden />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
-                )}
-                {a.actionLabel}
-              </Button>
-            ),
-          )}
+        {canStatus && isDeadline &&
+          deadlineActions.map((a) => (
+            <Button
+              key={`d-${a.status}`}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mutating}
+              onClick={() => onSelectDeadlineAction(a)}
+            >
+              {a.status === "completed" ? (
+                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+              ) : a.status === "cancelled" ? (
+                <Ban className="mr-2 h-4 w-4" aria-hidden />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+              )}
+              {a.actionLabel}
+            </Button>
+          ))}
+        {canStatus && !isDeadline &&
+          appointmentActions.map((a) => (
+            <Button
+              key={`a-${a.status}`}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mutating}
+              onClick={() => onSelectAppointmentAction(a)}
+            >
+              {a.status === "completed" ? (
+                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+              ) : a.status === "cancelled" ? (
+                <Ban className="mr-2 h-4 w-4" aria-hidden />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+              )}
+              {a.actionLabel}
+            </Button>
+          ))}
         {canRemove && (
           <Button
             type="button"
