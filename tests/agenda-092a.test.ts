@@ -273,12 +273,12 @@ describe("LV-09.2A · permissões", () => {
       action: "communication.read",
       caseId: SEED_CASE_ALFA_2_ID,
     });
-    expect(r1.ok && r1.data.granted).toBe(true);
+    expect(r1.ok && r1.data.allowed).toBe(true);
     const r2 = await env.services.permissions.evaluate(OWNER_ALFA, {
       action: "communication.list",
       caseId: SEED_CASE_ALFA_2_ID,
     });
-    expect(r2.ok && r2.data.granted).toBe(true);
+    expect(r2.ok && r2.data.allowed).toBe(true);
   });
 
   it("(37) proprietário pode criar", async () => {
@@ -287,7 +287,7 @@ describe("LV-09.2A · permissões", () => {
       action: "communication.create",
       caseId: SEED_CASE_ALFA_2_ID,
     });
-    expect(r.ok && r.data.granted).toBe(true);
+    expect(r.ok && r.data.allowed).toBe(true);
   });
 
   it("(38) caseId de outra organização bloqueia (case_access)", async () => {
@@ -296,7 +296,7 @@ describe("LV-09.2A · permissões", () => {
       action: "communication.create",
       caseId: SEED_CASE_BETA_1_ID,
     });
-    expect(r.ok && r.data.granted).toBe(false);
+    expect(r.ok && r.data.allowed).toBe(false);
   });
 });
 
