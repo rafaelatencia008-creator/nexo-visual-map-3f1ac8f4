@@ -839,7 +839,7 @@ describe("LV-09.1B.7.2 · E · rota e interface", () => {
     expect(CONTENT_SRC).toMatch(/n[ãa]o cria nem altera compromissos/);
   });
   it("69. Responsável possui SelectTrigger único com id availability-assignment", () => {
-    const triggers = CONTENT_SRC.match(/id="availability-assignment"/g) ?? [];
+    const triggers = CONTENT_SRC.match(/id="availability-assignment"(?!-)/g) ?? [];
     expect(triggers.length).toBe(1);
   });
   it("70. Responsável fica desabilitado enquanto não há processo/lista", () => {
