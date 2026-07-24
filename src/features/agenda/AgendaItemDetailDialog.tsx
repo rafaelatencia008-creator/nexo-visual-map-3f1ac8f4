@@ -304,6 +304,14 @@ export function AgendaItemDetailDialog(
     setDetail({ kind: "loading" });
     setMode("view");
     setPerm("unknown");
+    setPermChangeStatus("unknown");
+    setPermRemove("unknown");
+    setPendingStatus(null);
+    setPendingRemoval(false);
+    setMutating(false);
+    setMutationError(null);
+    setStatusConflict(null);
+    mutationInFlightRef.current = false;
     setAssignments({ kind: "idle" });
     setDForm(null);
     setAForm(null);
