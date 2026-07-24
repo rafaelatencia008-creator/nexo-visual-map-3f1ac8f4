@@ -1185,14 +1185,19 @@ export function AgendaItemDetailDialog(
             <DialogFooter className="gap-2 border-t px-4 py-3 sm:px-6">
               {mode === "view" ? (
                 <>
-                  <Button type="button" variant="outline" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestClose}
+                    disabled={submitting || mutating}
+                  >
                     Fechar
                   </Button>
                   {detail.kind === "ready" && (
                     <Button
                       type="button"
                       onClick={enterEdit}
-                      disabled={perm !== "allowed"}
+                      disabled={perm !== "allowed" || mutating}
                       aria-describedby={
                         perm === "denied" ? "detail-perm-hint" : undefined
                       }
