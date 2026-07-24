@@ -1659,6 +1659,9 @@ function ViewPanel({
         <Row label="Prioridade">{DEADLINE_PRIORITY_LABEL[d.priority]}</Row>
         <Row label="Status">{DEADLINE_STATUS_LABEL[d.status]}</Row>
         <Row label="Prazo">{fmtDateTime(d.dueAt)}</Row>
+        {d.completedAt !== undefined && (
+          <Row label="Cumprido em">{fmtDateTime(d.completedAt)}</Row>
+        )}
         <Row label="Responsável">
           {d.assignmentId ? String(d.assignmentId).slice(-6) : "—"}
         </Row>
