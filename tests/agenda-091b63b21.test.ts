@@ -670,3 +670,233 @@ describe("LV-09.1B.6.3B.2.1.2 · Escopo intocado", () => {
     ).toBe(false);
   });
 });
+
+// ===========================================================================
+// LV-09.1B.6.3B.2.1.3 — Vinculação do detalhe à seleção e geração de atividade
+// ===========================================================================
+
+describe("LV-09.1B.6.3B.2.1.3 · Guard com currentActivityGeneration", () => {
+  const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+  const base = {
+    mounted: true,
+    active: true,
+    cancelled: false,
+    currentSelectionKey: kA,
+    requestSelectionKey: kA,
+  };
+  it("82. Gerações iguais → resultado é aceito", () => {
+    expect(
+      isAgendaDetailAsyncResultCurrent({
+        ...base,
+        currentActivityGeneration: 3,
+        requestActivityGeneration: 3,
+      }),
+    ).toBe(true);
+  });
+  it("83. Gerações diferentes → resultado é rejeitado (A → B → A)", () => {
+    expect(
+      isAgendaDetailAsyncResultCurrent({
+        ...base,
+        currentActivityGeneration: 3,
+        requestActivityGeneration: 1,
+      }),
+    ).toBe(false);
+  });
+  it("84. Sem geração informada → verificação é omitida (retrocompatível)", () => {
+    expect(isAgendaDetailAsyncResultCurrent(base)).toBe(true);
+  });
+  it("85. Só o current definido → verificação é omitida", () => {
+    expect(
+      isAgendaDetailAsyncResultCurrent({
+        ...base,
+        currentActivityGeneration: 5,
+      }),
+    ).toBe(true);
+  });
+  it("86. Só o request definido → verificação é omitida", () => {
+    expect(
+      isAgendaDetailAsyncResultCurrent({
+        ...base,
+        requestActivityGeneration: 5,
+      }),
+    ).toBe(true);
+  });
+  it("87. Combinação de rejeições: gerações diferentes E cancelado", () => {
+    expect(
+      isAgendaDetailAsyncResultCurrent({
+        ...base,
+        cancelled: true,
+        currentActivityGeneration: 2,
+        requestActivityGeneration: 1,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.3 · derive com detailBelongsToCurrentActivity", () => {
+  const key = buildAgendaDetailSelectionKey(A_DEADLINE);
+  it("88. Detalhe órfão NÃO fica interativo mesmo com detailReady=true", () => {
+    const s = deriveAgendaDetailActivityState({
+      active: true,
+      hasSelection: true,
+      selectionKey: key,
+      detailBelongsToCurrentActivity: false,
+      detailReady: true,
+    });
+    expect(s.hasActiveSelection).toBe(true);
+    expect(s.isInteractiveReady).toBe(false);
+  });
+  it("89. detailReady=false + belongs=true → não interativo", () => {
+    const s = deriveAgendaDetailActivityState({
+      active: true,
+      hasSelection: true,
+      selectionKey: key,
+      detailBelongsToCurrentActivity: true,
+      detailReady: false,
+    });
+    expect(s.isInteractiveReady).toBe(false);
+  });
+  it("90. belongs=false + detailReady=false → não interativo", () => {
+    const s = deriveAgendaDetailActivityState({
+      active: true,
+      hasSelection: true,
+      selectionKey: key,
+      detailBelongsToCurrentActivity: false,
+      detailReady: false,
+    });
+    expect(s.isInteractiveReady).toBe(false);
+  });
+  it("91. Inativo + belongs=true → nada é interativo", () => {
+    const s = deriveAgendaDetailActivityState({
+      active: false,
+      hasSelection: true,
+      selectionKey: key,
+      detailBelongsToCurrentActivity: true,
+      detailReady: true,
+    });
+    expect(s.hasActiveSelection).toBe(false);
+    expect(s.isInteractiveReady).toBe(false);
+  });
+  it("92. Canônico: belongs=true + ready=true + ativo → interativo", () => {
+    const s = deriveAgendaDetailActivityState({
+      active: true,
+      hasSelection: true,
+      selectionKey: key,
+      detailBelongsToCurrentActivity: true,
+      detailReady: true,
+    });
+    expect(s.isInteractiveReady).toBe(true);
+  });
+});
+
+describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () => {
+  it("93. Content declara previousActivationKeyRef", () => {
+    expect(CONTENT_SRC).toContain("previousActivationKeyRef");
+    expect(CONTENT_SRC).toMatch(
+      /previousActivationKeyRef\s*=\s*React\.useRef</,
+    );
+  });
+  it("94. Content declara activityGenerationRef inicializada em 0", () => {
+    expect(CONTENT_SRC).toMatch(
+      /activityGenerationRef\s*=\s*React\.useRef\(0\)/,
+    );
+  });
+  it("95. Content incrementa a geração DURANTE o render (sem useEffect)", () => {
+    expect(CONTENT_SRC).toMatch(
+      /if \(previousActivationKeyRef\.current !== activationKey\)/,
+    );
+    expect(CONTENT_SRC).toMatch(/activityGenerationRef\.current \+= 1;/);
+    expect(CONTENT_SRC).not.toMatch(
+      /React\.useEffect\(\(\)\s*=>\s*\{\s*activityGenerationRef\.current/,
+    );
+  });
+  it("96. Content declara o tipo DetailSnapshot com geração e chave", () => {
+    expect(CONTENT_SRC).toMatch(/type DetailSnapshot\s*=/);
+    expect(CONTENT_SRC).toMatch(/activityGeneration:\s*number/);
+    expect(CONTENT_SRC).toMatch(
+      /selectionKey:\s*AgendaDetailSelectionKey \| null/,
+    );
+  });
+  it("97. Content substitui detail por detailSnapshot no useState", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const \[detailSnapshot, setDetailSnapshot\] = React\.useState<DetailSnapshot>/,
+    );
+    expect(CONTENT_SRC).not.toMatch(
+      /useState<DetailState>\(\s*\{\s*kind:\s*"loading"\s*\}\s*\)/,
+    );
+  });
+  it("98. Content computa detailIsCurrent comparando geração E chave", () => {
+    expect(CONTENT_SRC).toMatch(
+      /detailIsCurrent\s*=\s*\n?\s*detailSnapshot\.activityGeneration\s*===\s*activityGeneration/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /detailSnapshot\.selectionKey\s*===\s*selectionKey/,
+    );
+  });
+  it("99. Detalhe visível é 'loading' quando o snapshot não é corrente", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const detail: DetailState = detailIsCurrent\s*\?\s*detailSnapshot\.state\s*:\s*\{\s*kind:\s*"loading"\s*\}/,
+    );
+  });
+  it("100. setDetail estampa o snapshot com a geração/chave correntes", () => {
+    expect(CONTENT_SRC).toMatch(
+      /setDetail\s*=\s*React\.useCallback\(\(state:\s*DetailState\)/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /activityGeneration:\s*activityGenerationRef\.current/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /selectionKey:\s*selectionKeyRef\.current/,
+    );
+  });
+  it("101. Content passa detailBelongsToCurrentActivity para o derive", () => {
+    expect(CONTENT_SRC).toMatch(
+      /detailBelongsToCurrentActivity:\s*detailIsCurrent/,
+    );
+  });
+  it("102. Load captura reqActivityGeneration e propaga ao guard", () => {
+    expect(CONTENT_SRC).toMatch(
+      /const reqActivityGeneration = activityGenerationRef\.current;/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /currentActivityGeneration:\s*activityGenerationRef\.current/,
+    );
+    expect(CONTENT_SRC).toMatch(
+      /requestActivityGeneration:\s*reqActivityGeneration/,
+    );
+  });
+  it("103. Effects de permissão e assignments checam a geração", () => {
+    const matches = CONTENT_SRC.match(
+      /activityGenerationRef\.current === reqActivityGeneration/g,
+    );
+    expect((matches ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+  it("104. Submit/mutação capturam startActivityGeneration", () => {
+    const matches = CONTENT_SRC.match(
+      /const startActivityGeneration = activityGenerationRef\.current;/g,
+    );
+    expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+  it("105. stillSameSelection agora inclui a geração de atividade", () => {
+    const matches = CONTENT_SRC.match(
+      /activityGenerationRef\.current === startActivityGeneration/g,
+    );
+    expect((matches ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+  it("106. detail-activity.ts documenta a subetapa 2.1.3", () => {
+    expect(ACTIVITY_SRC).toContain("LV-09.1B.6.3B.2.1.3");
+  });
+  it("107. Guard expõe campos de geração opcionais", () => {
+    expect(ACTIVITY_SRC).toMatch(/currentActivityGeneration\?:\s*number/);
+    expect(ACTIVITY_SRC).toMatch(/requestActivityGeneration\?:\s*number/);
+  });
+  it("108. ActivityInputs exige detailBelongsToCurrentActivity", () => {
+    expect(ACTIVITY_SRC).toMatch(
+      /readonly detailBelongsToCurrentActivity:\s*boolean/,
+    );
+  });
+  it("109. DEC-AGE-001 menciona a subetapa 2.1.3", () => {
+    expect(DEC_SRC).toContain("LV-09.1B.6.3B.2.1.3");
+  });
+});
+
