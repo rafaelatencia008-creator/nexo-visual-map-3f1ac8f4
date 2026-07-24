@@ -1562,7 +1562,7 @@ describe("LV-09.1B.6.2.2 — unificação final dos gates da UI", () => {
   });
   it("161. retry de permissões usa canRetryPermissionEvaluation", () => {
     expect(DETAIL_SRC).toMatch(
-      /const canRetryPermissionEvaluation = isInteractiveReady && rawLockDecisions\.canRetryPermissions/,
+      /const canRetryPermissionEvaluation =\s*isInteractiveReady && rawLockDecisions\.canRetryPermissions/,
     );
     expect(DETAIL_SRC).toMatch(/disabled=\{!canRetryPermissionEvaluation\}/);
   });
