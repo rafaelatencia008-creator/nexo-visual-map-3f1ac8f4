@@ -101,6 +101,10 @@ import {
   type AgendaItemFilter,
   type AgendaLifecycleFilter,
 } from "@/features/agenda/filters";
+import {
+  resolveCreatedItemVisibility,
+  type PendingCreatedItem,
+} from "@/features/agenda/created-visibility";
 
 // ============================================================================
 // Tela oficial /app/agenda.
