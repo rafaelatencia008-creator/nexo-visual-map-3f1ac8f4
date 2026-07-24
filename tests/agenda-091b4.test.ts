@@ -812,17 +812,22 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
 
   it("67. nenhuma nova rota foi criada em src/routes/", () => {
     // A LV-09.1B.4 não pode criar rotas.
+    // Atualizado na LV-09.1B.6.3A: as rotas canônicas /novo e /$appointmentId
+    // agora existem oficialmente. Este teste apenas garante que nenhuma
+    // variante fora do padrão canônico foi introduzida.
     const gen = readFileSync("src/routeTree.gen.ts", "utf8");
-    // Não deve haver nenhuma nova rota agenda.novo ou agenda.criar.
-    expect(gen.includes("agenda.novo")).toBe(false);
     expect(gen.includes("agenda.criar")).toBe(false);
     expect(gen.includes("agenda.new")).toBe(false);
   });
 
-  it("68. app.agenda.tsx contém botão Novo item e diálogo", () => {
-    const src = readFileSync("src/routes/app.agenda.index.tsx", "utf8");
-    expect(src).toContain("Novo item");
-    expect(src).toContain("AgendaCreateDialog");
+  it("68. rotas canônicas contêm botão Novo item (índice) e diálogo de criação (novo)", () => {
+    const indexSrc = readFileSync(
+      "src/routes/app.agenda.index.tsx",
+      "utf8",
+    );
+    expect(indexSrc).toContain("Novo item");
+    const novoSrc = readFileSync("src/routes/app.agenda.novo.tsx", "utf8");
+    expect(novoSrc).toContain("AgendaCreateDialog");
   });
 });
 

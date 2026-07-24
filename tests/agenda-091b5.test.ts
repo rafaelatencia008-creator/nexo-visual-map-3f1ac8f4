@@ -852,13 +852,12 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
     expect(AGENDA_ROUTE_SRC).toContain('ev.key === " "');
   });
 
-  it("62. rota /app/agenda continua sendo a única — nenhuma rota nova foi criada", () => {
-    // Não pode existir rota separada de detalhe de item da agenda.
-    // O detalhe abre em diálogo dentro da própria página.
+  it("62. detalhe de compromisso é a única rota canônica de detalhe da Agenda", () => {
+    // Atualizado na LV-09.1B.6.3A: a rota canônica /app/agenda/$appointmentId
+    // passou a existir. Nenhuma outra variante de rota de detalhe é permitida.
     const forbiddenFiles = [
       "src/routes/app.agenda.$id.tsx",
       "src/routes/app.agenda.$deadlineId.tsx",
-      "src/routes/app.agenda.$appointmentId.tsx",
       "src/routes/app.agenda.detalhe.tsx",
     ];
     for (const f of forbiddenFiles) {
@@ -870,6 +869,10 @@ describe("LV-09.1B.5 — regressões de fonte", () => {
       }
       expect(exists).toBe(false);
     }
+    // A rota canônica de compromisso deve existir.
+    expect(() =>
+      readFileSync("src/routes/app.agenda.$appointmentId.tsx", "utf8"),
+    ).not.toThrow();
   });
 
   it("63. página da agenda integra AgendaItemDetailDialog", () => {
