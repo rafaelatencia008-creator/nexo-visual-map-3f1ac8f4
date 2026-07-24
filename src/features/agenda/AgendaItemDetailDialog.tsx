@@ -392,24 +392,40 @@ export function AgendaItemDetailDialog(
   }, [selected, environment, context, reload]);
 
 
-  // Avalia permissão de edição para o item carregado
+  // Avalia permissões de edição, mudança de status e exclusão em paralelo.
   React.useEffect(() => {
     if (!selected) return;
     if (detail.kind !== "ready") return;
     let cancelled = false;
     setPerm("loading");
-    const action =
+    setPermChangeStatus("loading");
+    setPermRemove("loading");
+    const updateAction =
       selected.type === "deadline" ? "deadline.update" : "appointment.update";
-    environment.services.permissions
-      .evaluate(context, { action, caseId: selected.caseId })
-      .then((res) => {
-        if (cancelled || !mountedRef.current) return;
-        setPerm(res.ok && res.data.allowed ? "allowed" : "denied");
-      })
-      .catch(() => {
-        if (cancelled || !mountedRef.current) return;
-        setPerm("denied");
-      });
+    const statusAction =
+      selected.type === "deadline"
+        ? "deadline.changeStatus"
+        : "appointment.changeStatus";
+    const removeAction =
+      selected.type === "deadline" ? "deadline.remove" : "appointment.remove";
+    const evalOne = (
+      action: typeof updateAction | typeof statusAction | typeof removeAction,
+      setter: (v: PermState) => void,
+    ) => {
+      environment.services.permissions
+        .evaluate(context, { action, caseId: selected.caseId })
+        .then((res) => {
+          if (cancelled || !mountedRef.current) return;
+          setter(res.ok && res.data.allowed ? "allowed" : "denied");
+        })
+        .catch(() => {
+          if (cancelled || !mountedRef.current) return;
+          setter("denied");
+        });
+    };
+    evalOne(updateAction, setPerm);
+    evalOne(statusAction, setPermChangeStatus);
+    evalOne(removeAction, setPermRemove);
     return () => {
       cancelled = true;
     };
