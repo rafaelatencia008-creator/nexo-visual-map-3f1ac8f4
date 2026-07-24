@@ -19,7 +19,7 @@ import {
   SEED_CASE_BETA_1_ID,
 } from "@/domain/mocks/seed";
 import type { ServiceContext } from "@/domain/services/context";
-import type { IsoDateTime } from "@/domain/core/common";
+import { compareIsoDateTime, type IsoDateTime } from "@/domain/core/common";
 import type { Case } from "@/domain/core/case";
 import {
   EMPTY_AGENDA_FILTERS,
