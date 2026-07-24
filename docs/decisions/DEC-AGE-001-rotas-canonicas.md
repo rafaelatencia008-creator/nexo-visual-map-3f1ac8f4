@@ -167,6 +167,35 @@ iniciada.
   compõe `isInteractiveReady = hasActiveSelection && detailBelongsToCurrentActivity && detailReady`.
   Snapshots órfãos não habilitam edição, mudança de status ou exclusão.
 
+### Entregue na parcela B (LV-09.1B.6.3B.2.1.3.1 — sessão de atividade segura para renderizações concorrentes)
+
+- Removidas TODAS as mutações de refs no corpo do render de
+  `AgendaItemDetailContent`. `activeRef`, `selectionKeyRef`,
+  `previousActivationKeyRef` e `activityGenerationRef` deixaram de
+  existir. Um render abandonado pelo React não avança mais a geração de
+  atividade nem contamina a próxima render.
+- Criados em `detail-activity.ts` (puro, sem React) três novos
+  primitivos: `AgendaDetailActivitySession`,
+  `createAgendaDetailActivitySession(activationKey)` e
+  `deriveAgendaDetailRenderSession(committed, activationKey)`. A derivação
+  é idempotente quando a chave não muda e incrementa a geração exatamente
+  uma vez quando muda — mesmo que o render seja repetido/descartado, o
+  próximo render recalcula a partir da sessão **confirmada**.
+- No Content, a sessão confirmada vive em `useState<AgendaDetailActivitySession>`;
+  cada render deriva `renderActivitySession` pura. Um `useCommitLayoutEffect`
+  isomórfico (`useLayoutEffect` no navegador, `useEffect` em SSR) promove
+  a sessão candidata a confirmada — e somente aí sincroniza a única ref
+  runtime `currentActivityRef` (`{active, selectionKey, activityGeneration}`).
+- Handlers e closures assíncronas leem exclusivamente
+  `currentActivityRef.current` para validar pertinência. Snapshots de
+  detalhe são carimbados com um `detailOwner` derivado do render corrente
+  (memo), garantindo que closures da sessão A jamais carimbem snapshots
+  em uma sessão A' posterior. `stillCurrent`/`stillSameSelection` do
+  load, permissões, assignments, submit, `confirmStatusChange` e
+  `confirmRemoval` comparam contra a ref consolidada — a geração muda
+  apenas via commit, então A → B → A confirmado é preservado sem
+  depender de mutação de ref no render.
+
 
 
 ### Pendente da parcela B (LV-09.1B.6.3B.2.2)
