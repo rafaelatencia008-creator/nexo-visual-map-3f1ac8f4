@@ -1135,10 +1135,12 @@ export const AgendaItemDetailContent = React.forwardRef<
     if (!mutationLock.tryAcquire()) return;
     const operationId = ++mutationOperationIdRef.current;
     const startSelectionKey = selectionKeyRef.current;
+    const startActivityGeneration = activityGenerationRef.current;
     const stillSameSelection = (): boolean =>
       mountedRef.current &&
       activeRef.current &&
-      selectionKeyRef.current === startSelectionKey;
+      selectionKeyRef.current === startSelectionKey &&
+      activityGenerationRef.current === startActivityGeneration;
     setMutating(true);
     setMutationError(null);
     setMutationConflict(null);
