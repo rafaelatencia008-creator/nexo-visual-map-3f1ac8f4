@@ -184,9 +184,9 @@ type AgendaData = {
 };
 
 type LoadState =
-  | { kind: "loading" }
-  | { kind: "ready"; data: AgendaData }
-  | { kind: "error"; message: string };
+  | { kind: "loading"; generation: number }
+  | { kind: "ready"; generation: number; data: AgendaData }
+  | { kind: "error"; generation: number; message: string };
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 20;
