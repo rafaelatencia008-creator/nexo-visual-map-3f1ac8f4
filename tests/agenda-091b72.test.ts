@@ -30,20 +30,12 @@ import {
 } from "@/features/agenda/check-appointment-availability";
 
 import { buildDomainId } from "@/domain/core/ids";
-import type {
-  AppointmentId,
-  AssignmentId,
-  CaseId,
-} from "@/domain/core/ids";
+import type { AppointmentId, AssignmentId, CaseId } from "@/domain/core/ids";
 import type { Assignment } from "@/domain/core/assignment";
 import type { Case } from "@/domain/core/case";
 import type { Appointment } from "@/domain/core/agenda";
 import type { ServiceContext } from "@/domain/services/context";
-import {
-  SEED_ORG_ALFA_ID,
-  SEED_USER_1_ID,
-  SEED_MEM_ALFA_OWNER_ID,
-} from "@/domain/mocks/seed";
+import { SEED_ORG_ALFA_ID, SEED_USER_1_ID, SEED_MEM_ALFA_OWNER_ID } from "@/domain/mocks/seed";
 
 // ---- Utilitários ----------------------------------------------------------
 
@@ -92,10 +84,7 @@ function makeCase(id: string, ref: string, title: string): Case {
   }) as unknown as Case;
 }
 
-function makeAssignment(
-  id: string,
-  overrides: Partial<Assignment> = {},
-): Assignment {
+function makeAssignment(id: string, overrides: Partial<Assignment> = {}): Assignment {
   return Object.freeze({
     id: buildDomainId("assignment", id) as AssignmentId,
     organizationId: SEED_ORG_ALFA_ID,
@@ -320,9 +309,7 @@ describe("LV-09.1B.7.2 · A · builder puro", () => {
     expect(r.ok).toBe(false);
   });
   it("12c. assignmentId com formato inválido é rejeitado", () => {
-    const r = buildAvailabilityConsultationInput(
-      validForm({ assignmentId: "not-an-assign" }),
-    );
+    const r = buildAvailabilityConsultationInput(validForm({ assignmentId: "not-an-assign" }));
     expect(r.ok).toBe(false);
   });
 });
@@ -360,10 +347,7 @@ describe("LV-09.1B.7.2 · B · loadAvailabilityCases", () => {
   });
   it("16. processos duplicados são removidos", async () => {
     const dup = makeCase("dup", "0001", "A");
-    const { env } = fakeCasesEnv([
-      { items: [dup], nextCursor: "c1" },
-      { items: [dup] },
-    ]);
+    const { env } = fakeCasesEnv([{ items: [dup], nextCursor: "c1" }, { items: [dup] }]);
     const r = await loadAvailabilityCases(env, CTX);
     expect(r.kind).toBe("ready");
     if (r.kind === "ready") expect(r.items.length).toBe(1);
@@ -476,10 +460,7 @@ describe("LV-09.1B.7.2 · C · loadActiveAssignmentsForCase", () => {
   });
   it("29. duplicados são removidos", async () => {
     const dup = makeAssignment("dup");
-    const { env } = fakeAssignmentsEnv([
-      { items: [dup], nextCursor: "c1" },
-      { items: [dup] },
-    ]);
+    const { env } = fakeAssignmentsEnv([{ items: [dup], nextCursor: "c1" }, { items: [dup] }]);
     const r = await loadActiveAssignmentsForCase(env, CTX, CASE_A);
     if (r.kind === "ready") expect(r.items.length).toBe(1);
   });
@@ -492,11 +473,7 @@ describe("LV-09.1B.7.2 · C · loadActiveAssignmentsForCase", () => {
     const { env } = fakeAssignmentsEnv([{ items }]);
     const r = await loadActiveAssignmentsForCase(env, CTX, CASE_A);
     if (r.kind === "ready") {
-      expect(r.items.map((a) => a.role)).toEqual([
-        "collaborator",
-        "lead_professional",
-        "reviewer",
-      ]);
+      expect(r.items.map((a) => a.role)).toEqual(["collaborator", "lead_professional", "reviewer"]);
     }
   });
   it("31. erro do serviço retorna estado tipado", async () => {
