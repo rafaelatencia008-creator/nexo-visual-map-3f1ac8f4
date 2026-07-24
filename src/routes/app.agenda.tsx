@@ -413,10 +413,17 @@ function AgendaPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
   const [pendingCreated, setPendingCreated] =
     React.useState<PendingCreatedItem | null>(null);
+  const [pendingUpdated, setPendingUpdated] =
+    React.useState<PendingCreatedItem | null>(null);
+  const [selected, setSelected] = React.useState<SelectedAgendaItem | null>(
+    null,
+  );
+  const lastTriggerRef = React.useRef<HTMLElement | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
   const loadGenerationRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
 
   React.useEffect(() => {
     mountedRef.current = true;
