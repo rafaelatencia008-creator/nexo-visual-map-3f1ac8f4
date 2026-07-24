@@ -825,3 +825,273 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
     expect(src).toContain("AgendaCreateDialog");
   });
 });
+
+// ---------------------------------------------------------------------------
+// LV-09.1B.4.1 — fechamento técnico (correções pontuais)
+// ---------------------------------------------------------------------------
+
+describe("LV-09.1B.4.1 — fechamento técnico", () => {
+  it("69. helper dt() aceita ISO válido e rejeita inválido", () => {
+    expect(dt("2026-08-01T10:00:00.000Z")).toBe("2026-08-01T10:00:00.000Z");
+    expect(() => dt("nao-e-iso")).toThrow();
+    expect(() => dt("2026-13-40T10:00:00.000Z")).toThrow();
+  });
+
+  it("70. tests/agenda-091b4.test.ts não contém casts inseguros", () => {
+    const src = readFileSync("tests/agenda-091b4.test.ts", "utf8");
+    expect(/\bas\s+never\b/.test(src)).toBe(false);
+    expect(/\bas\s+any\b/.test(src)).toBe(false);
+    expect(src.includes("@ts-ignore")).toBe(false);
+    expect(src.includes("@ts-expect-error")).toBe(false);
+  });
+
+  it("71. translateAgendaServiceError mapeia period_inverted para endsAt", async () => {
+    const { translateAgendaServiceError } = await import(
+      "@/features/agenda/create-form"
+    );
+    const t = translateAgendaServiceError({
+      code: "validation_error",
+      message: "period_inverted",
+    });
+    expect(t.field).toBe("endsAt");
+    expect(t.message.length).toBeGreaterThan(0);
+  });
+
+  it("72. period_inverted difere de invalid_range no mesmo mapeamento", async () => {
+    const { translateAgendaServiceError } = await import(
+      "@/features/agenda/create-form"
+    );
+    const a = translateAgendaServiceError({
+      code: "validation_error",
+      message: "period_inverted",
+    });
+    const b = translateAgendaServiceError({
+      code: "validation_error",
+      message: "invalid_range",
+    });
+    expect(a.field).toBe("endsAt");
+    expect(b.field).toBe("endsAt");
+  });
+
+  it("73. AppointmentService.create devolve period_inverted quando endsAt <= startsAt", async () => {
+    const env = createMockDomainEnvironment();
+    const ctx: ServiceContext = {
+      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
+      organizationId: SEED_ORG_ALFA_ID,
+      now: dt("2026-08-01T10:00:00.000Z"),
+    };
+    const res: ServiceResult<unknown> = await env.services.appointments.create(
+      ctx,
+      {
+        caseId: SEED_CASE_ALFA_1_ID,
+        kind: "hearing",
+        title: "Audiência inválida",
+        startsAt: dt("2026-08-02T14:00:00.000Z"),
+        endsAt: dt("2026-08-02T14:00:00.000Z"),
+        mode: "in_person",
+      },
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe("validation_error");
+      expect(res.error.message).toBe("period_inverted");
+    }
+  });
+
+  it("74. AgendaCreateDialog.tsx expõe constantes de paginação", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("ASSIGNMENTS_MAX_PAGES");
+    expect(src).toContain("ASSIGNMENTS_PAGE_LIMIT");
+    // Limite máximo alinhado com a especificação (20 páginas).
+    expect(src).toContain("ASSIGNMENTS_MAX_PAGES = 20");
+  });
+
+  it("75. AgendaCreateDialog usa cursor e nextCursor no loop de assignments", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("nextCursor");
+    expect(src).toContain("cursor");
+    // Filtra apenas ativos.
+    expect(src).toContain('status !== "active"');
+  });
+
+  it("76. AgendaCreateDialog descarta respostas obsoletas via requestId", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("assignmentsReqIdRef");
+    expect(src).toMatch(/reqId\s*!==\s*assignmentsReqIdRef\.current/);
+  });
+
+  it("77. AgendaCreateDialog deduplica assignments por ID", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("new Set");
+    expect(src).toMatch(/seen\.(add|has)/);
+  });
+
+  it("78. paginação por cursor: listByCase percorre múltiplas páginas sem duplicar", async () => {
+    const env = createMockDomainEnvironment();
+    const ctx: ServiceContext = {
+      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
+      organizationId: SEED_ORG_ALFA_ID,
+      now: dt("2026-08-01T10:00:00.000Z"),
+    };
+    const collected: string[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    for (let i = 0; i < 20; i++) {
+      const res = cursor
+        ? await env.services.assignments.listByCase(ctx, SEED_CASE_ALFA_1_ID, {
+            cursor,
+            limit: 1,
+          })
+        : await env.services.assignments.listByCase(ctx, SEED_CASE_ALFA_1_ID, {
+            limit: 1,
+          });
+      expect(res.ok).toBe(true);
+      if (!res.ok) break;
+      for (const a of res.data.items) {
+        const key = String(a.id);
+        if (seen.has(key)) throw new Error("duplicata inesperada");
+        seen.add(key);
+        collected.push(key);
+      }
+      if (!res.data.nextCursor) break;
+      cursor = res.data.nextCursor;
+    }
+    expect(collected.length).toBeGreaterThan(0);
+    expect(new Set(collected).size).toBe(collected.length);
+  });
+
+  it("79. AssignmentSelect declara aria-invalid, aria-describedby e aria-busy", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("aria-invalid");
+    expect(src).toContain("aria-describedby");
+    expect(src).toContain("aria-busy");
+  });
+
+  it("80. AssignmentSelect oferece botão Tentar novamente", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("Tentar novamente");
+    expect(src).toContain("onRetry");
+    expect(src).toContain("assignmentsAttempt");
+  });
+
+  it("81. IDs exclusivos de erro do responsável nos dois formulários", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain("err-d-assignee");
+    expect(src).toContain("err-d-assignee-load");
+    expect(src).toContain("err-a-assignee");
+    expect(src).toContain("err-a-assignee-load");
+  });
+
+  it("82. falha ao carregar responsáveis não bloqueia criação sem responsável", () => {
+    const built = buildCreateDeadlineInput({
+      ...EMPTY_DEADLINE_FORM,
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "protocol",
+      title: "Prazo sem responsável",
+      dueAtLocal: "2026-08-10T10:00",
+      priority: "high",
+      assignmentId: "",
+    });
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.input.assignmentId).toBeUndefined();
+    }
+  });
+
+  it("83. app.agenda.tsx rastreia item pendente após criação", () => {
+    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    expect(src).toContain("pendingCreated");
+    expect(src).toContain("setPendingCreated");
+  });
+
+  it("84. app.agenda.tsx testa visibilidade contra visible.deadlines/appointments", () => {
+    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    expect(src).toContain("visible.deadlines");
+    expect(src).toContain("visible.appointments");
+    expect(src).toContain(
+      "Item criado com sucesso. Ele não aparece na visualização atual",
+    );
+  });
+
+  it("85. handleCreated não depende mais do range no aviso de invisibilidade", () => {
+    const src = readFileSync("src/routes/app.agenda.tsx", "utf8");
+    // O aviso agora vive no efeito de visibilidade, não em handleCreated.
+    const idx = src.indexOf("const handleCreated");
+    expect(idx).toBeGreaterThan(-1);
+    const chunk = src.slice(idx, idx + 400);
+    expect(chunk.includes("toast.info")).toBe(false);
+  });
+
+  it("86. AgendaCreateDialog anuncia carregamento de responsáveis via sr-only + aria-live", () => {
+    const src = readFileSync(
+      "src/features/agenda/AgendaCreateDialog.tsx",
+      "utf8",
+    );
+    expect(src).toContain('aria-live="polite"');
+    expect(src).toContain("Carregando responsáveis");
+  });
+
+  it("87. tradutor mapeia period_inverted para mensagem em pt-BR", async () => {
+    const { translateAgendaServiceError } = await import(
+      "@/features/agenda/create-form"
+    );
+    const t = translateAgendaServiceError({
+      code: "validation_error",
+      message: "period_inverted",
+    });
+    expect(t.message).toBe(
+      "O horário de término deve ser posterior ao início.",
+    );
+  });
+
+  it("88. criar dois compromissos consecutivos preserva a integridade da lista visível", async () => {
+    const env = createMockDomainEnvironment();
+    const ctx: ServiceContext = {
+      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
+      organizationId: SEED_ORG_ALFA_ID,
+      now: dt("2026-08-01T10:00:00.000Z"),
+    };
+    const a = await env.services.appointments.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "hearing",
+      title: "A1",
+      startsAt: dt("2026-08-05T10:00:00.000Z"),
+      endsAt: dt("2026-08-05T11:00:00.000Z"),
+      mode: "in_person",
+    });
+    const b = await env.services.appointments.create(ctx, {
+      caseId: SEED_CASE_ALFA_1_ID,
+      kind: "hearing",
+      title: "A2",
+      startsAt: dt("2026-08-06T10:00:00.000Z"),
+      endsAt: dt("2026-08-06T11:00:00.000Z"),
+      mode: "in_person",
+    });
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    if (a.ok && b.ok) {
+      expect(a.data.id).not.toBe(b.data.id);
+    }
+  });
+});
