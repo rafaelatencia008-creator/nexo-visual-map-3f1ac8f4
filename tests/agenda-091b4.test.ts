@@ -948,23 +948,21 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("78. paginação por cursor: listByCase percorre múltiplas páginas sem duplicar", async () => {
     const env = createMockDomainEnvironment();
-    const ctx: ServiceContext = {
-      actor: { userId: SEED_USER_1_ID, membershipId: SEED_MEM_ALFA_OWNER_ID },
-      organizationId: SEED_ORG_ALFA_ID,
-      now: dt("2026-08-01T10:00:00.000Z"),
-    };
     const collected: string[] = [];
     const seen = new Set<string>();
     let cursor: string | undefined;
     for (let i = 0; i < 20; i++) {
       const res = cursor
-        ? await env.services.assignments.listByCase(ctx, SEED_CASE_ALFA_1_ID, {
-            cursor,
-            limit: 1,
-          })
-        : await env.services.assignments.listByCase(ctx, SEED_CASE_ALFA_1_ID, {
-            limit: 1,
-          });
+        ? await env.services.assignments.listByCase(
+            OWNER_ALFA,
+            SEED_CASE_ALFA_1_ID,
+            { cursor, limit: 1 },
+          )
+        : await env.services.assignments.listByCase(
+            OWNER_ALFA,
+            SEED_CASE_ALFA_1_ID,
+            { limit: 1 },
+          );
       expect(res.ok).toBe(true);
       if (!res.ok) break;
       for (const a of res.data.items) {
