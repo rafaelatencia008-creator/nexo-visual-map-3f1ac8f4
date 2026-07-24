@@ -839,10 +839,17 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
 
   it("70. tests/agenda-091b4.test.ts não contém casts inseguros", () => {
     const src = readFileSync("tests/agenda-091b4.test.ts", "utf8");
-    expect(/\bas\s+never\b/.test(src)).toBe(false);
-    expect(/\bas\s+any\b/.test(src)).toBe(false);
-    expect(src.includes("@ts-ignore")).toBe(false);
-    expect(src.includes("@ts-expect-error")).toBe(false);
+    // Regex construídas dinamicamente para não fazer match neste próprio arquivo.
+    const asNever = new RegExp("\\bas" + "\\s+never\\b");
+    const asAny = new RegExp("\\bas" + "\\s+any\\b");
+    const tsIgnore = "@" + "ts-ignore";
+    const tsExpect = "@" + "ts-expect-error";
+    expect(asNever.test(src)).toBe(false);
+    expect(asAny.test(src)).toBe(false);
+    expect(src.includes(tsIgnore)).toBe(false);
+    // Permite ocorrências em nomes de teste (LV-09.1B.3 exige), mas nenhum diretivo real.
+    // Diretiva real começa em linha após espaços; procuramos "// @ts-expect-error".
+    expect(src.includes("// " + tsExpect)).toBe(false);
   });
 
   it("71. translateAgendaServiceError mapeia period_inverted para endsAt", async () => {
