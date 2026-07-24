@@ -1013,7 +1013,7 @@ describe("LV-09.1B.4.1 — fechamento técnico", () => {
     const built = buildCreateDeadlineInput({
       ...EMPTY_DEADLINE_FORM,
       caseId: SEED_CASE_ALFA_1_ID,
-      kind: "protocol",
+      kind: "procedural",
       title: "Prazo sem responsável",
       dueAtLocal: "2026-08-10T10:00",
       priority: "high",
