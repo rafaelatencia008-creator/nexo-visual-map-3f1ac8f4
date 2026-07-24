@@ -219,6 +219,10 @@ export function AgendaItemDetailDialog(
   const [errors, setErrors] = React.useState<Readonly<Record<string, string>>>(
     {},
   );
+  const [touched, setTouched] = React.useState<Readonly<Record<string, boolean>>>(
+    {},
+  );
+  const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
   const [generalError, setGeneralError] = React.useState<string | null>(null);
   const [conflictState, setConflictState] = React.useState<{
     expected?: number;
