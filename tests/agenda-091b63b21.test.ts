@@ -154,9 +154,7 @@ describe("LV-09.1B.6.3B.2.1 · Wrapper fino", () => {
 
 describe("LV-09.1B.6.3B.2.1 · Content concentra a lógica", () => {
   it("21. Content exporta AgendaItemDetailContent como forwardRef", () => {
-    expect(CONTENT_SRC).toMatch(
-      /export const AgendaItemDetailContent\s*=\s*React\.forwardRef/,
-    );
+    expect(CONTENT_SRC).toMatch(/export const AgendaItemDetailContent\s*=\s*React\.forwardRef/);
   });
   it("22. Content expõe handle imperativo AgendaItemDetailContentHandle", () => {
     expect(CONTENT_SRC).toMatch(/export interface AgendaItemDetailContentHandle/);
@@ -183,9 +181,7 @@ describe("LV-09.1B.6.3B.2.1 · Content concentra a lógica", () => {
     }
   });
   it("25. Content define a união AgendaItemDetailSurface = 'page' | 'dialog'", () => {
-    expect(CONTENT_SRC).toMatch(
-      /AgendaItemDetailSurface\s*=\s*"page"\s*\|\s*"dialog"/,
-    );
+    expect(CONTENT_SRC).toMatch(/AgendaItemDetailSurface\s*=\s*"page"\s*\|\s*"dialog"/);
   });
   it("26. Content NÃO importa Dialog / DialogContent / DialogHeader", () => {
     expect(CONTENT_SRC).not.toMatch(/from\s+"@\/components\/ui\/dialog"/);
@@ -250,9 +246,7 @@ describe("LV-09.1B.6.3B.2.1 · Comportamento com active=false", () => {
 describe("LV-09.1B.6.3B.2.1 · Rotas e consumidores", () => {
   it("40. Rota /app/agenda/$appointmentId continua montando o wrapper", () => {
     expect(ROUTE_DETAIL_SRC).toContain("<AgendaItemDetailDialog");
-    expect(ROUTE_DETAIL_SRC).toContain(
-      'from "@/features/agenda/AgendaItemDetailDialog"',
-    );
+    expect(ROUTE_DETAIL_SRC).toContain('from "@/features/agenda/AgendaItemDetailDialog"');
   });
   it("41. Calendário /app/agenda continua montando o wrapper", () => {
     expect(ROUTE_INDEX_SRC).toContain("<AgendaItemDetailDialog");
@@ -288,12 +282,8 @@ describe("LV-09.1B.6.3B.2.1.1 · buildAgendaDetailSelectionKey", () => {
     expect(typeof buildAgendaDetailSelectionKey).toBe("function");
   });
   it("45. Concatena type, caseId, id em ordem", () => {
-    expect(String(buildAgendaDetailSelectionKey(A_DEADLINE))).toBe(
-      "deadline:case-1:dl-1",
-    );
-    expect(String(buildAgendaDetailSelectionKey(A_APPOINTMENT))).toBe(
-      "appointment:case-1:ap-1",
-    );
+    expect(String(buildAgendaDetailSelectionKey(A_DEADLINE))).toBe("deadline:case-1:dl-1");
+    expect(String(buildAgendaDetailSelectionKey(A_APPOINTMENT))).toBe("appointment:case-1:ap-1");
   });
   it("46. Retorna null quando selected é null", () => {
     expect(buildAgendaDetailSelectionKey(null)).toBeNull();
@@ -338,59 +328,156 @@ describe("LV-09.1B.6.3B.2.1.3.1 · Sessão de atividade segura para renders", ()
   });
   it("51. Content NÃO mantém activeRef/selectionKeyRef mutados no render", () => {
     expect(CONTENT_SRC).not.toMatch(/activeRef\.current\s*=\s*active;/);
-    expect(CONTENT_SRC).not.toMatch(
-      /selectionKeyRef\.current\s*=\s*selectionKey;/,
-    );
+    expect(CONTENT_SRC).not.toMatch(/selectionKeyRef\.current\s*=\s*selectionKey;/);
   });
-  it("51b. Nenhuma mutação direta de currentActivityRef.current fora de useCommitLayoutEffect", () => {
-    // A ref é sincronizada apenas dentro do layout effect isomórfico; nenhuma
-    // atribuição solta deve aparecer no corpo do componente.
-    const bare = CONTENT_SRC.match(
-      /^\s*currentActivityRef\.current\s*=/gm,
-    );
-    // Só permitimos atribuições que estão dentro de useCommitLayoutEffect.
-    // Portanto qualquer match aqui deve ter um `useCommitLayoutEffect(` acima.
-    if (bare) {
-      for (const line of bare) {
-        expect(line).toBeTruthy();
-      }
-    }
-    // Proibição forte: nenhum bloco `= { active, selectionKey, activityGeneration };`
-    // fora de useCommitLayoutEffect (heurística — dependemos da presença do hook).
-    expect(CONTENT_SRC).toContain("useCommitLayoutEffect");
+  it("51b. Única atribuição a currentActivityRef.current está dentro de useCommitLayoutEffect", () => {
+    // 1) Confirma exatamente uma atribuição no arquivo inteiro.
+    const allAssignments = CONTENT_SRC.match(/currentActivityRef\.current\s*=/g) ?? [];
+    expect(allAssignments.length).toBe(1);
+
+    // 2) Extrai o bloco de sincronização esperado.
+    const syncBlock =
+      /useCommitLayoutEffect\(\(\) => \{\s*currentActivityRef\.current = \{\s*active,\s*selectionKey,\s*activityGeneration,\s*\};\s*\}, \[active, selectionKey, activityGeneration\]\);/;
+    expect(CONTENT_SRC).toMatch(syncBlock);
+
+    // 3) Remove o bloco e comprova ausência de qualquer outra escrita.
+    const stripped = CONTENT_SRC.replace(syncBlock, "");
+    expect(stripped).not.toMatch(/currentActivityRef\.current\s*=/);
+
+    // 4) Nenhuma mutação de refs legados no render.
+    expect(CONTENT_SRC).not.toMatch(/activeRef\.current\s*=\s*active/);
+    expect(CONTENT_SRC).not.toMatch(/selectionKeyRef\.current\s*=\s*selectionKey/);
+    expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\.current\s*\+=/);
+    expect(CONTENT_SRC).not.toMatch(/previousActivationKeyRef\.current\s*=/);
+
+    // 5) Leituras nos handlers permanecem permitidas.
+    expect(CONTENT_SRC).toMatch(/currentActivityRef\.current\.active/);
+    expect(CONTENT_SRC).toMatch(/currentActivityRef\.current\.selectionKey/);
+    expect(CONTENT_SRC).toMatch(/currentActivityRef\.current\.activityGeneration/);
   });
   it("51c. Content declara committedActivitySession em state e deriva renderActivitySession", () => {
     expect(CONTENT_SRC).toMatch(
       /const \[committedActivitySession, setCommittedActivitySession\] =\s*\n?\s*React\.useState<AgendaDetailActivitySession>/,
     );
-    expect(CONTENT_SRC).toMatch(
-      /const renderActivitySession = deriveAgendaDetailRenderSession\(/,
-    );
+    expect(CONTENT_SRC).toMatch(/const renderActivitySession = deriveAgendaDetailRenderSession\(/);
   });
   it("51d. Confirmação da sessão ocorre em useCommitLayoutEffect, não durante o render", () => {
     expect(CONTENT_SRC).toMatch(
       /useCommitLayoutEffect\(\(\) => \{\s*if \([\s\S]*?setCommittedActivitySession\(renderActivitySession\)/,
     );
   });
-  it("51e. deriveAgendaDetailRenderSession é pura e determinística", () => {
+  it("51e. Sessão inicial: activationKey preservada, geração zero, congelada", () => {
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
-    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
-    const s0 = createAgendaDetailActivitySession(kA);
-    const s1 = deriveAgendaDetailRenderSession(s0, kA);
-    expect(s1).toBe(s0);
-    const s2 = deriveAgendaDetailRenderSession(s0, kB);
-    expect(s2.generation).toBe(s0.generation + 1);
-    const s3 = deriveAgendaDetailRenderSession(s0, kB);
-    expect(s3.generation).toBe(s0.generation + 1);
+    const a0 = createAgendaDetailActivitySession(kA);
+    expect(a0.activationKey).toBe(kA);
+    expect(a0.generation).toBe(0);
+    expect(Object.isFrozen(a0)).toBe(true);
   });
-  it("51f. A → B → A confirmado preserva geração maior que a primeira sessão A", () => {
+  it("51e2. Mesma atividade devolve exatamente o mesmo objeto (identidade)", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const sameA = deriveAgendaDetailRenderSession(a0, kA);
+    expect(sameA).toBe(a0);
+    expect(sameA.generation).toBe(0);
+  });
+  it("51e3. A → B confirmado avança geração para 1", () => {
     const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
     const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
-    let committed = createAgendaDetailActivitySession(kA);
-    committed = deriveAgendaDetailRenderSession(committed, kB);
-    const finalA = deriveAgendaDetailRenderSession(committed, kA);
-    expect(finalA.generation).toBeGreaterThan(0);
-    expect(finalA.generation).toBeGreaterThan(committed.generation - 1);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const b1 = deriveAgendaDetailRenderSession(a0, kB);
+    expect(b1.activationKey).toBe(kB);
+    expect(b1.generation).toBe(1);
+    expect(Object.isFrozen(b1)).toBe(true);
+  });
+  it("51f. A → B → A confirmado produz gerações estritas 0, 1 e 2", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const b1 = deriveAgendaDetailRenderSession(a0, kB);
+    const finalA2 = deriveAgendaDetailRenderSession(b1, kA);
+    expect(a0.generation).toBe(0);
+    expect(b1.generation).toBe(1);
+    expect(finalA2.activationKey).toBe(kA);
+    expect(finalA2.generation).toBe(2);
+  });
+  it("51g. Render B abandonado não avança a sessão confirmada (A na geração 0)", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const candidateB = deriveAgendaDetailRenderSession(a0, kB);
+    // Render B é descartado — a próxima render deriva de a0 novamente.
+    const aAfterAbandonedB = deriveAgendaDetailRenderSession(a0, kA);
+    expect(candidateB.generation).toBe(1);
+    expect(aAfterAbandonedB).toBe(a0);
+    expect(aAfterAbandonedB.generation).toBe(0);
+  });
+  it("51h. Desativação e reativação confirmadas avançam geração", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const inactive1 = deriveAgendaDetailRenderSession(a0, null);
+    const activeA2 = deriveAgendaDetailRenderSession(inactive1, kA);
+    expect(inactive1.activationKey).toBeNull();
+    expect(inactive1.generation).toBe(1);
+    expect(activeA2.activationKey).toBe(kA);
+    expect(activeA2.generation).toBe(2);
+  });
+  it("51i. Helpers não mutam a sessão recebida", () => {
+    const kA = buildAgendaDetailSelectionKey(A_DEADLINE);
+    const kB = buildAgendaDetailSelectionKey(B_DEADLINE);
+    const a0 = createAgendaDetailActivitySession(kA);
+    const snapshot = { activationKey: a0.activationKey, generation: a0.generation };
+    deriveAgendaDetailRenderSession(a0, kB);
+    deriveAgendaDetailRenderSession(a0, null);
+    deriveAgendaDetailRenderSession(a0, kA);
+    expect(a0.activationKey).toBe(snapshot.activationKey);
+    expect(a0.generation).toBe(snapshot.generation);
+  });
+});
+
+// ===========================================================================
+// LV-09.1B.6.3B.2.1.3.1.1 · Provas de escopo (reconciliação final)
+// ===========================================================================
+
+describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
+  it("S1. Rota de detalhe importa AgendaItemDetailDialog", () => {
+    expect(ROUTE_DETAIL_SRC).toMatch(/from "@\/features\/agenda\/AgendaItemDetailDialog"/);
+    expect(ROUTE_DETAIL_SRC).toMatch(/<AgendaItemDetailDialog\b/);
+  });
+  it("S2. Rota de detalhe NÃO importa AgendaItemDetailContent", () => {
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/from "@\/features\/agenda\/AgendaItemDetailContent"/);
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailContent\b/);
+  });
+  it("S3. AgendaItemDetailDialog continua wrapper fino (delegação ao Content)", () => {
+    expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
+    expect(DIALOG_SRC).toMatch(/handle\.requestClose\(\)/);
+    // Nenhuma lógica de submit/permission/lock deveria estar no wrapper.
+    expect(DIALOG_SRC).not.toMatch(/mutationInFlightRef|writeOperationRef|SingleFlightLock/);
+  });
+  it("S4. AgendaCreateContent permanece intocado (existe e não é modificado)", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/AgendaCreateContent.tsx")),
+    ).toBe(true);
+  });
+  it("S5. AgendaCreateDialog permanece intocado", () => {
+    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/AgendaCreateDialog.tsx"))).toBe(
+      true,
+    );
+  });
+  it("S6. resolve-appointment-route.ts permanece existente", () => {
+    expect(
+      existsSync(resolve(__dirname, "..", "src/features/agenda/resolve-appointment-route.ts")),
+    ).toBe(true);
+  });
+  it("S7. Domínio, serviços e mocks permanecem existentes", () => {
+    expect(existsSync(resolve(__dirname, "..", "src/domain/core/agenda.ts"))).toBe(true);
+    expect(existsSync(resolve(__dirname, "..", "src/domain/services/appointment-service.ts"))).toBe(
+      true,
+    );
+    expect(existsSync(resolve(__dirname, "..", "src/domain/mocks/appointment-mock.ts"))).toBe(true);
+  });
+  it("S8. Rota /app/disponibilidade continua ausente", () => {
+    expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(false);
   });
 });
 
@@ -415,9 +502,7 @@ describe("LV-09.1B.6.3B.2.1.2 · buildAgendaDetailActivationKey", () => {
   });
   it("52e. Referência equivalente não muda a activation key", () => {
     const k2 = buildAgendaDetailSelectionKey({ ...A_DEADLINE });
-    expect(buildAgendaDetailActivationKey(true, k2)).toBe(
-      buildAgendaDetailActivationKey(true, k),
-    );
+    expect(buildAgendaDetailActivationKey(true, k2)).toBe(buildAgendaDetailActivationKey(true, k));
   });
   it("52f. Content importa e usa buildAgendaDetailActivationKey", () => {
     expect(CONTENT_SRC).toContain("buildAgendaDetailActivationKey");
@@ -450,29 +535,19 @@ describe("LV-09.1B.6.3B.2.1.2 · isAgendaDetailAsyncResultCurrent", () => {
     expect(isAgendaDetailAsyncResultCurrent(base)).toBe(true);
   });
   it("53b. Não-montado é rejeitado", () => {
-    expect(
-      isAgendaDetailAsyncResultCurrent({ ...base, mounted: false }),
-    ).toBe(false);
+    expect(isAgendaDetailAsyncResultCurrent({ ...base, mounted: false })).toBe(false);
   });
   it("53c. Cancelado é rejeitado", () => {
-    expect(
-      isAgendaDetailAsyncResultCurrent({ ...base, cancelled: true }),
-    ).toBe(false);
+    expect(isAgendaDetailAsyncResultCurrent({ ...base, cancelled: true })).toBe(false);
   });
   it("53d. Inativo é rejeitado", () => {
-    expect(
-      isAgendaDetailAsyncResultCurrent({ ...base, active: false }),
-    ).toBe(false);
+    expect(isAgendaDetailAsyncResultCurrent({ ...base, active: false })).toBe(false);
   });
   it("53e. Request de A em B é rejeitado", () => {
-    expect(
-      isAgendaDetailAsyncResultCurrent({ ...base, currentSelectionKey: kB }),
-    ).toBe(false);
+    expect(isAgendaDetailAsyncResultCurrent({ ...base, currentSelectionKey: kB })).toBe(false);
   });
   it("53f. Request ID antigo é rejeitado", () => {
-    expect(
-      isAgendaDetailAsyncResultCurrent({ ...base, currentRequestId: 2 }),
-    ).toBe(false);
+    expect(isAgendaDetailAsyncResultCurrent({ ...base, currentRequestId: 2 })).toBe(false);
   });
   it("53g. Chave nula é rejeitada", () => {
     expect(
@@ -539,9 +614,7 @@ describe("LV-09.1B.6.3B.2.1.2 · deriveAgendaDetailActivityState", () => {
   });
   it("54e. Content usa deriveAgendaDetailActivityState no topo do render", () => {
     expect(CONTENT_SRC).toContain("deriveAgendaDetailActivityState");
-    expect(CONTENT_SRC).toMatch(
-      /const \{ hasActiveSelection, isInteractiveReady \} =/,
-    );
+    expect(CONTENT_SRC).toMatch(/const \{ hasActiveSelection, isInteractiveReady \} =/);
   });
 });
 
@@ -556,34 +629,22 @@ describe("LV-09.1B.6.3B.2.1.2 · Seis gates", () => {
     );
   });
   it("56. canEditItem depende de isInteractiveReady", () => {
-    expect(CONTENT_SRC).toMatch(
-      /canEditItem\s*=\s*\n?\s*isInteractiveReady\s*&&/,
-    );
+    expect(CONTENT_SRC).toMatch(/canEditItem\s*=\s*\n?\s*isInteractiveReady\s*&&/);
   });
   it("57. canOpenItemAction depende de isInteractiveReady", () => {
-    expect(CONTENT_SRC).toMatch(
-      /canOpenItemAction\s*=\s*\n?\s*isInteractiveReady\s*&&/,
-    );
+    expect(CONTENT_SRC).toMatch(/canOpenItemAction\s*=\s*\n?\s*isInteractiveReady\s*&&/);
   });
   it("58. canConfirmStatusChange depende de isInteractiveReady", () => {
-    expect(CONTENT_SRC).toMatch(
-      /canConfirmStatusChange\s*=\s*\n?\s*isInteractiveReady\s*&&/,
-    );
+    expect(CONTENT_SRC).toMatch(/canConfirmStatusChange\s*=\s*\n?\s*isInteractiveReady\s*&&/);
   });
   it("59. canConfirmRemoval depende de isInteractiveReady", () => {
-    expect(CONTENT_SRC).toMatch(
-      /canConfirmRemoval\s*=\s*\n?\s*isInteractiveReady\s*&&/,
-    );
+    expect(CONTENT_SRC).toMatch(/canConfirmRemoval\s*=\s*\n?\s*isInteractiveReady\s*&&/);
   });
   it("60. canRetryPermissionEvaluation depende de isInteractiveReady", () => {
-    expect(CONTENT_SRC).toMatch(
-      /canRetryPermissionEvaluation\s*=\s*isInteractiveReady\s*&&/,
-    );
+    expect(CONTENT_SRC).toMatch(/canRetryPermissionEvaluation\s*=\s*isInteractiveReady\s*&&/);
   });
   it("60b. rawLockDecisions preserva a decisão original", () => {
-    expect(CONTENT_SRC).toContain(
-      "const rawLockDecisions = getMutationLockDecisions()",
-    );
+    expect(CONTENT_SRC).toContain("const rawLockDecisions = getMutationLockDecisions()");
   });
 });
 
@@ -613,9 +674,7 @@ describe("LV-09.1B.6.3B.2.1.2 · Handlers gateados", () => {
     expect(CONTENT_SRC).toMatch(/if \(!canConfirmRemoval\) return;/);
   });
   it("67. retryPermissions guarda canRetryPermissionEvaluation", () => {
-    expect(CONTENT_SRC).toMatch(
-      /if \(!canRetryPermissionEvaluation\) return;/,
-    );
+    expect(CONTENT_SRC).toMatch(/if \(!canRetryPermissionEvaluation\) return;/);
   });
   it("68. Existe retryDetail gateado por hasActiveSelection", () => {
     expect(CONTENT_SRC).toContain("const retryDetail");
@@ -669,12 +728,8 @@ describe("LV-09.1B.6.3B.2.1.2 · Propriedade das travas", () => {
     expect(block).toMatch(/setMutating\(mutationLock\.isLocked\(\)\)/);
   });
   it("75. Content declara tokens submitOperationIdRef e mutationOperationIdRef", () => {
-    expect(CONTENT_SRC).toContain(
-      "const submitOperationIdRef = React.useRef(0)",
-    );
-    expect(CONTENT_SRC).toContain(
-      "const mutationOperationIdRef = React.useRef(0)",
-    );
+    expect(CONTENT_SRC).toContain("const submitOperationIdRef = React.useRef(0)");
+    expect(CONTENT_SRC).toContain("const mutationOperationIdRef = React.useRef(0)");
   });
   it("76. Finalizador de submit checa o token antes de setSubmitting(false)", () => {
     expect(CONTENT_SRC).toMatch(
@@ -707,12 +762,8 @@ describe("LV-09.1B.6.3B.2.1.2 · Escopo intocado", () => {
     expect(ROUTE_DETAIL_SRC).not.toContain("<AgendaItemDetailContent");
   });
   it("81. Não existe /app/disponibilidade nem availability.ts", () => {
-    expect(
-      existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx")),
-    ).toBe(false);
-    expect(
-      existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts")),
-    ).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/routes/app.disponibilidade.tsx"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "..", "src/features/agenda/availability.ts"))).toBe(false);
   });
 });
 
@@ -839,38 +890,28 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
     expect(CONTENT_SRC).not.toContain("previousActivationKeyRef");
   });
   it("94. Content NÃO declara activityGenerationRef mutado no render", () => {
-    expect(CONTENT_SRC).not.toMatch(
-      /activityGenerationRef\s*=\s*React\.useRef\(0\)/,
-    );
+    expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\s*=\s*React\.useRef\(0\)/);
   });
   it("95. Content NÃO incrementa a geração no render (avança via commit)", () => {
     expect(CONTENT_SRC).not.toMatch(/activityGenerationRef\.current\s*\+=\s*1;/);
-    expect(CONTENT_SRC).toMatch(
-      /const activityGeneration = renderActivitySession\.generation;/,
-    );
+    expect(CONTENT_SRC).toMatch(/const activityGeneration = renderActivitySession\.generation;/);
   });
   it("96. Content declara o tipo DetailSnapshot com geração e chave", () => {
     expect(CONTENT_SRC).toMatch(/type DetailSnapshot\s*=/);
     expect(CONTENT_SRC).toMatch(/activityGeneration:\s*number/);
-    expect(CONTENT_SRC).toMatch(
-      /selectionKey:\s*AgendaDetailSelectionKey \| null/,
-    );
+    expect(CONTENT_SRC).toMatch(/selectionKey:\s*AgendaDetailSelectionKey \| null/);
   });
   it("97. Content substitui detail por detailSnapshot no useState", () => {
     expect(CONTENT_SRC).toMatch(
       /const \[detailSnapshot, setDetailSnapshot\] = React\.useState<DetailSnapshot>/,
     );
-    expect(CONTENT_SRC).not.toMatch(
-      /useState<DetailState>\(\s*\{\s*kind:\s*"loading"\s*\}\s*\)/,
-    );
+    expect(CONTENT_SRC).not.toMatch(/useState<DetailState>\(\s*\{\s*kind:\s*"loading"\s*\}\s*\)/);
   });
   it("98. Content computa detailIsCurrent comparando geração E chave", () => {
     expect(CONTENT_SRC).toMatch(
       /detailIsCurrent\s*=\s*\n?\s*detailSnapshot\.activityGeneration\s*===\s*activityGeneration/,
     );
-    expect(CONTENT_SRC).toMatch(
-      /detailSnapshot\.selectionKey\s*===\s*selectionKey/,
-    );
+    expect(CONTENT_SRC).toMatch(/detailSnapshot\.selectionKey\s*===\s*selectionKey/);
   });
   it("99. Detalhe visível é 'loading' quando o snapshot não é corrente", () => {
     expect(CONTENT_SRC).toMatch(
@@ -878,17 +919,11 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
     );
   });
   it("100. setDetail estampa o snapshot com o detailOwner do render (memo)", () => {
-    expect(CONTENT_SRC).toMatch(
-      /const detailOwner = React\.useMemo\(/,
-    );
-    expect(CONTENT_SRC).toMatch(
-      /setDetailSnapshot\(\{\s*\.\.\.detailOwner,\s*state\s*\}\)/,
-    );
+    expect(CONTENT_SRC).toMatch(/const detailOwner = React\.useMemo\(/);
+    expect(CONTENT_SRC).toMatch(/setDetailSnapshot\(\{\s*\.\.\.detailOwner,\s*state\s*\}\)/);
   });
   it("101. Content passa detailBelongsToCurrentActivity para o derive", () => {
-    expect(CONTENT_SRC).toMatch(
-      /detailBelongsToCurrentActivity:\s*detailIsCurrent/,
-    );
+    expect(CONTENT_SRC).toMatch(/detailBelongsToCurrentActivity:\s*detailIsCurrent/);
   });
   it("102. Load captura reqActivityGeneration a partir de currentActivityRef e propaga ao guard", () => {
     expect(CONTENT_SRC).toMatch(
@@ -897,9 +932,7 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
     expect(CONTENT_SRC).toMatch(
       /currentActivityGeneration:\s*currentActivityRef\.current\.activityGeneration/,
     );
-    expect(CONTENT_SRC).toMatch(
-      /requestActivityGeneration:\s*reqActivityGeneration/,
-    );
+    expect(CONTENT_SRC).toMatch(/requestActivityGeneration:\s*reqActivityGeneration/);
   });
   it("103. Effects de permissão e assignments checam a geração via currentActivityRef", () => {
     const matches = CONTENT_SRC.match(
@@ -927,12 +960,9 @@ describe("LV-09.1B.6.3B.2.1.3 · Content: geração e snapshot vinculado", () =>
     expect(ACTIVITY_SRC).toMatch(/requestActivityGeneration\?:\s*number/);
   });
   it("108. ActivityInputs exige detailBelongsToCurrentActivity", () => {
-    expect(ACTIVITY_SRC).toMatch(
-      /readonly detailBelongsToCurrentActivity:\s*boolean/,
-    );
+    expect(ACTIVITY_SRC).toMatch(/readonly detailBelongsToCurrentActivity:\s*boolean/);
   });
   it("109. DEC-AGE-001 menciona a subetapa 2.1.3", () => {
     expect(DEC_SRC).toContain("LV-09.1B.6.3B.2.1.3");
   });
 });
-
