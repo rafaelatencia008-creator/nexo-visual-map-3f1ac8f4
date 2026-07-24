@@ -981,7 +981,7 @@ export function AgendaItemDetailDialog(
         <DialogContent
           className="max-h-[95vh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-0 sm:max-w-2xl"
           onEscapeKeyDown={(e) => {
-            if (submittingRef.current) {
+            if (submittingRef.current || mutationInFlightRef.current || mutating) {
               e.preventDefault();
               return;
             }
