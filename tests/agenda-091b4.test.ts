@@ -227,10 +227,10 @@ describe("LV-09.1B.4 — datetime-local -> ISO", () => {
 
 describe("LV-09.1B.4 — intervalo do compromisso", () => {
   it("18. término posterior é aceito", () => {
-    const a = ok(datetimeLocalToIso("2026-06-15T10:00").ok ? { ok: true, data: (datetimeLocalToIso("2026-06-15T10:00") as { ok: true; value: string }).value } : ({ ok: false, error: { code: "internal_error", message: "" } } as ServiceResult<string>));
-    const b = ok(datetimeLocalToIso("2026-06-15T11:00").ok ? { ok: true, data: (datetimeLocalToIso("2026-06-15T11:00") as { ok: true; value: string }).value } : ({ ok: false, error: { code: "internal_error", message: "" } } as ServiceResult<string>));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const r = validateAppointmentInterval(a as any, b as any);
+    const s = datetimeLocalToIso("2026-06-15T10:00");
+    const e = datetimeLocalToIso("2026-06-15T11:00");
+    if (!s.ok || !e.ok) throw new Error();
+    const r = validateAppointmentInterval(s.value, e.value);
     expect(r.ok).toBe(true);
   });
 
