@@ -105,13 +105,19 @@ import {
   resolveDiscardIntent,
 } from "./detail-reducers";
 import {
+  APPOINTMENT_STATUS_LABEL as APPT_STATUS_LABEL_OFFICIAL,
+  DEADLINE_STATUS_LABEL as DL_STATUS_LABEL_OFFICIAL,
   buildChangeAppointmentStatusInput,
   buildChangeDeadlineStatusInput,
+  buildMutationConflict,
   getAppointmentStatusActions,
   getDeadlineStatusActions,
+  permissionAllowsAction,
   translateAgendaMutationError,
   type AppointmentStatusAction,
   type DeadlineStatusAction,
+  type MutationConflict,
+  type PermissionEvalState,
   type TranslatedMutationError,
 } from "./item-mutations";
 
