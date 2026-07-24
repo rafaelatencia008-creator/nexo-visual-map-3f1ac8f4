@@ -174,8 +174,11 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
   const [assignments, setAssignments] = React.useState<AssignmentsState>({ kind: "idle" });
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
 
+  const [assignmentsAttempt, setAssignmentsAttempt] = React.useState(0);
+
   const mountedRef = React.useRef(true);
   const submittingRef = React.useRef(false);
+  const assignmentsReqIdRef = React.useRef(0);
 
   React.useEffect(() => {
     mountedRef.current = true;
