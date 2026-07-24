@@ -198,7 +198,7 @@ const ASSIGN_MAX_PAGES = 20;
 export function AgendaItemDetailDialog(
   props: AgendaItemDetailDialogProps,
 ): React.ReactElement {
-  const { selected, onClose, environment, context, cases, onUpdated } = props;
+  const { selected, onClose, environment, context, cases, onUpdated, referenceEpoch } = props;
   const open = selected !== null;
 
   const [detail, setDetail] = React.useState<DetailState>({ kind: "loading" });
