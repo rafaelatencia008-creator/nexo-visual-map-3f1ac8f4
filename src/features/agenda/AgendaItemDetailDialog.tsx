@@ -714,6 +714,169 @@ export function AgendaItemDetailDialog(
     onUpdated,
   ]);
 
+  // ---- Mudança de status / exclusão (LV-09.1B.6) ------------------------
+
+  const confirmStatusChange = React.useCallback(async () => {
+    if (mutationInFlightRef.current) return;
+    if (!pendingStatus) return;
+    if (detail.kind !== "ready") return;
+    if (permChangeStatus !== "allowed") return;
+    mutationInFlightRef.current = true;
+    setMutating(true);
+    setMutationError(null);
+    setStatusConflict(null);
+    try {
+      if (
+        pendingStatus.kind === "deadline" &&
+        detail.loaded.type === "deadline"
+      ) {
+        const input = buildChangeDeadlineStatusInput(
+          detail.loaded.item,
+          pendingStatus.action.status,
+          detail.loaded.item.metadata.version,
+        );
+        const res =
+          await environment.services.deadlines.changeStatus(context, input);
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setStatusConflict({
+              ...(t.expectedVersion !== undefined
+                ? { expected: t.expectedVersion }
+                : {}),
+              ...(t.actualVersion !== undefined
+                ? { actual: t.actualVersion }
+                : {}),
+            });
+          }
+          return;
+        }
+        const updated = res.data;
+        setDetail({
+          kind: "ready",
+          loaded: { type: "deadline", item: updated },
+        });
+        setPendingStatus(null);
+        toast.success("Status do prazo atualizado.");
+        onUpdated({ type: "deadline", item: updated });
+      } else if (
+        pendingStatus.kind === "appointment" &&
+        detail.loaded.type === "appointment"
+      ) {
+        const input = buildChangeAppointmentStatusInput(
+          detail.loaded.item,
+          pendingStatus.action.status,
+          detail.loaded.item.metadata.version,
+        );
+        const res =
+          await environment.services.appointments.changeStatus(context, input);
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setStatusConflict({
+              ...(t.expectedVersion !== undefined
+                ? { expected: t.expectedVersion }
+                : {}),
+              ...(t.actualVersion !== undefined
+                ? { actual: t.actualVersion }
+                : {}),
+            });
+          }
+          return;
+        }
+        const updated = res.data;
+        setDetail({
+          kind: "ready",
+          loaded: { type: "appointment", item: updated },
+        });
+        setPendingStatus(null);
+        toast.success("Status do compromisso atualizado.");
+        onUpdated({ type: "appointment", item: updated });
+      }
+    } finally {
+      if (mountedRef.current) setMutating(false);
+      mutationInFlightRef.current = false;
+    }
+  }, [pendingStatus, detail, permChangeStatus, environment, context, onUpdated]);
+
+  const confirmRemoval = React.useCallback(async () => {
+    if (mutationInFlightRef.current) return;
+    if (!pendingRemoval) return;
+    if (detail.kind !== "ready") return;
+    if (permRemove !== "allowed") return;
+    if (!selected) return;
+    mutationInFlightRef.current = true;
+    setMutating(true);
+    setMutationError(null);
+    try {
+      const version = detail.loaded.item.metadata.version;
+      if (detail.loaded.type === "deadline") {
+        const res = await environment.services.deadlines.remove(
+          context,
+          detail.loaded.item.caseId,
+          detail.loaded.item.id,
+          version,
+        );
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          setMutationError(translateAgendaMutationError(res.error));
+          return;
+        }
+        setPendingRemoval(false);
+        toast.success("Prazo excluído.");
+        onDeleted({
+          type: "deadline",
+          caseId: detail.loaded.item.caseId,
+          id: detail.loaded.item.id,
+        });
+      } else {
+        const res = await environment.services.appointments.remove(
+          context,
+          detail.loaded.item.caseId,
+          detail.loaded.item.id,
+          version,
+        );
+        if (!mountedRef.current) return;
+        if (!res.ok) {
+          setMutationError(translateAgendaMutationError(res.error));
+          return;
+        }
+        setPendingRemoval(false);
+        toast.success("Compromisso excluído.");
+        onDeleted({
+          type: "appointment",
+          caseId: detail.loaded.item.caseId,
+          id: detail.loaded.item.id,
+        });
+      }
+    } finally {
+      if (mountedRef.current) setMutating(false);
+      mutationInFlightRef.current = false;
+    }
+  }, [
+    pendingRemoval,
+    detail,
+    permRemove,
+    selected,
+    environment,
+    context,
+    onDeleted,
+  ]);
+
+  const reloadAfterStatusConflict = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPendingStatus(null);
+    setMutationError(null);
+    setStatusConflict(null);
+    setReload((r) => r + 1);
+  }, []);
+
+
+
   const caseById = React.useMemo(() => {
     const m = new Map<string, Case>();
     for (const c of cases) m.set(String(c.id), c);
