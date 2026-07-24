@@ -305,7 +305,15 @@ export function AgendaItemDetailDialog(
           response: res,
         });
         if (decided === "ignore") return;
-        applyDetail(decided);
+        if (decided.kind === "ready") {
+          const loaded: Loaded =
+            decided.type === "deadline"
+              ? { type: "deadline", item: decided.item }
+              : { type: "appointment", item: decided.item };
+          setDetail({ kind: "ready", loaded });
+          return;
+        }
+        setDetail(decided);
       })
       .catch(() => {
         if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
@@ -316,17 +324,6 @@ export function AgendaItemDetailDialog(
       });
   }, [selected, environment, context, reload]);
 
-  function applyDetail(snapshot: DetailStateSnapshot) {
-    if (snapshot.kind === "ready") {
-      const loaded: Loaded =
-        snapshot.type === "deadline"
-          ? { type: "deadline", item: snapshot.item }
-          : { type: "appointment", item: snapshot.item };
-      setDetail({ kind: "ready", loaded });
-      return;
-    }
-    setDetail(snapshot);
-  }
 
   // Avalia permissão de edição para o item carregado
   React.useEffect(() => {
