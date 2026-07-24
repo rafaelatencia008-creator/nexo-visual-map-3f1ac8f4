@@ -198,15 +198,14 @@ Responsável e aria-linkage do erro de intervalo).
 
 
 
-### Pendente da parcela B (LV-09.1B.6.3B.2.2)
+### LV-09.1B.6.3B.2.2 concluída
 
-Ainda **não** foi realizada a conversão total do detalhe em página:
+A rota `/app/agenda/$appointmentId` tornou-se página real, montando
+`AgendaItemDetailContent` com `surface="page"` diretamente. O uso do
+`AgendaItemDetailDialog` permanece exclusivo do calendário. A
+LV-09.1B.6.3 está concluída.
 
-- A rota `/app/agenda/$appointmentId` continua montando temporariamente (condição transitória)
-  o `AgendaItemDetailDialog` (wrapper fino) até que a LV-09.1B.6.3B.2.2
-  substitua esse uso por `AgendaItemDetailContent` com
-  `surface="page"`. A LV-09.1B.6.3 permanece **aberta** até essa
-  substituição.
+
 
 
 
