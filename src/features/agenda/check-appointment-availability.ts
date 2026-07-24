@@ -106,8 +106,8 @@ export async function checkAppointmentAvailability(
       // Isolamento organizacional: o serviço já filtra por contexto,
       // mas verificamos aqui como segunda barreira defensiva.
       if (existing.organizationId !== context.organizationId) continue;
-      const s = Date.parse(existing.startsAt);
-      const e = Date.parse(existing.endsAt);
+      const s = isoDateTimeToEpoch(existing.startsAt);
+      const e = isoDateTimeToEpoch(existing.endsAt);
       if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
       if (intervalsOverlap(normalized.startEpoch, normalized.endEpoch, s, e)) {
         collected.push(toConflict(existing));
