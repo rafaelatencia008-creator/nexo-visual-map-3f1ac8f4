@@ -511,7 +511,7 @@ export function AgendaItemDetailDialog(
   // ---- Handlers -----------------------------------------------------------
 
   const enterEdit = React.useCallback(() => {
-    if (mutationInFlightRef.current || mutating) return;
+    if (!getMutationLockDecisions().canEnterEdit) return;
     if (detail.kind !== "ready" || !permissionAllowsAction(perm)) return;
     setErrors({});
     setTouched({});
