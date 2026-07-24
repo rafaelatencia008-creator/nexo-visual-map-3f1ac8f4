@@ -89,6 +89,8 @@ import {
   hasAppointmentChanges,
   hasDeadlineChanges,
   translateAgendaUpdateError,
+  type BuildUpdateAppointmentResult,
+  type BuildUpdateDeadlineResult,
   type EditAppointmentFormState,
   type EditDeadlineFormState,
   type TranslatedUpdateError,
