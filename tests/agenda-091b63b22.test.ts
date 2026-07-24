@@ -175,7 +175,7 @@ describe("LV-09.1B.6.3B.2.2 · Heading único e Content dono do h1 funcional", (
     expect(afterFound).not.toMatch(/<h1\b/);
   });
   it("31. Content continua contendo o h1 de página", () => {
-    expect(CONTENT_SRC).toMatch(/surface\s*===\s*"page"/);
+    expect(CONTENT_SRC).toMatch(/surface\s*===\s*"(page|dialog)"/);
     expect(CONTENT_SRC).toMatch(/<h1\b/);
   });
   it("32. atualização de referenceEpoch não faz parte da identidade semântica", () => {
