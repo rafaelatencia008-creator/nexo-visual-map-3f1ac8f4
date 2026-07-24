@@ -462,14 +462,16 @@ export function AgendaCreateDialog(props: AgendaCreateDialogProps): React.ReactE
       }
       toast.success("Compromisso criado com sucesso.");
       onCreated({ type: "appointment", item: res.data });
-      onOpenChange(false);
+      if (shouldCloseAfterCreate) {
+        onOpenChange(false);
+      }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false);
       }
       submittingRef.current = false;
     }
-  }, [appointmentForm, environment, context, onCreated, onOpenChange]);
+  }, [appointmentForm, environment, context, onCreated, onOpenChange, shouldCloseAfterCreate]);
 
   const permAllowed =
     itemType === "deadline" ? permDeadline === "allowed" : permAppointment === "allowed";
