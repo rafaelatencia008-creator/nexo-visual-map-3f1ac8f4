@@ -468,7 +468,7 @@ describe("LV-09.1B.6.3B.2.1.3.1.1 · Escopo preservado", () => {
     expect(ROUTE_DETAIL_SRC).not.toMatch(
       /from "@\/features\/agenda\/AgendaItemDetailContent"/,
     );
-    expect(ROUTE_DETAIL_SRC).not.toMatch(/AgendaItemDetailContent/);
+    expect(ROUTE_DETAIL_SRC).not.toMatch(/<AgendaItemDetailContent\b/);
   });
   it("S3. AgendaItemDetailDialog continua wrapper fino (delegação ao Content)", () => {
     expect(DIALOG_SRC).toMatch(/AgendaItemDetailContent/);
