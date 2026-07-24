@@ -1430,7 +1430,7 @@ export function AgendaItemDetailDialog(
                     e.preventDefault();
                     void confirmStatusChange();
                   }}
-                  disabled={mutating || permChangeStatus !== "allowed"}
+                  disabled={mutating || !permissionAllowsAction(permChangeStatus)}
                   aria-busy={mutating}
                 >
                   {mutating && (
