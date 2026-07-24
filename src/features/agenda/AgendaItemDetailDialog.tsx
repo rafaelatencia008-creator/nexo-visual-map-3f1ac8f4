@@ -89,12 +89,15 @@ import {
   hasAppointmentChanges,
   hasDeadlineChanges,
   translateAgendaUpdateError,
+  type BuildUpdateAppointmentResult,
+  type BuildUpdateDeadlineResult,
   type EditAppointmentFormState,
   type EditDeadlineFormState,
   type TranslatedUpdateError,
 } from "./edit-form";
 import { getDeadlinePresentation } from "./visual-state";
 import {
+  deriveEditUiState,
   reduceConflictAction,
   resolveDetailLoadResponse,
   resolveDiscardIntent,
@@ -278,49 +281,70 @@ export function AgendaItemDetailDialog(
     submittingRef.current = false;
   }, [selected]);
 
-  // Carrega o detalhe pelo serviço oficial
+  // Carrega o detalhe pelo serviço oficial. Ramifica pelo discriminante para
+  // preservar a correlação entre `type` e o tipo da `response` (união
+  // discriminada em `resolveDetailLoadResponse`), sem casts.
   React.useEffect(() => {
     if (!selected) return;
     const reqId = ++detailReqIdRef.current;
     setDetail({ kind: "loading" });
-    const call =
-      selected.type === "deadline"
-        ? environment.services.deadlines.getById(
-            context,
-            selected.caseId,
-            selected.id,
-          )
-        : environment.services.appointments.getById(
-            context,
-            selected.caseId,
-            selected.id,
+
+    const applyDecision = (
+      decided: ReturnType<typeof resolveDetailLoadResponse>,
+    ): void => {
+      if (decided === "ignore") return;
+      if (decided.kind === "ready") {
+        const loaded: Loaded =
+          decided.type === "deadline"
+            ? { type: "deadline", item: decided.item }
+            : { type: "appointment", item: decided.item };
+        setDetail({ kind: "ready", loaded });
+        return;
+      }
+      setDetail(decided);
+    };
+
+    if (selected.type === "deadline") {
+      environment.services.deadlines
+        .getById(context, selected.caseId, selected.id)
+        .then((response) => {
+          if (!mountedRef.current) return;
+          applyDecision(
+            resolveDetailLoadResponse(detailReqIdRef.current, {
+              requestId: reqId,
+              type: "deadline",
+              response,
+            }),
           );
-    call
-      .then((res) => {
-        if (!mountedRef.current) return;
-        const decided = resolveDetailLoadResponse(detailReqIdRef.current, {
-          requestId: reqId,
-          type: selected.type,
-          response: res,
+        })
+        .catch(() => {
+          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          setDetail({
+            kind: "error",
+            message: "Não foi possível carregar este item.",
+          });
         });
-        if (decided === "ignore") return;
-        if (decided.kind === "ready") {
-          const loaded: Loaded =
-            decided.type === "deadline"
-              ? { type: "deadline", item: decided.item }
-              : { type: "appointment", item: decided.item };
-          setDetail({ kind: "ready", loaded });
-          return;
-        }
-        setDetail(decided);
-      })
-      .catch(() => {
-        if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
-        setDetail({
-          kind: "error",
-          message: "Não foi possível carregar este item.",
+    } else {
+      environment.services.appointments
+        .getById(context, selected.caseId, selected.id)
+        .then((response) => {
+          if (!mountedRef.current) return;
+          applyDecision(
+            resolveDetailLoadResponse(detailReqIdRef.current, {
+              requestId: reqId,
+              type: "appointment",
+              response,
+            }),
+          );
+        })
+        .catch(() => {
+          if (!mountedRef.current || reqId !== detailReqIdRef.current) return;
+          setDetail({
+            kind: "error",
+            message: "Não foi possível carregar este item.",
+          });
         });
-      });
+    }
   }, [selected, environment, context, reload]);
 
 
@@ -636,59 +660,57 @@ export function AgendaItemDetailDialog(
 
   // Avaliação derivada do builder oficial: fonte única de verdade para a
   // validade do formulário. O botão "Salvar" e o `submit()` consomem esta
-  // mesma decisão.
+  // mesma decisão via `deriveEditUiState`.
   const currentBuildResult = React.useMemo<
-    | { ok: true; changed: boolean }
-    | { ok: false; errors: Readonly<Record<string, string>> }
-    | null
+    BuildUpdateDeadlineResult | BuildUpdateAppointmentResult | null
   >(() => {
     if (mode !== "edit" || detail.kind !== "ready") return null;
     if (detail.loaded.type === "deadline" && dForm) {
-      const built = buildUpdateDeadlineInput(
+      return buildUpdateDeadlineInput(
         detail.loaded.item,
         dForm,
         expectedVersion,
       );
-      if (!built.ok) return { ok: false, errors: built.errors };
-      return { ok: true, changed: built.changed };
     }
     if (detail.loaded.type === "appointment" && aForm) {
-      const built = buildUpdateAppointmentInput(
+      return buildUpdateAppointmentInput(
         detail.loaded.item,
         aForm,
         expectedVersion,
       );
-      if (!built.ok) return { ok: false, errors: built.errors };
-      return { ok: true, changed: built.changed };
     }
     return null;
   }, [mode, detail, dForm, aForm, expectedVersion]);
 
-  const canSubmit =
-    mode === "edit" &&
-    perm === "allowed" &&
-    currentBuildResult !== null &&
-    currentBuildResult.ok &&
-    currentBuildResult.changed &&
-    !submitting;
 
-  // Erros exibidos = união dos erros já persistidos (submit / retorno do
-  // serviço) + erros derivados apenas para campos "tocados" pelo usuário
-  // ou após tentativa de submit. Isso evita mostrar erros em todos os
-  // campos assim que a edição começa.
-  const displayErrors: Readonly<Record<string, string>> = React.useMemo(() => {
-    if (currentBuildResult && !currentBuildResult.ok) {
-      const merged: Record<string, string> = { ...errors };
-      for (const [k, v] of Object.entries(currentBuildResult.errors)) {
-        if (merged[k]) continue;
-        if (attemptedSubmit || touched[k]) {
-          merged[k] = v;
-        }
-      }
-      return merged;
-    }
-    return errors;
-  }, [currentBuildResult, errors, touched, attemptedSubmit]);
+  // Fonte única de verdade da UI de edição. `deriveEditUiState` é o mesmo
+  // helper puro exercitado pelos testes comportamentais — o componente real
+  // consome exatamente a decisão testada, sem duplicação manual das regras
+  // de `canSubmit` e de exibição progressiva de erros.
+  const editUiState = React.useMemo(
+    () =>
+      deriveEditUiState({
+        mode,
+        perm,
+        submitting,
+        build: currentBuildResult,
+        storedErrors: errors,
+        touched,
+        attemptedSubmit,
+      }),
+    [
+      mode,
+      perm,
+      submitting,
+      currentBuildResult,
+      errors,
+      touched,
+      attemptedSubmit,
+    ],
+  );
+  const canSubmit = editUiState.canSubmit;
+  const displayErrors = editUiState.displayErrors;
+
 
 
   const title =
