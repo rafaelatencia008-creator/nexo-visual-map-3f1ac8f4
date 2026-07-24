@@ -29,11 +29,7 @@ export const EMPTY_AVAILABILITY_FORM: AvailabilityFormState = Object.freeze({
   endsAtLocal: "",
 });
 
-export type AvailabilityFormFieldError =
-  | "caseId"
-  | "assignmentId"
-  | "startsAt"
-  | "endsAt";
+export type AvailabilityFormFieldError = "caseId" | "assignmentId" | "startsAt" | "endsAt";
 
 export type AvailabilityConsultationBuildResult =
   | Readonly<{

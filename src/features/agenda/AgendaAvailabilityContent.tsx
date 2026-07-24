@@ -212,8 +212,7 @@ export function AgendaAvailabilityContent(
     (field: "startsAtLocal" | "endsAtLocal", value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }));
       setErrors((prev) => {
-        const key: AvailabilityFormFieldError =
-          field === "startsAtLocal" ? "startsAt" : "endsAt";
+        const key: AvailabilityFormFieldError = field === "startsAtLocal" ? "startsAt" : "endsAt";
         if (prev[key] === undefined) return prev;
         const copy = { ...prev };
         delete copy[key];
@@ -287,11 +286,7 @@ export function AgendaAvailabilityContent(
 
   // ---- Foco no resultado -------------------------------------------------
   React.useEffect(() => {
-    if (
-      view.kind === "available" ||
-      view.kind === "conflict" ||
-      view.kind === "indeterminate"
-    ) {
+    if (view.kind === "available" || view.kind === "conflict" || view.kind === "indeterminate") {
       const el = resultPanelRef.current;
       if (el) {
         try {
@@ -394,9 +389,7 @@ export function AgendaAvailabilityContent(
               Responsável <span aria-hidden>*</span>
             </Label>
             {form.caseId.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Selecione primeiro um processo
-              </p>
+              <p className="text-sm text-muted-foreground">Selecione primeiro um processo</p>
             )}
             {form.caseId.length > 0 && assignments.kind === "loading" && (
               <p className="text-sm text-muted-foreground" aria-live="polite">
@@ -426,10 +419,7 @@ export function AgendaAvailabilityContent(
             {form.caseId.length > 0 &&
               assignments.kind === "ready" &&
               assignments.items.length > 0 && (
-                <Select
-                  value={form.assignmentId}
-                  onValueChange={handleAssignmentChange}
-                >
+                <Select value={form.assignmentId} onValueChange={handleAssignmentChange}>
                   <SelectTrigger
                     id="availability-assignment"
                     aria-invalid={errors.assignmentId !== undefined}
@@ -471,16 +461,10 @@ export function AgendaAvailabilityContent(
                 value={form.startsAtLocal}
                 onChange={(e) => handleFieldChange("startsAtLocal", e.target.value)}
                 aria-invalid={errors.startsAt !== undefined}
-                aria-describedby={
-                  errors.startsAt ? "availability-start-error" : undefined
-                }
+                aria-describedby={errors.startsAt ? "availability-start-error" : undefined}
               />
               {errors.startsAt && (
-                <p
-                  id="availability-start-error"
-                  role="alert"
-                  className="text-sm text-destructive"
-                >
+                <p id="availability-start-error" role="alert" className="text-sm text-destructive">
                   {errors.startsAt}
                 </p>
               )}
@@ -498,11 +482,7 @@ export function AgendaAvailabilityContent(
                 aria-describedby={errors.endsAt ? "availability-end-error" : undefined}
               />
               {errors.endsAt && (
-                <p
-                  id="availability-end-error"
-                  role="alert"
-                  className="text-sm text-destructive"
-                >
+                <p id="availability-end-error" role="alert" className="text-sm text-destructive">
                   {errors.endsAt}
                 </p>
               )}
@@ -620,8 +600,8 @@ export function AgendaAvailabilityContent(
                 {view.reason === "pagination_limit" && (
                   <>
                     <p role="alert" className="text-sm">
-                      A consulta não pôde ser concluída porque existem mais registros do
-                      que o limite seguro de verificação.
+                      A consulta não pôde ser concluída porque existem mais registros do que o
+                      limite seguro de verificação.
                     </p>
                     <Button type="button" variant="outline" size="sm" onClick={handleSubmit}>
                       Tentar novamente
