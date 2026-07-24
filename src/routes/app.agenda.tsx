@@ -397,6 +397,10 @@ function AgendaPage() {
   const [showMore, setShowMore] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const [pendingCreated, setPendingCreated] = React.useState<{
+    id: string;
+    type: "deadline" | "appointment";
+  } | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
   const newItemButtonRef = React.useRef<HTMLButtonElement | null>(null);
