@@ -658,33 +658,28 @@ export function AgendaItemDetailDialog(
 
   // Avaliação derivada do builder oficial: fonte única de verdade para a
   // validade do formulário. O botão "Salvar" e o `submit()` consomem esta
-  // mesma decisão.
+  // mesma decisão via `deriveEditUiState`.
   const currentBuildResult = React.useMemo<
-    | { ok: true; changed: boolean }
-    | { ok: false; errors: Readonly<Record<string, string>> }
-    | null
+    BuildUpdateDeadlineResult | BuildUpdateAppointmentResult | null
   >(() => {
     if (mode !== "edit" || detail.kind !== "ready") return null;
     if (detail.loaded.type === "deadline" && dForm) {
-      const built = buildUpdateDeadlineInput(
+      return buildUpdateDeadlineInput(
         detail.loaded.item,
         dForm,
         expectedVersion,
       );
-      if (!built.ok) return { ok: false, errors: built.errors };
-      return { ok: true, changed: built.changed };
     }
     if (detail.loaded.type === "appointment" && aForm) {
-      const built = buildUpdateAppointmentInput(
+      return buildUpdateAppointmentInput(
         detail.loaded.item,
         aForm,
         expectedVersion,
       );
-      if (!built.ok) return { ok: false, errors: built.errors };
-      return { ok: true, changed: built.changed };
     }
     return null;
   }, [mode, detail, dForm, aForm, expectedVersion]);
+
 
   // Fonte única de verdade da UI de edição. `deriveEditUiState` é o mesmo
   // helper puro exercitado pelos testes comportamentais — o componente real
