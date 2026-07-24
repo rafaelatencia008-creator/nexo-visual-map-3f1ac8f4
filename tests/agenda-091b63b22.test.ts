@@ -222,6 +222,6 @@ describe("LV-09.1B.6.3B.2.2 · Wrapper e escopo intocado", () => {
 describe("LV-09.1B.6.3B.2.2 · DEC-AGE-001 reflete o progresso", () => {
   it("42. DEC menciona LV-09.1B.6.3B.2.2 e a página canônica", () => {
     expect(DEC_SRC).toMatch(/LV-09\.1B\.6\.3B\.2\.2/);
-    expect(DEC_SRC).toMatch(/surface="page"|surface=\"page\"|surface: "page"/);
+    expect(DEC_SRC).toMatch(/surface="page"/);
   });
 });
