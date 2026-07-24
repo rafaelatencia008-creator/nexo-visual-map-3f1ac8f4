@@ -1130,7 +1130,7 @@ export function AgendaItemDetailDialog(
                     onSelectAppointmentAction={requestAppointmentStatusChange}
                     onRequestRemoval={requestRemoval}
                   />
-                  {(perm === "error" || permChangeStatus === "error" || permRemove === "error") && (
+                  {hasPermEvalError && (
                     <div
                       role="status"
                       className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground"
