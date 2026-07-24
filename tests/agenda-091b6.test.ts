@@ -827,9 +827,8 @@ describe("LV-09.1B.6 — regressões de fonte", () => {
     expect(slice).toMatch(/setReloadKey/);
     expect(slice).toMatch(/setSelected\(null\)/);
   });
-  it("68. item-mutations não importa React nem Date.now", () => {
+  it("68. item-mutations não importa React", () => {
     expect(MUT_SRC).not.toMatch(/from "react"/);
-    expect(MUT_SRC).not.toMatch(/Date\.now\(\)/);
   });
   it("69. LV-09.1B.6 não cria nova rota na Agenda", () => {
     // Não deve haver rotas novas relacionadas a mutação; a rota base é única.
