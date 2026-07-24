@@ -1,10 +1,13 @@
 /**
  * LV-09.1B.6 — Helpers puros de mudança de status e exclusão.
+ * LV-09.1B.6.1 — Fechamento técnico: marcador dedicado de exclusão,
+ * builder puro para a próxima geração, tipagem discriminada do conflito
+ * de mutação, máquina de estado de permissão e guardas puras.
  *
- * Sem React, sem I/O, sem `Date.now()`. Recebem entidades oficiais
- * e devolvem estritamente os DTOs oficiais definidos em
+ * Sem React, sem I/O, sem `Date.now()`. Recebem entidades oficiais e
+ * devolvem estritamente os DTOs oficiais definidos em
  * `@/domain/services/inputs` (`ChangeDeadlineStatusInput`,
- * `ChangeAppointmentStatusInput`), incluindo `expectedVersion`.
+ * `ChangeAppointmentStatusInput`).
  */
 
 import type {
@@ -22,11 +25,8 @@ import type {
   ChangeDeadlineStatusInput,
 } from "@/domain/services/inputs";
 import type { ServiceError } from "@/domain/services/result";
-import {
-  resolveCreatedItemVisibility,
-  type AgendaLoadStateSnapshot,
-  type PendingCreatedItem,
-} from "./created-visibility";
+import { resolveAgendaItemVisibility } from "./item-visibility";
+import type { AgendaLoadStateSnapshot } from "./created-visibility";
 
 // ---- Rótulos oficiais ---------------------------------------------------
 
@@ -89,11 +89,6 @@ const APPOINTMENT_CONFIRM_TITLE: Readonly<Record<AppointmentStatus, string>> =
     cancelled: "Cancelar este compromisso?",
   });
 
-/**
- * Devolve as ações oficialmente oferecidas para o estado atual do prazo.
- * Nunca oferece o mesmo estado, nunca oferece estados fora do catálogo,
- * ordem determinística por `DEADLINE_STATUSES`.
- */
 export function getDeadlineStatusActions(
   current: DeadlineStatus,
 ): readonly DeadlineStatusAction[] {
@@ -241,30 +236,97 @@ export function translateAgendaMutationError(
   return { kind: "generic", message: AGENDA_MUTATION_MESSAGES.generic };
 }
 
-// ---- Exclusão pendente (gerações) ---------------------------------------
+// ---- Estado unificado de conflito de mutação ----------------------------
+
+export type MutationOperation = "change_status" | "remove";
+
+export type MutationConflict =
+  | Readonly<{
+      operation: "change_status";
+      expected?: number;
+      actual?: number;
+    }>
+  | Readonly<{
+      operation: "remove";
+      expected?: number;
+      actual?: number;
+    }>
+  | null;
+
+export function buildMutationConflict(
+  operation: MutationOperation,
+  err: TranslatedMutationError,
+): MutationConflict {
+  if (err.kind !== "conflict") return null;
+  const base = { operation } as const;
+  return Object.freeze({
+    ...base,
+    ...(err.expectedVersion !== undefined
+      ? { expected: err.expectedVersion }
+      : {}),
+    ...(err.actualVersion !== undefined ? { actual: err.actualVersion } : {}),
+  }) as MutationConflict;
+}
+
+// ---- Estado de permissão com erro técnico separado ----------------------
+
+export type PermissionEvalState =
+  | "unknown"
+  | "loading"
+  | "allowed"
+  | "denied"
+  | "error";
+
+export function permissionAllowsAction(state: PermissionEvalState): boolean {
+  return state === "allowed";
+}
+
+// ---- Marcador de remoção pendente (integração com gerações) -------------
+
+export type PendingRemovalItem = Readonly<{
+  id: string;
+  type: "deadline" | "appointment";
+  requiredGeneration: number;
+}>;
+
+/**
+ * Reserva a próxima geração da Agenda após uma exclusão. Só uma consulta
+ * iniciada *depois* desta chamada poderá confirmar a remoção.
+ */
+export function buildPendingRemovalMarker(
+  currentGeneration: number,
+  deletedItem: Readonly<{ id: string; type: "deadline" | "appointment" }>,
+): PendingRemovalItem {
+  return Object.freeze({
+    id: deletedItem.id,
+    type: deletedItem.type,
+    requiredGeneration: currentGeneration + 1,
+  });
+}
 
 export type PendingRemovalAction =
   | Readonly<{ kind: "wait" }>
   | Readonly<{ kind: "confirmed_removed" }>;
 
 /**
- * Reaproveita a máquina de gerações (`resolveCreatedItemVisibility`) para
- * decidir quando uma remoção pode ser confirmada como concluída:
+ * Decide, sem side effects, se uma remoção pode ser confirmada. Baseia-se
+ * na mesma máquina de gerações usada para itens recém-criados.
+ *
  *  - "wait" enquanto a geração exigida ainda não terminou ou está em erro;
  *  - "confirmed_removed" quando a geração adequada foi processada e o ID
- *    NÃO está presente na lista visível (o serviço confirmou a exclusão).
+ *    NÃO está presente na lista visível;
  *  - Se o ID reaparecer numa geração posterior à exclusão, isso indica
  *    resposta obsoleta anterior à exclusão — trate como wait para
  *    permitir retry externo.
  */
 export function resolvePendingRemovalAction(
-  pending: PendingCreatedItem,
+  pending: PendingRemovalItem,
   loadState: AgendaLoadStateSnapshot,
   visibleDeadlineIds: ReadonlySet<string>,
   visibleAppointmentIds: ReadonlySet<string>,
 ): PendingRemovalAction {
-  const decision = resolveCreatedItemVisibility(
-    pending,
+  const decision = resolveAgendaItemVisibility(
+    { id: pending.id, type: pending.type, requiredGeneration: pending.requiredGeneration },
     loadState,
     visibleDeadlineIds,
     visibleAppointmentIds,

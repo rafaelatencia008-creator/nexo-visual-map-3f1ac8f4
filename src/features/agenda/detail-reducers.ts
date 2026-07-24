@@ -127,7 +127,7 @@ export function resolveDetailLoadResponse(
 
 export type EditUiInputs = Readonly<{
   mode: "view" | "edit";
-  perm: "unknown" | "loading" | "allowed" | "denied";
+  perm: "unknown" | "loading" | "allowed" | "denied" | "error";
   submitting: boolean;
   build: BuildUpdateDeadlineResult | BuildUpdateAppointmentResult | null;
   storedErrors: Readonly<Record<string, string>>;

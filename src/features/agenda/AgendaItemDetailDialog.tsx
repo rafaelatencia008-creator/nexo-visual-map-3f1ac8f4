@@ -105,13 +105,19 @@ import {
   resolveDiscardIntent,
 } from "./detail-reducers";
 import {
+  APPOINTMENT_STATUS_LABEL as APPT_STATUS_LABEL_OFFICIAL,
+  DEADLINE_STATUS_LABEL as DL_STATUS_LABEL_OFFICIAL,
   buildChangeAppointmentStatusInput,
   buildChangeDeadlineStatusInput,
+  buildMutationConflict,
   getAppointmentStatusActions,
   getDeadlineStatusActions,
+  permissionAllowsAction,
   translateAgendaMutationError,
   type AppointmentStatusAction,
   type DeadlineStatusAction,
+  type MutationConflict,
+  type PermissionEvalState,
   type TranslatedMutationError,
 } from "./item-mutations";
 
@@ -215,7 +221,7 @@ type DetailState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string };
 
-type PermState = "unknown" | "loading" | "allowed" | "denied";
+type PermState = PermissionEvalState;
 type AssignmentsState =
   | { kind: "idle" }
   | { kind: "loading" }
@@ -280,6 +286,7 @@ export function AgendaItemDetailDialog(
   const [permChangeStatus, setPermChangeStatus] =
     React.useState<PermState>("unknown");
   const [permRemove, setPermRemove] = React.useState<PermState>("unknown");
+  const [permAttempt, setPermAttempt] = React.useState(0);
   const [pendingStatus, setPendingStatus] = React.useState<
     | Readonly<{ kind: "deadline"; action: DeadlineStatusAction }>
     | Readonly<{ kind: "appointment"; action: AppointmentStatusAction }>
@@ -289,10 +296,8 @@ export function AgendaItemDetailDialog(
   const [mutating, setMutating] = React.useState<boolean>(false);
   const [mutationError, setMutationError] =
     React.useState<TranslatedMutationError | null>(null);
-  const [statusConflict, setStatusConflict] = React.useState<{
-    expected?: number;
-    actual?: number;
-  } | null>(null);
+  const [mutationConflict, setMutationConflict] =
+    React.useState<MutationConflict>(null);
 
   const mountedRef = React.useRef(true);
   const detailReqIdRef = React.useRef(0);
@@ -319,7 +324,7 @@ export function AgendaItemDetailDialog(
     setPendingRemoval(false);
     setMutating(false);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     mutationInFlightRef.current = false;
     setAssignments({ kind: "idle" });
     setDForm(null);
@@ -425,11 +430,15 @@ export function AgendaItemDetailDialog(
         .evaluate(context, { action, caseId: selected.caseId })
         .then((res) => {
           if (cancelled || !mountedRef.current) return;
-          setter(res.ok && res.data.allowed ? "allowed" : "denied");
+          if (!res.ok) {
+            setter("error");
+            return;
+          }
+          setter(res.data.allowed ? "allowed" : "denied");
         })
         .catch(() => {
           if (cancelled || !mountedRef.current) return;
-          setter("denied");
+          setter("error");
         });
     };
     evalOne(updateAction, setPerm);
@@ -438,7 +447,7 @@ export function AgendaItemDetailDialog(
     return () => {
       cancelled = true;
     };
-  }, [selected, detail, environment, context]);
+  }, [selected, detail, environment, context, permAttempt]);
 
   // Carrega assignments do caso quando entrar em edição
   const currentCaseId = selected?.caseId;
@@ -540,6 +549,7 @@ export function AgendaItemDetailDialog(
   }, [mode, hasLocalChanges]);
 
   const requestClose = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
     const dec = resolveDiscardIntent("close", {
       mode,
       hasChanges: hasLocalChanges,
@@ -724,7 +734,7 @@ export function AgendaItemDetailDialog(
     mutationInFlightRef.current = true;
     setMutating(true);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     try {
       if (
         pendingStatus.kind === "deadline" &&
@@ -742,14 +752,7 @@ export function AgendaItemDetailDialog(
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
           if (t.kind === "conflict") {
-            setStatusConflict({
-              ...(t.expectedVersion !== undefined
-                ? { expected: t.expectedVersion }
-                : {}),
-              ...(t.actualVersion !== undefined
-                ? { actual: t.actualVersion }
-                : {}),
-            });
+            setMutationConflict(buildMutationConflict("change_status", t));
           }
           return;
         }
@@ -777,14 +780,7 @@ export function AgendaItemDetailDialog(
           const t = translateAgendaMutationError(res.error);
           setMutationError(t);
           if (t.kind === "conflict") {
-            setStatusConflict({
-              ...(t.expectedVersion !== undefined
-                ? { expected: t.expectedVersion }
-                : {}),
-              ...(t.actualVersion !== undefined
-                ? { actual: t.actualVersion }
-                : {}),
-            });
+            setMutationConflict(buildMutationConflict("change_status", t));
           }
           return;
         }
@@ -812,6 +808,7 @@ export function AgendaItemDetailDialog(
     mutationInFlightRef.current = true;
     setMutating(true);
     setMutationError(null);
+    setMutationConflict(null);
     try {
       const version = detail.loaded.item.metadata.version;
       if (detail.loaded.type === "deadline") {
@@ -823,7 +820,11 @@ export function AgendaItemDetailDialog(
         );
         if (!mountedRef.current) return;
         if (!res.ok) {
-          setMutationError(translateAgendaMutationError(res.error));
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setMutationConflict(buildMutationConflict("remove", t));
+          }
           return;
         }
         setPendingRemoval(false);
@@ -842,7 +843,11 @@ export function AgendaItemDetailDialog(
         );
         if (!mountedRef.current) return;
         if (!res.ok) {
-          setMutationError(translateAgendaMutationError(res.error));
+          const t = translateAgendaMutationError(res.error);
+          setMutationError(t);
+          if (t.kind === "conflict") {
+            setMutationConflict(buildMutationConflict("remove", t));
+          }
           return;
         }
         setPendingRemoval(false);
@@ -867,12 +872,26 @@ export function AgendaItemDetailDialog(
     onDeleted,
   ]);
 
-  const reloadAfterStatusConflict = React.useCallback(() => {
+  const reloadAfterMutationConflict = React.useCallback(() => {
     if (mutationInFlightRef.current) return;
     setPendingStatus(null);
+    setPendingRemoval(false);
     setMutationError(null);
-    setStatusConflict(null);
+    setMutationConflict(null);
     setReload((r) => r + 1);
+  }, []);
+
+  const keepReviewingMutation = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPendingStatus(null);
+    setPendingRemoval(false);
+    setMutationError(null);
+    setMutationConflict(null);
+  }, []);
+
+  const retryPermissions = React.useCallback(() => {
+    if (mutationInFlightRef.current) return;
+    setPermAttempt((n) => n + 1);
   }, []);
 
 
@@ -962,7 +981,7 @@ export function AgendaItemDetailDialog(
         <DialogContent
           className="max-h-[95vh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-0 sm:max-w-2xl"
           onEscapeKeyDown={(e) => {
-            if (submittingRef.current) {
+            if (submittingRef.current || mutationInFlightRef.current || mutating) {
               e.preventDefault();
               return;
             }
@@ -1047,19 +1066,34 @@ export function AgendaItemDetailDialog(
                     mutationError={mutationError}
                     onSelectDeadlineAction={(action) => {
                       setMutationError(null);
-                      setStatusConflict(null);
+                      setMutationConflict(null);
                       setPendingStatus({ kind: "deadline", action });
                     }}
                     onSelectAppointmentAction={(action) => {
                       setMutationError(null);
-                      setStatusConflict(null);
+                      setMutationConflict(null);
                       setPendingStatus({ kind: "appointment", action });
                     }}
                     onRequestRemoval={() => {
                       setMutationError(null);
+                      setMutationConflict(null);
                       setPendingRemoval(true);
                     }}
                   />
+                  {(permChangeStatus === "error" || permRemove === "error") && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/30 p-2 text-xs text-muted-foreground">
+                      <span>Não foi possível verificar esta permissão.</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={retryPermissions}
+                        disabled={mutating}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -1166,14 +1200,19 @@ export function AgendaItemDetailDialog(
             <DialogFooter className="gap-2 border-t px-4 py-3 sm:px-6">
               {mode === "view" ? (
                 <>
-                  <Button type="button" variant="outline" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestClose}
+                    disabled={submitting || mutating}
+                  >
                     Fechar
                   </Button>
                   {detail.kind === "ready" && (
                     <Button
                       type="button"
                       onClick={enterEdit}
-                      disabled={perm !== "allowed"}
+                      disabled={perm !== "allowed" || mutating}
                       aria-describedby={
                         perm === "denied" ? "detail-perm-hint" : undefined
                       }
@@ -1247,27 +1286,47 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingStatus !== null}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current) {
+          if (!o && !mutationInFlightRef.current && !mutating) {
             setPendingStatus(null);
             setMutationError(null);
-            setStatusConflict(null);
+            setMutationConflict(null);
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(e) => {
+            if (mutationInFlightRef.current || mutating) e.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingStatus?.kind === "deadline"
-                ? pendingStatus.action.confirmTitle
-                : pendingStatus?.kind === "appointment"
-                  ? pendingStatus.action.confirmTitle
-                  : ""}
+              {pendingStatus ? pendingStatus.action.confirmTitle : ""}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingStatus &&
                 `Alterar status de ${pendingStatus.action.currentLabel} para ${pendingStatus.action.targetLabel}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pendingStatus && detail.kind === "ready" && (
+            <div className="grid gap-1 rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+              <div data-testid="status-confirm-title">
+                <span className="font-medium text-foreground">Item:</span>{" "}
+                <span className="text-muted-foreground">{detail.loaded.item.title}</span>
+              </div>
+              <div>
+                <span className="font-medium text-foreground">Estado atual:</span>{" "}
+                <span className="text-muted-foreground">{pendingStatus.action.currentLabel}</span>
+              </div>
+              <div>
+                <span className="font-medium text-foreground">Novo estado:</span>{" "}
+                <span className="text-muted-foreground">{pendingStatus.action.targetLabel}</span>
+              </div>
+              <div data-testid="status-confirm-version">
+                <span className="font-medium text-foreground">Versão atual:</span>{" "}
+                <span className="text-muted-foreground">v{detail.loaded.item.metadata.version}</span>
+              </div>
+            </div>
+          )}
           {mutationError && (
             <div
               role="alert"
@@ -1277,14 +1336,30 @@ export function AgendaItemDetailDialog(
               <span>{mutationError.message}</span>
             </div>
           )}
+          {mutationConflict &&
+            mutationConflict.operation === "change_status" &&
+            (mutationConflict.expected !== undefined ||
+              mutationConflict.actual !== undefined) && (
+              <p className="text-xs text-muted-foreground">
+                Versão esperada: {mutationConflict.expected !== undefined ? `v${mutationConflict.expected}` : "—"} · Versão atual no servidor: {mutationConflict.actual !== undefined ? `v${mutationConflict.actual}` : "—"}
+              </p>
+            )}
           <AlertDialogFooter>
-            {statusConflict ? (
+            {mutationConflict && mutationConflict.operation === "change_status" ? (
               <>
-                <AlertDialogCancel disabled={mutating}>Fechar</AlertDialogCancel>
+                <AlertDialogCancel
+                  disabled={mutating}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    keepReviewingMutation();
+                  }}
+                >
+                  Continuar revisando
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
-                    reloadAfterStatusConflict();
+                    reloadAfterMutationConflict();
                   }}
                   disabled={mutating}
                 >
@@ -1317,23 +1392,40 @@ export function AgendaItemDetailDialog(
       <AlertDialog
         open={pendingRemoval}
         onOpenChange={(o) => {
-          if (!o && !mutationInFlightRef.current) {
+          if (!o && !mutationInFlightRef.current && !mutating) {
             setPendingRemoval(false);
             setMutationError(null);
+            setMutationConflict(null);
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(e) => {
+            if (mutationInFlightRef.current || mutating) e.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               {selected?.type === "deadline"
-                ? "Excluir este prazo?"
-                : "Excluir este compromisso?"}
+                ? "Excluir prazo?"
+                : "Excluir compromisso?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              Esta ação remove o item da Agenda e não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {detail.kind === "ready" && (
+            <div className="grid gap-1 rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+              <div data-testid="removal-confirm-title">
+                <span className="font-medium text-foreground">Item:</span>{" "}
+                <span className="text-muted-foreground">{detail.loaded.item.title}</span>
+              </div>
+              <div data-testid="removal-confirm-version">
+                <span className="font-medium text-foreground">Versão atual:</span>{" "}
+                <span className="text-muted-foreground">v{detail.loaded.item.metadata.version}</span>
+              </div>
+            </div>
+          )}
           {mutationError && (
             <div
               role="alert"
@@ -1343,22 +1435,61 @@ export function AgendaItemDetailDialog(
               <span>{mutationError.message}</span>
             </div>
           )}
+          {mutationConflict &&
+            mutationConflict.operation === "remove" &&
+            (mutationConflict.expected !== undefined ||
+              mutationConflict.actual !== undefined) && (
+              <p className="text-xs text-muted-foreground">
+                Versão esperada: {mutationConflict.expected !== undefined ? `v${mutationConflict.expected}` : "—"} · Versão atual no servidor: {mutationConflict.actual !== undefined ? `v${mutationConflict.actual}` : "—"}
+              </p>
+            )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutating}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmRemoval();
-              }}
-              disabled={mutating || permRemove !== "allowed"}
-              aria-busy={mutating}
-            >
-              {mutating && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              )}
-              <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-              Excluir
-            </AlertDialogAction>
+            {mutationConflict && mutationConflict.operation === "remove" ? (
+              <>
+                <AlertDialogCancel
+                  disabled={mutating}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    keepReviewingMutation();
+                  }}
+                >
+                  Continuar revisando
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    reloadAfterMutationConflict();
+                  }}
+                  disabled={mutating}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+                  Recarregar dados
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={mutating} autoFocus>
+                  Manter item
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void confirmRemoval();
+                  }}
+                  disabled={mutating || permRemove !== "allowed"}
+                  aria-busy={mutating}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {mutating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  )}
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                  {selected?.type === "deadline"
+                    ? "Excluir prazo"
+                    : "Excluir compromisso"}
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1388,10 +1519,13 @@ function ItemActionsSection({
   const canStatus = permChangeStatus === "allowed";
   const canRemove = permRemove === "allowed";
   if (!canStatus && !canRemove) return null;
-  const statusActions =
-    loaded.type === "deadline"
-      ? getDeadlineStatusActions(loaded.item.status)
-      : getAppointmentStatusActions(loaded.item.status);
+  const isDeadline = loaded.type === "deadline";
+  const deadlineActions: readonly DeadlineStatusAction[] = isDeadline
+    ? getDeadlineStatusActions(loaded.item.status)
+    : [];
+  const appointmentActions: readonly AppointmentStatusAction[] = !isDeadline
+    ? getAppointmentStatusActions(loaded.item.status)
+    : [];
 
   return (
     <section
@@ -1402,52 +1536,46 @@ function ItemActionsSection({
         Ações do item
       </div>
       <div className="flex flex-wrap gap-2">
-        {canStatus &&
-          statusActions.map((a) =>
-            loaded.type === "deadline" ? (
-              <Button
-                key={`d-${a.status}`}
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={mutating}
-                onClick={() =>
-                  onSelectDeadlineAction(a as DeadlineStatusAction)
-                }
-              >
-                {a.status === (loaded.item.status === "completed"
-                  ? "pending"
-                  : "completed") ? (
-                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
-                ) : a.status === "cancelled" ? (
-                  <Ban className="mr-2 h-4 w-4" aria-hidden />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
-                )}
-                {a.actionLabel}
-              </Button>
-            ) : (
-              <Button
-                key={`a-${a.status}`}
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={mutating}
-                onClick={() =>
-                  onSelectAppointmentAction(a as AppointmentStatusAction)
-                }
-              >
-                {a.status === "completed" ? (
-                  <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
-                ) : a.status === "cancelled" ? (
-                  <Ban className="mr-2 h-4 w-4" aria-hidden />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
-                )}
-                {a.actionLabel}
-              </Button>
-            ),
-          )}
+        {canStatus && isDeadline &&
+          deadlineActions.map((a) => (
+            <Button
+              key={`d-${a.status}`}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mutating}
+              onClick={() => onSelectDeadlineAction(a)}
+            >
+              {a.status === "completed" ? (
+                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+              ) : a.status === "cancelled" ? (
+                <Ban className="mr-2 h-4 w-4" aria-hidden />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+              )}
+              {a.actionLabel}
+            </Button>
+          ))}
+        {canStatus && !isDeadline &&
+          appointmentActions.map((a) => (
+            <Button
+              key={`a-${a.status}`}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mutating}
+              onClick={() => onSelectAppointmentAction(a)}
+            >
+              {a.status === "completed" ? (
+                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+              ) : a.status === "cancelled" ? (
+                <Ban className="mr-2 h-4 w-4" aria-hidden />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+              )}
+              {a.actionLabel}
+            </Button>
+          ))}
         {canRemove && (
           <Button
             type="button"
@@ -1546,6 +1674,9 @@ function ViewPanel({
         <Row label="Prioridade">{DEADLINE_PRIORITY_LABEL[d.priority]}</Row>
         <Row label="Status">{DEADLINE_STATUS_LABEL[d.status]}</Row>
         <Row label="Prazo">{fmtDateTime(d.dueAt)}</Row>
+        {d.completedAt !== undefined && (
+          <Row label="Cumprido em">{fmtDateTime(d.completedAt)}</Row>
+        )}
         <Row label="Responsável">
           {d.assignmentId ? String(d.assignmentId).slice(-6) : "—"}
         </Row>

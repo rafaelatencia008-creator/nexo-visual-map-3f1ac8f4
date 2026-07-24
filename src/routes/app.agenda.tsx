@@ -110,6 +110,11 @@ import {
   resolvePendingUpdateAction,
 } from "@/features/agenda/detail-reducers";
 import {
+  buildPendingRemovalMarker,
+  resolvePendingRemovalAction,
+  type PendingRemovalItem,
+} from "@/features/agenda/item-mutations";
+import {
   AgendaItemDetailDialog,
   type AgendaItemUpdated,
   type SelectedAgendaItem,
@@ -422,6 +427,8 @@ function AgendaPage() {
   const [selected, setSelected] = React.useState<SelectedAgendaItem | null>(
     null,
   );
+  const [pendingRemoval, setPendingRemoval] =
+    React.useState<PendingRemovalItem | null>(null);
   const lastTriggerRef = React.useRef<HTMLElement | null>(null);
   const mountedRef = React.useRef(true);
   const requestIdRef = React.useRef(0);
@@ -642,13 +649,35 @@ function AgendaPage() {
     setReloadKey((k) => k + 1);
   }, []);
 
-  const handleDeleted = React.useCallback(() => {
-    setSelected(null);
-    setReloadKey((k) => k + 1);
-    window.setTimeout(() => {
-      lastTriggerRef.current?.focus?.();
-    }, 0);
-  }, []);
+  const handleDeleted = React.useCallback(
+    (deleted: { readonly type: "deadline" | "appointment"; readonly id: string }) => {
+      setPendingRemoval(
+        buildPendingRemovalMarker(loadGenerationRef.current, {
+          type: deleted.type,
+          id: String(deleted.id),
+        }),
+      );
+      setSelected(null);
+      setReloadKey((k) => k + 1);
+      window.setTimeout(() => {
+        newItemButtonRef.current?.focus?.();
+      }, 0);
+    },
+    [],
+  );
+
+  // Confirma a remoção quando uma geração *posterior* à exclusão não lista o ID.
+  React.useEffect(() => {
+    if (!pendingRemoval) return;
+    const decision = resolvePendingRemovalAction(
+      pendingRemoval,
+      state,
+      visibleDeadlineIds,
+      visibleAppointmentIds,
+    );
+    if (decision.kind === "wait") return;
+    setPendingRemoval(null);
+  }, [pendingRemoval, state, visibleDeadlineIds, visibleAppointmentIds]);
 
   const openDeadline = React.useCallback(
     (d: Deadline, ev?: React.SyntheticEvent) => {
