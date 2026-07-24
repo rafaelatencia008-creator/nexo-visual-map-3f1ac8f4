@@ -160,7 +160,8 @@ function assignmentInCase(
   return !!a && a.organizationId === orgId && a.caseId === caseId;
 }
 function compareAppointments(a: Appointment, b: Appointment): number {
-  if (a.startsAt !== b.startsAt) return a.startsAt < b.startsAt ? -1 : 1;
+  const t = isoDateTimeToEpoch(a.startsAt) - isoDateTimeToEpoch(b.startsAt);
+  if (t !== 0) return t;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 function validateEnumArray<T extends string>(
