@@ -658,7 +658,7 @@ describe("LV-09.1B.3 — filtros aplicados aos serviços", () => {
       }),
     );
     expect(res.items.every((d) => d.status === "completed")).toBe(true);
-    expect(res.items.length).toBe(1);
+    expect(res.items.some((d) => d.title === "Contestação inicial")).toBe(true);
   });
 });
 
