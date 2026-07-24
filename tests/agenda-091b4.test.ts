@@ -608,7 +608,7 @@ describe("LV-09.1B.4 — integração com DeadlineService.create", () => {
     const list = ok(
       await env.services.deadlines.list(OWNER_ALFA, {
         caseId: SEED_CASE_ALFA_1_ID,
-        page: { limit: 200 },
+        page: { limit: 100 },
       }),
     );
     expect(list.items.some((d) => d.title === "NovoPrazoUnico123")).toBe(true);
@@ -702,7 +702,7 @@ describe("LV-09.1B.4 — integração com AppointmentService.create", () => {
     const list = ok(
       await env.services.appointments.list(OWNER_ALFA, {
         caseId: SEED_CASE_ALFA_1_ID,
-        page: { limit: 200 },
+        page: { limit: 100 },
       }),
     );
     expect(list.items.some((a) => a.title === "ReuniaoTesteUnica789")).toBe(true);
@@ -792,7 +792,7 @@ describe("LV-09.1B.4 — regressão da Agenda", () => {
     const list = ok(
       await env.services.deadlines.list(OWNER_ALFA, {
         caseId: SEED_CASE_ALFA_1_ID,
-        page: { limit: 200 },
+        page: { limit: 100 },
       }),
     );
     const now = Date.parse("2026-01-01T00:00:00.000Z");
