@@ -273,8 +273,8 @@ export function createDeadlineServiceMock(
         if (d.organizationId !== orgId) return false;
         if (!accessibleCaseIds.has(d.caseId)) return false;
         if (opts.caseId !== undefined && d.caseId !== opts.caseId) return false;
-        if (opts.rangeFrom !== undefined && d.dueAt < opts.rangeFrom) return false;
-        if (opts.rangeTo !== undefined && d.dueAt > opts.rangeTo) return false;
+        if (opts.rangeFrom !== undefined && isoDateTimeToEpoch(d.dueAt) < isoDateTimeToEpoch(opts.rangeFrom)) return false;
+        if (opts.rangeTo !== undefined && isoDateTimeToEpoch(d.dueAt) > isoDateTimeToEpoch(opts.rangeTo)) return false;
         if (statusesArr && !statusesArr.includes(d.status)) return false;
         if (kindsArr && !kindsArr.includes(d.kind)) return false;
         if (prioArr && !prioArr.includes(d.priority)) return false;
