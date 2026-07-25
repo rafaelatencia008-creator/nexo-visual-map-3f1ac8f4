@@ -258,8 +258,14 @@ export function createCommunicationServiceMock(
 
       if (!isCommunicationKind(raw.kind))
         return invalid<Communication>("invalid_kind");
-      if (!isCommunicationChannel(raw.channel))
-        return invalid<Communication>("invalid_channel");
+      let channel: CommunicationChannel | undefined;
+      if (raw.channel !== undefined) {
+        if (!isCommunicationChannel(raw.channel))
+          return invalid<Communication>("invalid_channel");
+        channel = raw.channel;
+      } else if (kindRequiresChannel(raw.kind)) {
+        return invalid<Communication>("communication_channel_required");
+      }
       if (!isCommunicationOutcome(raw.outcome))
         return invalid<Communication>("invalid_outcome");
       if (!isCommunicationDirection(raw.direction))
@@ -291,6 +297,9 @@ export function createCommunicationServiceMock(
         if (r === null) return invalid<Communication>("invalid_recipient_label");
         if (r !== "absent") recipientLabel = r;
       }
+      if (subject === undefined && note === undefined) {
+        return invalid<Communication>("communication_content_required");
+      }
 
       const previewId = ids.previewNext("communication");
       const previewTime = clock.previewNext();
@@ -300,7 +309,7 @@ export function createCommunicationServiceMock(
         caseId: raw.caseId,
         appointmentId: raw.appointmentId,
         kind: raw.kind,
-        channel: raw.channel,
+        ...(channel !== undefined ? { channel } : {}),
         outcome: raw.outcome,
         direction: raw.direction,
         ...(subject !== undefined ? { subject } : {}),
