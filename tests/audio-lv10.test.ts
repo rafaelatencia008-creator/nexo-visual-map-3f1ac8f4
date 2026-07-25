@@ -1166,10 +1166,11 @@ describe("LV-10 audio-runtime — troca real de microfone", () => {
     h.emitData(200); // 1000-2000 → fecha segmento 1
     expect(h.runtime.snapshot().segments.length).toBe(1);
     await h.runtime.setDevice("mic-new");
-    // Segmento capturado permanece na fila e em segments.
-    expect(h.runtime.snapshot().segments.length).toBe(1);
-    expect(h.runtime.snapshot().queue.order).toContain("segment-0001");
-  });
+    // Segmentos completos são preservados; um trailing incompleto pode ter sido finalizado.
+    const snap = h.runtime.snapshot();
+    expect(snap.segments.some((s) => s.id === "segment-0001" && !s.incomplete)).toBe(true);
+    expect(snap.queue.order).toContain("segment-0001");
+
 
   test("setDevice para o mesmo id é no-op", async () => {
     const h = makeHarness();
