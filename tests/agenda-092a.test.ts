@@ -349,8 +349,8 @@ describe("LV-09.2A · listByAppointment", () => {
     );
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(1);
-    expect(r.data.items[0].direction).toBe("outbound");
+    expect(r.data.items.length).toBe(3);
+    for (const it of r.data.items) expect(it.direction).toBe("outbound");
   });
 
   it("(42) filtra por outcome", async () => {
