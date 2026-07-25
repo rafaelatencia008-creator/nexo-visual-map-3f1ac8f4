@@ -21,13 +21,19 @@ export type SegmenterState = Readonly<{
   finalized: boolean;
 }>;
 
-export function initSegmenter(config: SegmenterConfig): SegmenterState {
+export function initSegmenter(
+  config: SegmenterConfig,
+  options: { startSequence?: number } = {},
+): SegmenterState {
   if (config.segmentDurationMs <= 0) throw new Error("segmentDurationMs must be positive");
   if (config.overlapMs < 0 || config.overlapMs >= config.segmentDurationMs)
     throw new Error("overlapMs must be between 0 and segmentDurationMs");
+  const startSequence = options.startSequence ?? 1;
+  if (!Number.isInteger(startSequence) || startSequence < 1)
+    throw new Error("startSequence must be a positive integer");
   return {
     config,
-    nextSequence: 1,
+    nextSequence: startSequence,
     bufferChunks: [],
     bufferStartMs: null,
     segments: [],
