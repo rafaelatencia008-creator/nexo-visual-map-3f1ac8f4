@@ -23,6 +23,7 @@ import {
   isCommunicationDirection,
   isCommunicationKind,
   isCommunicationOutcome,
+  kindRequiresChannel,
 } from "../core/communication";
 import {
   containsForbiddenKey,
