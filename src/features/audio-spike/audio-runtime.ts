@@ -232,29 +232,94 @@ export class AudioRuntime {
     this.notify();
   }
 
-  private async stopPreservingAndReopen(deviceId: string | null): Promise<void> {
-    // Fecha o gravador; segmentos já capturados permanecem em `this.segments`.
-    await this.stopAndFinalize();
-    // Após o stop, ctx é "completed" (via evento). Movemos manualmente para ready
-    // já apontando para o novo dispositivo.
+  /**
+   * Aguarda o encerramento assíncrono do gravador atual: mantém os listeners
+   * até o último `dataavailable` e o evento `stop` chegarem. Se já estiver
+   * inactive, retorna imediatamente. `silentFinalize=true` impede que o
+   * `onStop` publique transição de estado.
+   */
+  private awaitRecorderStop(): Promise<void> {
+    const recorder = this.recorder;
+    if (!recorder) return Promise.resolve();
+    if (recorder.state === "inactive") {
+      // O gravador já parou; drenar o segmenter manualmente se ainda houver
+      // segmento aberto.
+      const seg = this.segmenter;
+      if (seg && !seg.finalized) {
+        const finalized = finalizeSegmenter(seg);
+        this.segmenter = finalized;
+        if (finalized.segments.length > seg.segments.length) {
+          const additions = finalized.segments.slice(seg.segments.length);
+          this.segments = [...this.segments, ...additions];
+          let q = this.queue;
+          for (const s of additions) if (!q.items[s.id]) q = enqueueSegment(q, s);
+          this.queue = q;
+        }
+        this.nextSequence = finalized.nextSequence;
+      }
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      const l = () => {
+        recorder.removeEventListener?.("stop", l);
+        resolve();
+      };
+      recorder.addEventListener("stop", l);
+      try {
+        recorder.stop();
+      } catch {
+        recorder.removeEventListener?.("stop", l);
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Troca de microfone durante `recording`/`paused` preservando integralmente
+   * a sessão: segmentos, fila, previewUrls, cronômetro, contadores e
+   * `nextSequence`. Finaliza o gravador antigo de forma assíncrona (aguardando
+   * o último `dataavailable` e o `stop`), remove seus listeners somente ao
+   * final do ciclo e então reabre um novo stream com o dispositivo alvo.
+   */
+  private async continueOnNewDevice(deviceId: string | null): Promise<void> {
+    const wasPaused = this.ctx.state === "paused";
+    this.intentionalStop = true;
+    this.silentFinalize = true;
     try {
-      this.intentionalStop = true;
-      this.stopStreamOnly();
-      const stream = await this.deps.getUserMedia({
-        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
-      });
-      this.intentionalStop = false;
-      this.stream = stream;
-      this.attachTrackEnded();
-      // completed → ready via reset preservando segmentos? Não: o dispatch reset
-      // apagaria a interrupçãoCount. Aqui apenas remontamos o ctx para "ready".
-      this.ctx = { ...this.ctx, state: "ready", error: null };
-      this.notify();
-    } catch (err) {
-      this.dispatch({
-        type: "fatal",
-        reason: err instanceof Error ? err.message : "Falha ao trocar microfone",
-      });
+      await this.awaitRecorderStop();
+    } finally {
+      this.silentFinalize = false;
+      this.detachRecorderListeners();
+      this.recorder = null;
+    }
+    this.detachTrackEnded();
+    this.stopStreamOnly();
+    const stream = await this.deps.getUserMedia({
+      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+    });
+    this.intentionalStop = false;
+    this.stream = stream;
+    this.attachTrackEnded();
+    this.segmenter = initSegmenter(
+      {
+        segmentDurationMs: this.options.segmentDurationMs,
+        overlapMs: this.options.overlapMs,
+        mimeType: this.options.mimeType,
+      },
+      { startSequence: this.nextSequence },
+    );
+    this.chunkStartMs = 0;
+    this.attachRecorder({ startSequence: this.nextSequence });
+    // Preserva o estado da sessão: continua em recording/paused.
+    this.ctx = { ...this.ctx, state: wasPaused ? "paused" : "recording", error: null };
+    this.notify();
+    this.startRecorderSafely();
+    if (wasPaused) {
+      try {
+        this.recorder?.pause?.();
+      } catch {
+        /* noop */
+      }
     }
   }
 
