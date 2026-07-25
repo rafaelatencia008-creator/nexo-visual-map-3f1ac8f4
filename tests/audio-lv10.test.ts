@@ -727,10 +727,10 @@ describe("LV-10 integração de rota /app/entrevistas", () => {
     expect(existsSync(resolve(REPO, "src/routes/app.entrevistas.tsx"))).toBe(true);
   });
 
-  test("rota renderiza UnderConstruction no modo normal", () => {
+  test("rota renderiza módulo funcional (não usa mais UnderConstruction) — LV-11", () => {
     const src = readSrc("src/routes/app.entrevistas.tsx");
-    expect(src).toContain("UnderConstruction");
-    expect(src).toContain("CONSTRUCTION_MODULES");
+    expect(src).not.toContain("UnderConstruction");
+    expect(src).toContain("InterviewsDiligencesPage");
   });
 
   test("rota renderiza AudioSpikeLab quando demo=audio-spike", () => {

@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UnderConstruction } from "@/components/app/UnderConstruction";
-import { CONSTRUCTION_MODULES } from "@/lib/app-nav";
 import { AudioSpikeLab } from "@/features/audio-spike/AudioSpikeLab";
-
-const M = CONSTRUCTION_MODULES["/app/entrevistas"];
+import { InterviewsDiligencesPage } from "@/features/interviews/InterviewsDiligencesPage";
 
 type EntrevistasSearch = { demo?: string };
 
@@ -13,7 +10,12 @@ export const Route = createFileRoute("/app/entrevistas")({
   }),
   head: () => ({
     meta: [
-      { title: `${M.title} — Nexo Pericial 360` },
+      { title: "Entrevistas e diligências — Nexo Pericial 360" },
+      {
+        name: "description",
+        content:
+          "Registre entrevistas, vistorias e diligências com roteiros, anotações, transcrição manual e mídias.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -22,6 +24,6 @@ export const Route = createFileRoute("/app/entrevistas")({
 
 function EntrevistasRouteComponent() {
   const { demo } = Route.useSearch();
-  const isAudioSpike = demo === "audio-spike";
-  return isAudioSpike ? <AudioSpikeLab /> : <UnderConstruction {...M} />;
+  if (demo === "audio-spike") return <AudioSpikeLab />;
+  return <InterviewsDiligencesPage />;
 }
