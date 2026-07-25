@@ -17,6 +17,9 @@ import {
   isCommunicationOutcome,
   isCoherentCommunication,
   kindRequiresChannel,
+  type CommunicationDirection,
+  type CommunicationKind,
+  type CommunicationOutcome,
 } from "@/domain/core/communication";
 import { isAppointmentId, isCaseId } from "@/domain/core/ids";
 import type { AppointmentId, CaseId } from "@/domain/core/ids";
@@ -92,7 +95,11 @@ export const EMPTY_COMMUNICATION_FORM: CommunicationFormState = Object.freeze({
 const PRESETS: Readonly<
   Record<
     CommunicationQuickAction,
-    Readonly<{ kind: string; direction: string; outcome: string }>
+    Readonly<{
+      kind: CommunicationKind;
+      direction: CommunicationDirection;
+      outcome: CommunicationOutcome;
+    }>
   >
 > = Object.freeze({
   contact: {
@@ -145,9 +152,35 @@ export function createCommunicationFormForAction(
  */
 export function getAllowedOutcomesForAction(
   action: CommunicationQuickAction,
-): readonly string[] {
+): readonly CommunicationOutcome[] {
   if (action === "contact") return ["completed", "no_response", "message_left"];
   return [PRESETS[action].outcome];
+}
+
+// ---- Ordem de foco em falhas ---------------------------------------------
+
+const FIELD_FOCUS_ORDER: readonly CommunicationFormField[] = Object.freeze([
+  "kind",
+  "direction",
+  "outcome",
+  "channel",
+  "occurredAt",
+  "summary",
+  "notes",
+  "recipientLabel",
+] as const);
+
+/**
+ * Retorna o primeiro campo em erro segundo a ordem canônica de foco.
+ * Devolve `null` quando não há erros.
+ */
+export function getFirstCommunicationErrorField(
+  errors: Readonly<Partial<Record<CommunicationFormField, string>>>,
+): CommunicationFormField | null {
+  for (const f of FIELD_FOCUS_ORDER) {
+    if (errors[f] !== undefined) return f;
+  }
+  return null;
 }
 
 // ---- Builder -------------------------------------------------------------
