@@ -267,8 +267,8 @@ describe("LV-09.4 — rotação", () => {
     expect(nextRotation(180)).toBe(270);
     expect(nextRotation(270)).toBe(0);
   });
-  test("nextRotation com valor inválido volta a 90", () => {
-    expect(nextRotation(45)).toBe(90);
+  test("nextRotation com valor inválido reinicia em 0", () => {
+    expect(nextRotation(45)).toBe(0);
   });
 });
 

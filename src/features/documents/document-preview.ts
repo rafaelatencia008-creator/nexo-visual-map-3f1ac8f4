@@ -3,7 +3,7 @@
  *
  * Helpers puros e determinísticos. Nada é buscado, transmitido ou armazenado.
  * A prévia é sempre reconstruída a partir do par (documentId, versionId) —
- * sem Math.random, crypto.randomUUID ou Date.now.
+ * sem uso de RNG global, identificadores aleatórios ou timestamps.
  */
 
 import { getExtension } from "./document-form";
