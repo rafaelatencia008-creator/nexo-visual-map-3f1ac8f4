@@ -8,18 +8,8 @@
  * completo sem depender de DOM real.
  */
 
-import {
-  INITIAL_CONTEXT,
-  reduce,
-  type AudioMachineContext,
-} from "./audio-state-machine";
-import {
-  CLOCK_IDLE,
-  clockPause,
-  clockResume,
-  clockStart,
-  type ClockState,
-} from "./audio-clock";
+import { INITIAL_CONTEXT, reduce, type AudioMachineContext } from "./audio-state-machine";
+import { CLOCK_IDLE, clockPause, clockResume, clockStart, type ClockState } from "./audio-clock";
 import {
   finalizeSegmenter,
   initSegmenter,
@@ -102,10 +92,7 @@ export type RuntimeSnapshot = Readonly<{
 }>;
 
 type RecorderEmitter = {
-  fire: (
-    event: "dataavailable" | "stop" | "error",
-    payload: unknown,
-  ) => void;
+  fire: (event: "dataavailable" | "stop" | "error", payload: unknown) => void;
 };
 
 export class AudioRuntime {
@@ -266,16 +253,14 @@ export class AudioRuntime {
       this.attachTrackEnded();
       this.dispatch({ type: "permission_granted" });
     } catch (err) {
-      const reason =
-        err instanceof Error ? err.message : "Permissão do microfone negada";
+      const reason = err instanceof Error ? err.message : "Permissão do microfone negada";
       this.dispatch({ type: "permission_denied", reason });
     }
   }
 
   private attachTrackEnded(): void {
     if (!this.stream) return;
-    const tracks =
-      this.stream.getAudioTracks?.() ?? this.stream.getTracks();
+    const tracks = this.stream.getAudioTracks?.() ?? this.stream.getTracks();
     const handler = () => {
       // Se o descarte/encerramento intencional foi acionado, ignore.
       if (this.intentionalStop) return;
@@ -290,8 +275,7 @@ export class AudioRuntime {
 
   private detachTrackEnded(): void {
     if (!this.stream || !this.trackEndedHandler) return;
-    const tracks =
-      this.stream.getAudioTracks?.() ?? this.stream.getTracks();
+    const tracks = this.stream.getAudioTracks?.() ?? this.stream.getTracks();
     for (const t of tracks) t.removeEventListener?.("ended", this.trackEndedHandler);
     this.trackEndedHandler = null;
   }
@@ -373,9 +357,7 @@ export class AudioRuntime {
 
       // Enfileirar imediatamente segmentos recém-fechados durante a gravação.
       if (nextSegmenter.segments.length > prevSegmenter.segments.length) {
-        const additions = nextSegmenter.segments.slice(
-          prevSegmenter.segments.length,
-        );
+        const additions = nextSegmenter.segments.slice(prevSegmenter.segments.length);
         this.segments = [...this.segments, ...additions];
         let q = this.queue;
         for (const seg of additions) q = enqueueSegment(q, seg);
@@ -481,7 +463,6 @@ export class AudioRuntime {
     }
     await done;
   }
-
 
   stop(): void {
     if (!this.recorder) return;
@@ -667,10 +648,7 @@ export class AudioRuntime {
   }
 
   /** Emite manualmente eventos do MediaRecorder falso (usado em testes). */
-  _emitRecorderEvent(
-    type: "dataavailable" | "stop" | "error",
-    payload: unknown,
-  ): void {
+  _emitRecorderEvent(type: "dataavailable" | "stop" | "error", payload: unknown): void {
     const listener = this.recorderListeners.get(type);
     if (listener) listener(payload);
   }

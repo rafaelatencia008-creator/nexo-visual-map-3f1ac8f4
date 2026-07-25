@@ -1172,9 +1172,6 @@ describe("LV-10 audio-runtime — troca real de microfone", () => {
     expect(snap.queue.order).toContain("segment-0001");
   });
 
-
-
-
   test("setDevice para o mesmo id é no-op", async () => {
     const h = makeHarness();
     h.runtime.setDevice("mic-A");

@@ -36,9 +36,7 @@ export type RecorderOptions = {
 export type UseAudioRecorder = ReturnType<typeof useAudioRecorder>;
 
 function now(): number {
-  return typeof performance !== "undefined" && performance.now
-    ? performance.now()
-    : Date.now();
+  return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 }
 
 function createBrowserDeps(): AudioRuntimeDeps {
@@ -205,8 +203,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const s = snap?.context.state;
-    const hasContent =
-      s === "recording" || s === "paused" || (snap?.segments.length ?? 0) > 0;
+    const hasContent = s === "recording" || s === "paused" || (snap?.segments.length ?? 0) > 0;
     if (!hasContent) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -239,15 +236,9 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
   const stop = useCallback(() => runtimeRef.current?.stop(), []);
   const discardAllData = useCallback(() => runtimeRef.current?.discardAll(), []);
   const tryRecover = useCallback(() => runtimeRef.current?.tryRecover(), []);
-  const processSegment = useCallback(
-    (id: string) => runtimeRef.current?.processSegment(id),
-    [],
-  );
+  const processSegment = useCallback((id: string) => runtimeRef.current?.processSegment(id), []);
   const retry = useCallback((id: string) => runtimeRef.current?.retry(id), []);
-  const discardOne = useCallback(
-    (id: string) => runtimeRef.current?.discardOne(id),
-    [],
-  );
+  const discardOne = useCallback((id: string) => runtimeRef.current?.discardOne(id), []);
 
   useEffect(() => () => runtimeRef.current?.discardAll(), []);
   // Silence unused vars from message constants module for esm-tree-shaking.

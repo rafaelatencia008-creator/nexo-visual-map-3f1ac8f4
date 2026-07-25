@@ -42,7 +42,6 @@ export function initSegmenter(
   };
 }
 
-
 export function formatSegmentId(sequence: number): string {
   return `segment-${String(sequence).padStart(4, "0")}`;
 }
