@@ -310,7 +310,7 @@ describe("LV-09.2A · permissões", () => {
 // ---------------------------------------------------------------------------
 
 describe("LV-09.2A · listByAppointment", () => {
-  it("(39) lista as 3 do seed em AP_A2_2 ordenadas por occurredAt", async () => {
+  it("(39) lista as 6 do seed em AP_A2_2 ordenadas por occurredAt DESC", async () => {
     const env = createMockDomainEnvironment();
     const r = await env.services.communications.listByAppointment(
       OWNER_ALFA,
@@ -319,10 +319,10 @@ describe("LV-09.2A · listByAppointment", () => {
     );
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(3);
+    expect(r.data.items.length).toBe(6);
     const times = r.data.items.map((c) => c.occurredAt);
     for (let i = 1; i < times.length; i++)
-      expect(times[i - 1] <= times[i]).toBe(true);
+      expect(times[i - 1] >= times[i]).toBe(true);
   });
 
   it("(40) filtra por kind", async () => {
