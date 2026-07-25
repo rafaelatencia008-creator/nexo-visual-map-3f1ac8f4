@@ -787,8 +787,8 @@ describe("LV-09.2A · isolamento e imutabilidade", () => {
     const e1 = createMockDomainEnvironment();
     const e2 = createMockDomainEnvironment();
     await e1.services.communications.create(OWNER_ALFA, baseInput());
-    expect(e1.snapshot().communications.length).toBe(4);
-    expect(e2.snapshot().communications.length).toBe(3);
+    expect(e1.snapshot().communications.length).toBe(9);
+    expect(e2.snapshot().communications.length).toBe(8);
   });
   it("(81) appointment de outro case (AP_A1_1) fica sem comunicações", async () => {
     const env = createMockDomainEnvironment();
