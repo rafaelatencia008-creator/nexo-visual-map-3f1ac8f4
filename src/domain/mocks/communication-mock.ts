@@ -107,9 +107,9 @@ function validateOptionalTrimmed(v: unknown, max: number): string | null | "abse
 }
 
 function compareCommunications(a: Communication, b: Communication): number {
-  const t = isoDateTimeToEpoch(a.occurredAt) - isoDateTimeToEpoch(b.occurredAt);
+  const t = isoDateTimeToEpoch(b.occurredAt) - isoDateTimeToEpoch(a.occurredAt);
   if (t !== 0) return t;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }
 
 function validateEnumArray<T extends string>(
