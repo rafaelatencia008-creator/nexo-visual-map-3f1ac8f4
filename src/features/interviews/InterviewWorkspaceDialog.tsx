@@ -479,7 +479,7 @@ export function InterviewWorkspaceDialog({
                     <span className="text-sm">Nível: {(audio.level * 100).toFixed(0)}%</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {audio.context.permission !== "granted" && (
+                    {audio.context.state === "idle" && (
                       <Button onClick={audio.requestPermission}>
                         <Mic className="mr-2 h-4 w-4" aria-hidden /> Preparar microfone
                       </Button>
