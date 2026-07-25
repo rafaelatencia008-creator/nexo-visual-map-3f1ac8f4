@@ -195,8 +195,8 @@ describe("LV-09.2A · coerência kind × direction × outcome", () => {
 describe("LV-09.2A · isCommunication (guard)", () => {
   const env = createMockDomainEnvironment();
   const s = env.snapshot().communications;
-  it("(21) seed contém 3 comunicações válidas", () => {
-    expect(s.length).toBe(3);
+  it("(21) seed contém 8 comunicações válidas", () => {
+    expect(s.length).toBe(8);
     for (const c of s) expect(isCommunication(c)).toBe(true);
   });
   it("(22) rejeita objeto vazio", () => expect(isCommunication({})).toBe(false));
