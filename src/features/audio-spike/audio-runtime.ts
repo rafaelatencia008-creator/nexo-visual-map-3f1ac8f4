@@ -315,8 +315,9 @@ export class AudioRuntime {
     this.notify();
     this.startRecorderSafely();
     if (wasPaused) {
+      const rec = this.recorder as MinimalMediaRecorder | null;
       try {
-        this.recorder?.pause?.();
+        rec?.pause?.();
       } catch {
         /* noop */
       }
