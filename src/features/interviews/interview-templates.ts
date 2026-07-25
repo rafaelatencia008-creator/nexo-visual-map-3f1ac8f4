@@ -26,17 +26,37 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
       {
         title: "Identificação e vínculo",
         questions: [
-          { id: "ini-01", text: "Confirme o nome completo e a data de nascimento.", required: true },
+          {
+            id: "ini-01",
+            text: "Confirme o nome completo e a data de nascimento.",
+            required: true,
+          },
           { id: "ini-02", text: "Qual seu vínculo com o processo em análise?", required: true },
-          { id: "ini-03", text: "Existe alguma questão de saúde relevante para esta entrevista?", required: false },
+          {
+            id: "ini-03",
+            text: "Existe alguma questão de saúde relevante para esta entrevista?",
+            required: false,
+          },
         ],
       },
       {
         title: "Fatos e contexto",
         questions: [
-          { id: "ini-04", text: "Descreva com suas palavras o que motivou o processo.", required: true },
-          { id: "ini-05", text: "Existem outras pessoas envolvidas nos fatos relatados?", required: false },
-          { id: "ini-06", text: "Há documentos ou evidências que gostaria de destacar?", required: false },
+          {
+            id: "ini-04",
+            text: "Descreva com suas palavras o que motivou o processo.",
+            required: true,
+          },
+          {
+            id: "ini-05",
+            text: "Existem outras pessoas envolvidas nos fatos relatados?",
+            required: false,
+          },
+          {
+            id: "ini-06",
+            text: "Há documentos ou evidências que gostaria de destacar?",
+            required: false,
+          },
         ],
       },
     ],
@@ -49,15 +69,31 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
       {
         title: "Revisão de pontos anteriores",
         questions: [
-          { id: "com-01", text: "Confirmar identidade e finalidade da entrevista complementar.", required: true },
-          { id: "com-02", text: "Deseja retificar ou complementar informações anteriores?", required: true },
+          {
+            id: "com-01",
+            text: "Confirmar identidade e finalidade da entrevista complementar.",
+            required: true,
+          },
+          {
+            id: "com-02",
+            text: "Deseja retificar ou complementar informações anteriores?",
+            required: true,
+          },
         ],
       },
       {
         title: "Aprofundamento",
         questions: [
-          { id: "com-03", text: "Detalhar cronologia dos fatos apontados como controversos.", required: true },
-          { id: "com-04", text: "Apresentar documentos adicionais recebidos após a primeira entrevista.", required: false },
+          {
+            id: "com-03",
+            text: "Detalhar cronologia dos fatos apontados como controversos.",
+            required: true,
+          },
+          {
+            id: "com-04",
+            text: "Apresentar documentos adicionais recebidos após a primeira entrevista.",
+            required: false,
+          },
         ],
       },
     ],
@@ -78,8 +114,16 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
       {
         title: "Objeto da avaliação",
         questions: [
-          { id: "psi-04", text: "Como percebe o impacto dos fatos discutidos em sua rotina?", required: true },
-          { id: "psi-05", text: "Existe algo que gostaria que fosse considerado no laudo?", required: false },
+          {
+            id: "psi-04",
+            text: "Como percebe o impacto dos fatos discutidos em sua rotina?",
+            required: true,
+          },
+          {
+            id: "psi-05",
+            text: "Existe algo que gostaria que fosse considerado no laudo?",
+            required: false,
+          },
         ],
       },
     ],
@@ -93,14 +137,22 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
         title: "Dinâmica familiar",
         questions: [
           { id: "fam-01", text: "Descreva a composição familiar atual.", required: true },
-          { id: "fam-02", text: "Como se dá a rotina de convivência entre os membros?", required: true },
+          {
+            id: "fam-02",
+            text: "Como se dá a rotina de convivência entre os membros?",
+            required: true,
+          },
         ],
       },
       {
         title: "Conflitos e cuidados",
         questions: [
           { id: "fam-03", text: "Existem pontos de conflito recorrentes? Quais?", required: true },
-          { id: "fam-04", text: "Como são organizados cuidados com crianças, idosos ou dependentes?", required: false },
+          {
+            id: "fam-04",
+            text: "Como são organizados cuidados com crianças, idosos ou dependentes?",
+            required: false,
+          },
         ],
       },
     ],
@@ -113,15 +165,31 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
       {
         title: "Acolhida e ambientação",
         questions: [
-          { id: "cri-01", text: "Explicar de forma acessível o motivo da conversa.", required: true },
-          { id: "cri-02", text: "Verificar se a criança/adolescente sente-se à vontade para falar.", required: true },
+          {
+            id: "cri-01",
+            text: "Explicar de forma acessível o motivo da conversa.",
+            required: true,
+          },
+          {
+            id: "cri-02",
+            text: "Verificar se a criança/adolescente sente-se à vontade para falar.",
+            required: true,
+          },
         ],
       },
       {
         title: "Percepção dos fatos",
         questions: [
-          { id: "cri-03", text: "Perguntar como a criança/adolescente descreve seu dia a dia.", required: true },
-          { id: "cri-04", text: "Explorar sentimentos em relação aos fatos, respeitando pausas.", required: false },
+          {
+            id: "cri-03",
+            text: "Perguntar como a criança/adolescente descreve seu dia a dia.",
+            required: true,
+          },
+          {
+            id: "cri-04",
+            text: "Explorar sentimentos em relação aos fatos, respeitando pausas.",
+            required: false,
+          },
         ],
       },
     ],
@@ -134,9 +202,21 @@ export const INTERVIEW_TEMPLATES: readonly InterviewTemplate[] = [
       {
         title: "Aspectos técnicos",
         questions: [
-          { id: "tec-01", text: "Confirmar identificação e vínculo técnico com o objeto pericial.", required: true },
-          { id: "tec-02", text: "Descrever o histórico técnico do objeto sob análise.", required: true },
-          { id: "tec-03", text: "Registrar aspectos técnicos relevantes observados.", required: false },
+          {
+            id: "tec-01",
+            text: "Confirmar identificação e vínculo técnico com o objeto pericial.",
+            required: true,
+          },
+          {
+            id: "tec-02",
+            text: "Descrever o histórico técnico do objeto sob análise.",
+            required: true,
+          },
+          {
+            id: "tec-03",
+            text: "Registrar aspectos técnicos relevantes observados.",
+            required: false,
+          },
         ],
       },
     ],

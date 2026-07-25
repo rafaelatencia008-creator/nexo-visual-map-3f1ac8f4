@@ -86,9 +86,7 @@ export function InterviewFormDialog({ open, onOpenChange, onCreated }: Interview
   }
 
   function toggleParticipant(id: string) {
-    setParticipantIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    );
+    setParticipantIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
   function submit() {
@@ -143,7 +141,10 @@ export function InterviewFormDialog({ open, onOpenChange, onCreated }: Interview
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="ent-case">Processo</Label>
-                <Select value={caseId || "none"} onValueChange={(v) => setCaseId(v === "none" ? "" : v)}>
+                <Select
+                  value={caseId || "none"}
+                  onValueChange={(v) => setCaseId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger id="ent-case">
                     <SelectValue placeholder="Nenhum" />
                   </SelectTrigger>
@@ -160,7 +161,10 @@ export function InterviewFormDialog({ open, onOpenChange, onCreated }: Interview
 
               <div className="grid gap-2">
                 <Label htmlFor="ent-pericia">Perícia</Label>
-                <Select value={expertiseId || "none"} onValueChange={(v) => setExpertiseId(v === "none" ? "" : v)}>
+                <Select
+                  value={expertiseId || "none"}
+                  onValueChange={(v) => setExpertiseId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger id="ent-pericia">
                     <SelectValue placeholder="Nenhuma" />
                   </SelectTrigger>

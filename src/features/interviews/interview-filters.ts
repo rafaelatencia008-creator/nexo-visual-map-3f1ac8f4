@@ -103,10 +103,7 @@ export function applyInterviewFilters(
     if (filters.tab === "diligencias" && r.kind !== "diligencia") return false;
     if (filters.status !== "todas" && r.status !== filters.status) return false;
     if (filters.caseId !== "todos" && r.caseId !== filters.caseId) return false;
-    if (
-      filters.responsibleLabel !== "todos" &&
-      r.responsibleLabel !== filters.responsibleLabel
-    ) {
+    if (filters.responsibleLabel !== "todos" && r.responsibleLabel !== filters.responsibleLabel) {
       return false;
     }
     if (!inPeriod(r, filters.periodStart, filters.periodEnd)) return false;
@@ -121,7 +118,10 @@ export function countByStatus(records: readonly ModuleRecord[]): {
   concluidas: number;
   comPendencia: number;
 } {
-  let a = 0, e = 0, c = 0, p = 0;
+  let a = 0,
+    e = 0,
+    c = 0,
+    p = 0;
   for (const r of records) {
     if (r.status === "agendada") a += 1;
     else if (r.status === "em_andamento") e += 1;

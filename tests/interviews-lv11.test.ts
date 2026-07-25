@@ -116,9 +116,7 @@ describe("LV-11 · rota e menu", () => {
   });
   test("menu não marca entrevistas como construction", () => {
     // Bloco específico da entrada de Entrevistas não deve ter construction: true
-    const line = navSrc
-      .split("\n")
-      .find((l) => l.includes('label: "Entrevistas e diligências"'));
+    const line = navSrc.split("\n").find((l) => l.includes('label: "Entrevistas e diligências"'));
     expect(line).toBeDefined();
     expect(line!).not.toMatch(/construction:\s*true/);
   });
@@ -169,17 +167,13 @@ describe("LV-11 · seed determinístico", () => {
     const list = listInterviewRecords();
     expect(
       list.some(
-        (r) =>
-          r.kind === "entrevista" &&
-          r.questions.some((q) => q.status === "respondida"),
+        (r) => r.kind === "entrevista" && r.questions.some((q) => q.status === "respondida"),
       ),
     ).toBe(true);
   });
   test("seed inclui roteiro personalizado (sem perguntas)", () => {
     const list = listInterviewRecords();
-    expect(
-      list.some((r) => r.kind === "entrevista" && r.questions.length === 0),
-    ).toBe(true);
+    expect(list.some((r) => r.kind === "entrevista" && r.questions.length === 0)).toBe(true);
   });
   test("seed inclui entrevistas com e sem roteiro", () => {
     const list = listInterviewRecords();
@@ -194,9 +188,7 @@ describe("LV-11 · seed determinístico", () => {
   });
   test("seed inclui diligências com checklist", () => {
     const list = listInterviewRecords();
-    expect(
-      list.some((r) => r.kind === "diligencia" && r.checklistItems.length > 0),
-    ).toBe(true);
+    expect(list.some((r) => r.kind === "diligencia" && r.checklistItems.length > 0)).toBe(true);
   });
   test("seed inclui diligências com fotos mock", () => {
     const list = listInterviewRecords();
@@ -220,18 +212,19 @@ describe("LV-11 · seed determinístico", () => {
     expect(list.some((r) => r.title.length < 40)).toBe(true);
   });
   test("seed não usa Math.random / Date.now / crypto.randomUUID no arquivo", () => {
-    const src = readFileSync(
-      resolve("src/features/interviews/interview-mock-store.ts"),
-      "utf8",
-    );
+    const src = readFileSync(resolve("src/features/interviews/interview-mock-store.ts"), "utf8");
     expect(src).not.toMatch(/Math\.random\(/);
     expect(src).not.toMatch(/crypto\.randomUUID/);
   });
   test("dois resets sucessivos produzem o mesmo estado (determinismo)", () => {
     resetInterviewStore();
-    const a = listInterviewRecords().map((r) => r.id).join(",");
+    const a = listInterviewRecords()
+      .map((r) => r.id)
+      .join(",");
     resetInterviewStore();
-    const b = listInterviewRecords().map((r) => r.id).join(",");
+    const b = listInterviewRecords()
+      .map((r) => r.id)
+      .join(",");
     expect(a).toBe(b);
   });
 });
@@ -308,7 +301,12 @@ describe("LV-11 · pesquisa e filtros", () => {
 
   test("normalizeSearch remove acentos e trata case", () => {
     expect(normalizeSearch(" DILIGÊNCIA ")).toBe("diligencia");
-    expect(normalizeSearch("ÁÉÍÓÚçÇ")).toBe("aeiouçc".toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    expect(normalizeSearch("ÁÉÍÓÚçÇ")).toBe(
+      "aeiouçc"
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""),
+    );
   });
   test("busca insensível a acentos localiza registros", () => {
     const list = listInterviewRecords();

@@ -5,15 +5,7 @@
  * manual e finalização com validações.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertCircle,
-  Mic,
-  MicOff,
-  Pause,
-  Play,
-  Square,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Mic, MicOff, Pause, Play, Square, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -167,7 +159,11 @@ export function InterviewWorkspaceDialog({
   }, [interviewId, transDraft]);
 
   const handleAnswer = useCallback(
-    (qid: string, status: QuestionAnswerStatus, patch: Partial<{ answerText: string; observation: string; justification: string }> = {}) => {
+    (
+      qid: string,
+      status: QuestionAnswerStatus,
+      patch: Partial<{ answerText: string; observation: string; justification: string }> = {},
+    ) => {
       if (!interviewId) return;
       answerQuestion(interviewId, qid, { status, ...patch });
     },
@@ -227,7 +223,10 @@ export function InterviewWorkspaceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto" data-testid="interview-workspace">
+        <DialogContent
+          className="max-w-4xl max-h-[92vh] overflow-y-auto"
+          data-testid="interview-workspace"
+        >
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
               <span>{rec_.title}</span>
@@ -249,9 +248,13 @@ export function InterviewWorkspaceDialog({
 
           <Tabs defaultValue="roteiro" className="w-full">
             <TabsList className="w-full flex-wrap">
-              <TabsTrigger value="roteiro">Roteiro ({answeredCount}/{totalQuestions})</TabsTrigger>
+              <TabsTrigger value="roteiro">
+                Roteiro ({answeredCount}/{totalQuestions})
+              </TabsTrigger>
               <TabsTrigger value="notas">Notas ({rec_.notes.length})</TabsTrigger>
-              <TabsTrigger value="transcricao">Transcrição ({rec_.transcriptBlocks.length})</TabsTrigger>
+              <TabsTrigger value="transcricao">
+                Transcrição ({rec_.transcriptBlocks.length})
+              </TabsTrigger>
               <TabsTrigger value="audio">Áudio</TabsTrigger>
             </TabsList>
 
@@ -266,12 +269,16 @@ export function InterviewWorkspaceDialog({
                       {rec_.questions
                         .filter((q) => q.templateSection === sec.title)
                         .map((q) => (
-                          <li key={q.id} className="rounded-md border border-border/60 p-3 space-y-2">
+                          <li
+                            key={q.id}
+                            className="rounded-md border border-border/60 p-3 space-y-2"
+                          >
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="text-sm font-medium">{q.questionText}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {q.required ? "Obrigatória" : "Opcional"} · {QUESTION_STATUS_LABEL[q.status]}
+                                  {q.required ? "Obrigatória" : "Opcional"} ·{" "}
+                                  {QUESTION_STATUS_LABEL[q.status]}
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-1">
@@ -295,8 +302,12 @@ export function InterviewWorkspaceDialog({
                                   size="sm"
                                   variant={q.status === "ignorada" ? "default" : "outline"}
                                   onClick={() => {
-                                    const j = window.prompt("Justificativa para ignorar:", q.justification ?? "");
-                                    if (j !== null) handleAnswer(q.id, "ignorada", { justification: j });
+                                    const j = window.prompt(
+                                      "Justificativa para ignorar:",
+                                      q.justification ?? "",
+                                    );
+                                    if (j !== null)
+                                      handleAnswer(q.id, "ignorada", { justification: j });
                                   }}
                                   disabled={readOnly}
                                 >
@@ -308,7 +319,9 @@ export function InterviewWorkspaceDialog({
                               rows={2}
                               value={q.answerText ?? ""}
                               placeholder="Resposta ou observação"
-                              onChange={(e) => handleAnswer(q.id, q.status, { answerText: e.target.value })}
+                              onChange={(e) =>
+                                handleAnswer(q.id, q.status, { answerText: e.target.value })
+                              }
                               disabled={readOnly}
                             />
                           </li>
@@ -318,7 +331,8 @@ export function InterviewWorkspaceDialog({
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Roteiro personalizado: utilize notas e transcrição manual para registrar a entrevista.
+                  Roteiro personalizado: utilize notas e transcrição manual para registrar a
+                  entrevista.
                 </p>
               )}
             </TabsContent>
@@ -326,7 +340,12 @@ export function InterviewWorkspaceDialog({
             <TabsContent value="notas" className="space-y-4 pt-4">
               <div className="grid gap-2 rounded-md border border-border/60 p-3">
                 <Label htmlFor="note-kind">Tipo</Label>
-                <Select value={noteDraft.kind} onValueChange={(v) => setNoteDraft((n) => ({ ...n, kind: v as InterviewNoteKind }))}>
+                <Select
+                  value={noteDraft.kind}
+                  onValueChange={(v) =>
+                    setNoteDraft((n) => ({ ...n, kind: v as InterviewNoteKind }))
+                  }
+                >
                   <SelectTrigger id="note-kind" className="w-full sm:max-w-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -394,7 +413,9 @@ export function InterviewWorkspaceDialog({
                     <Input
                       id="trs-person"
                       value={transDraft.personLabel}
-                      onChange={(e) => setTransDraft((d) => ({ ...d, personLabel: e.target.value }))}
+                      onChange={(e) =>
+                        setTransDraft((d) => ({ ...d, personLabel: e.target.value }))
+                      }
                       placeholder="Entrevistado"
                       disabled={readOnly}
                     />
@@ -409,7 +430,10 @@ export function InterviewWorkspaceDialog({
                   disabled={readOnly}
                 />
                 <div className="flex justify-end">
-                  <Button onClick={handleAddTranscriptBlock} disabled={readOnly || !transDraft.text.trim()}>
+                  <Button
+                    onClick={handleAddTranscriptBlock}
+                    disabled={readOnly || !transDraft.text.trim()}
+                  >
                     Adicionar bloco
                   </Button>
                 </div>
@@ -487,11 +511,7 @@ export function InterviewWorkspaceDialog({
                     <Button onClick={handleStartRec} disabled={isRecording || isPaused}>
                       <Mic className="mr-2 h-4 w-4" aria-hidden /> Iniciar
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handlePauseRec}
-                      disabled={!isRecording}
-                    >
+                    <Button variant="outline" onClick={handlePauseRec} disabled={!isRecording}>
                       <Pause className="mr-2 h-4 w-4" aria-hidden /> Pausar
                     </Button>
                     <Button variant="outline" onClick={handleResumeRec} disabled={!isPaused}>
@@ -500,14 +520,18 @@ export function InterviewWorkspaceDialog({
                     <Button variant="outline" onClick={handleStopRec} disabled={!audioActive}>
                       <Square className="mr-2 h-4 w-4" aria-hidden /> Encerrar
                     </Button>
-                    <Button variant="ghost" onClick={handleDiscardRec} disabled={audio.segments.length === 0}>
+                    <Button
+                      variant="ghost"
+                      onClick={handleDiscardRec}
+                      disabled={audio.segments.length === 0}
+                    >
                       <MicOff className="mr-2 h-4 w-4" aria-hidden /> Descartar
                     </Button>
                   </div>
                   <Alert>
                     <AlertDescription>
-                      O áudio não será preservado após fechar ou recarregar esta página nesta
-                      etapa. Nenhuma transcrição automática está ativa.
+                      O áudio não será preservado após fechar ou recarregar esta página nesta etapa.
+                      Nenhuma transcrição automática está ativa.
                     </AlertDescription>
                   </Alert>
                 </>
@@ -529,11 +553,7 @@ export function InterviewWorkspaceDialog({
                 Retomar
               </Button>
             )}
-            {!readOnly && (
-              <Button onClick={() => setConfirmComplete(true)}>
-                Finalizar
-              </Button>
-            )}
+            {!readOnly && <Button onClick={() => setConfirmComplete(true)}>Finalizar</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -568,7 +588,9 @@ export function InterviewWorkspaceDialog({
                     )}
                   </>
                 )}
-                <Label htmlFor="entrev-concl" className="mt-2 block">Conclusão (opcional)</Label>
+                <Label htmlFor="entrev-concl" className="mt-2 block">
+                  Conclusão (opcional)
+                </Label>
                 <Textarea
                   id="entrev-concl"
                   rows={3}

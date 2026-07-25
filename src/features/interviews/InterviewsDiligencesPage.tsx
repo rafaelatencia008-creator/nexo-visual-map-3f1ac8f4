@@ -2,16 +2,7 @@
  * LV-11 — Página principal: Entrevistas e diligências.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import {
-  Calendar,
-  Filter,
-  Mic,
-  Plus,
-  Search,
-  Wifi,
-  WifiOff,
-  X,
-} from "lucide-react";
+import { Calendar, Filter, Mic, Plus, Search, Wifi, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,11 +70,7 @@ function useOnline(): boolean {
 }
 
 function useInterviewRecords(): readonly ModuleRecord[] {
-  return useSyncExternalStore(
-    subscribeInterviewStore,
-    listInterviewRecords,
-    listInterviewRecords,
-  );
+  return useSyncExternalStore(subscribeInterviewStore, listInterviewRecords, listInterviewRecords);
 }
 
 export function InterviewsDiligencesPage() {
@@ -249,21 +236,29 @@ export function InterviewsDiligencesPage() {
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label htmlFor="p-start" className="text-xs">De</Label>
+                <Label htmlFor="p-start" className="text-xs">
+                  De
+                </Label>
                 <Input
                   id="p-start"
                   type="date"
                   value={filters.periodStart ?? ""}
-                  onChange={(e) => setFilters((f) => ({ ...f, periodStart: e.target.value || undefined }))}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, periodStart: e.target.value || undefined }))
+                  }
                 />
               </div>
               <div className="flex-1">
-                <Label htmlFor="p-end" className="text-xs">Até</Label>
+                <Label htmlFor="p-end" className="text-xs">
+                  Até
+                </Label>
                 <Input
                   id="p-end"
                   type="date"
                   value={filters.periodEnd ?? ""}
-                  onChange={(e) => setFilters((f) => ({ ...f, periodEnd: e.target.value || undefined }))}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, periodEnd: e.target.value || undefined }))
+                  }
                 />
               </div>
             </div>
@@ -274,9 +269,7 @@ export function InterviewsDiligencesPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() =>
-                  setFilters((f) => ({ ...EMPTY_INTERVIEW_FILTERS, tab: f.tab }))
-                }
+                onClick={() => setFilters((f) => ({ ...EMPTY_INTERVIEW_FILTERS, tab: f.tab }))}
               >
                 <X className="mr-2 h-3 w-3" aria-hidden /> Limpar filtros
               </Button>

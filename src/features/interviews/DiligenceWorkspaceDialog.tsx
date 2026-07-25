@@ -194,7 +194,10 @@ export function DiligenceWorkspaceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto" data-testid="diligence-workspace">
+        <DialogContent
+          className="max-w-4xl max-h-[92vh] overflow-y-auto"
+          data-testid="diligence-workspace"
+        >
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
               <span>{rec.title}</span>
@@ -233,7 +236,11 @@ export function DiligenceWorkspaceDialog({
                       <Select
                         value={it.state}
                         onValueChange={(v) =>
-                          setChecklistItemState(rec.id, it.id, v as typeof CHECKLIST_STATES[number])
+                          setChecklistItemState(
+                            rec.id,
+                            it.id,
+                            v as (typeof CHECKLIST_STATES)[number],
+                          )
                         }
                         disabled={readOnly}
                       >
@@ -304,7 +311,12 @@ export function DiligenceWorkspaceDialog({
             <TabsContent value="notas" className="space-y-4 pt-4">
               <div className="grid gap-2 rounded-md border border-border/60 p-3">
                 <Label htmlFor="dil-note-kind">Tipo</Label>
-                <Select value={noteDraft.kind} onValueChange={(v) => setNoteDraft((n) => ({ ...n, kind: v as InterviewNoteKind }))}>
+                <Select
+                  value={noteDraft.kind}
+                  onValueChange={(v) =>
+                    setNoteDraft((n) => ({ ...n, kind: v as InterviewNoteKind }))
+                  }
+                >
                   <SelectTrigger id="dil-note-kind" className="w-full sm:max-w-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -417,7 +429,8 @@ export function DiligenceWorkspaceDialog({
                   </p>
                   {rec.location.accuracyMeters !== undefined && (
                     <p className="text-xs text-muted-foreground">
-                      Precisão: ±{rec.location.accuracyMeters.toFixed(0)} m · Fonte: {rec.location.source}
+                      Precisão: ±{rec.location.accuracyMeters.toFixed(0)} m · Fonte:{" "}
+                      {rec.location.source}
                     </p>
                   )}
                 </div>
@@ -443,9 +456,7 @@ export function DiligenceWorkspaceDialog({
                 Retomar
               </Button>
             )}
-            {!readOnly && (
-              <Button onClick={() => setConfirmComplete(true)}>Finalizar</Button>
-            )}
+            {!readOnly && <Button onClick={() => setConfirmComplete(true)}>Finalizar</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -488,7 +499,9 @@ export function DiligenceWorkspaceDialog({
                     </ul>
                   </div>
                 )}
-                <Label htmlFor="dil-concl" className="mt-2 block">Conclusão (opcional)</Label>
+                <Label htmlFor="dil-concl" className="mt-2 block">
+                  Conclusão (opcional)
+                </Label>
                 <Textarea
                   id="dil-concl"
                   rows={3}

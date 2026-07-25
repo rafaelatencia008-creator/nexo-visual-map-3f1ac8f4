@@ -147,7 +147,9 @@ export function MediaMockPanel({ diligenceId, photos, readOnly }: MediaMockPanel
             <Camera className="mr-2 h-4 w-4" aria-hidden />
             Adicionar fotos
           </Button>
-          <span className="text-xs text-muted-foreground">{photos.length} · {totalSizeLabel}</span>
+          <span className="text-xs text-muted-foreground">
+            {photos.length} · {totalSizeLabel}
+          </span>
         </div>
       </div>
 
@@ -217,7 +219,9 @@ export function MediaMockPanel({ diligenceId, photos, readOnly }: MediaMockPanel
                   <Select
                     value={p.category}
                     onValueChange={(v) =>
-                      updateDiligencePhoto(diligenceId, p.id, { category: v as DiligencePhotoCategory })
+                      updateDiligencePhoto(diligenceId, p.id, {
+                        category: v as DiligencePhotoCategory,
+                      })
                     }
                     disabled={readOnly}
                   >

@@ -40,10 +40,7 @@ export type TranscriptBlock = Readonly<{
   consolidated: boolean;
 }>;
 
-export type QuestionAnswerStatus =
-  | "pendente"
-  | "respondida"
-  | "ignorada";
+export type QuestionAnswerStatus = "pendente" | "respondida" | "ignorada";
 
 export type InterviewQuestionAnswer = Readonly<{
   id: string;

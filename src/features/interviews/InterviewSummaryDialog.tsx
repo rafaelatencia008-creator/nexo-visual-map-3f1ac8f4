@@ -27,7 +27,11 @@ export type InterviewSummaryDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function InterviewSummaryDialog({ record, open, onOpenChange }: InterviewSummaryDialogProps) {
+export function InterviewSummaryDialog({
+  record,
+  open,
+  onOpenChange,
+}: InterviewSummaryDialogProps) {
   const summary = useMemo(() => {
     if (!record) return "";
     return record.kind === "entrevista"

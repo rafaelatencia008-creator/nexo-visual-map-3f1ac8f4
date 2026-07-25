@@ -51,7 +51,8 @@ export function DiligenceFormDialog({ open, onOpenChange, onCreated }: Diligence
   const [responsibleLabel, setResponsibleLabel] = useState("Dra. Ana Beatriz Salgado");
   const [scheduledAt, setScheduledAt] = useState("");
   const [address, setAddress] = useState("");
-  const [diligenceKind, setDiligenceKind] = useState<typeof DILIGENCE_KINDS[number]>("vistoria_imovel");
+  const [diligenceKind, setDiligenceKind] =
+    useState<(typeof DILIGENCE_KINDS)[number]>("vistoria_imovel");
   const [objective, setObjective] = useState("");
   const [checklistRaw, setChecklistRaw] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -142,7 +143,10 @@ export function DiligenceFormDialog({ open, onOpenChange, onCreated }: Diligence
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="dil-case">Processo</Label>
-                <Select value={caseId || "none"} onValueChange={(v) => setCaseId(v === "none" ? "" : v)}>
+                <Select
+                  value={caseId || "none"}
+                  onValueChange={(v) => setCaseId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger id="dil-case">
                     <SelectValue placeholder="Nenhum" />
                   </SelectTrigger>
@@ -158,7 +162,10 @@ export function DiligenceFormDialog({ open, onOpenChange, onCreated }: Diligence
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="dil-per">Perícia</Label>
-                <Select value={expertiseId || "none"} onValueChange={(v) => setExpertiseId(v === "none" ? "" : v)}>
+                <Select
+                  value={expertiseId || "none"}
+                  onValueChange={(v) => setExpertiseId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger id="dil-per">
                     <SelectValue placeholder="Nenhuma" />
                   </SelectTrigger>
@@ -234,7 +241,12 @@ export function DiligenceFormDialog({ open, onOpenChange, onCreated }: Diligence
 
             <div className="grid gap-2">
               <Label htmlFor="dil-obj">Objetivo</Label>
-              <Textarea id="dil-obj" value={objective} onChange={(e) => setObjective(e.target.value)} rows={2} />
+              <Textarea
+                id="dil-obj"
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+                rows={2}
+              />
             </div>
 
             <div className="grid gap-2">

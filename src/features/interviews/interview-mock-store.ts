@@ -133,18 +133,37 @@ function seedInterviews(): InterviewRecord[] {
       scheduledAt: iso(2026, 7, 25, 15),
       startedAt: iso(2026, 7, 25, 15, 5),
       notes: [
-        note("nota-301", "Entrevistada relata quadro de ansiedade.", "ponto_importante", iso(2026, 7, 25, 15, 20)),
-        note("nota-302", "Retomar tema família na próxima sessão.", "pendencia", iso(2026, 7, 25, 15, 40)),
+        note(
+          "nota-301",
+          "Entrevistada relata quadro de ansiedade.",
+          "ponto_importante",
+          iso(2026, 7, 25, 15, 20),
+        ),
+        note(
+          "nota-302",
+          "Retomar tema família na próxima sessão.",
+          "pendencia",
+          iso(2026, 7, 25, 15, 40),
+        ),
       ],
       transcriptBlocks: [
         block("trs-301", "15:07", "Perito", "Bom dia, obrigado por comparecer."),
         block("trs-302", "15:08", "Entrevistada", "Bom dia. Estou tranquila."),
-        block("trs-303", "15:12", "Entrevistada", "Tenho dormido pouco desde o início do processo.", {
-          highlighted: true,
-        }),
+        block(
+          "trs-303",
+          "15:12",
+          "Entrevistada",
+          "Tenho dormido pouco desde o início do processo.",
+          {
+            highlighted: true,
+          },
+        ),
       ],
       questions: [
-        q(psicologica[0]!, { status: "respondida", answerText: "Ansiedade leve, sem crises graves." }),
+        q(psicologica[0]!, {
+          status: "respondida",
+          answerText: "Ansiedade leve, sem crises graves.",
+        }),
         ...psicologica.slice(1),
       ],
       pendingItems: [],
@@ -165,7 +184,12 @@ function seedInterviews(): InterviewRecord[] {
       startedAt: iso(2026, 7, 15, 14, 5),
       completedAt: iso(2026, 7, 15, 16, 20),
       notes: [
-        note("nota-401", "Necessário reconvocar o irmão mais velho.", "pendencia", iso(2026, 7, 15, 16, 20)),
+        note(
+          "nota-401",
+          "Necessário reconvocar o irmão mais velho.",
+          "pendencia",
+          iso(2026, 7, 15, 16, 20),
+        ),
       ],
       transcriptBlocks: [
         block("trs-401", "14:10", "Mãe", "A rotina se reorganizou nos últimos meses."),
@@ -191,10 +215,17 @@ function seedInterviews(): InterviewRecord[] {
       completedAt: iso(2026, 7, 12, 11, 5),
       notes: [
         note("nota-501", "Adolescente colaborativo.", "observacao", iso(2026, 7, 12, 11, 5)),
-        note("nota-502", "Conclusão provisória: quadro estável.", "conclusao_provisoria", iso(2026, 7, 12, 11, 6)),
+        note(
+          "nota-502",
+          "Conclusão provisória: quadro estável.",
+          "conclusao_provisoria",
+          iso(2026, 7, 12, 11, 6),
+        ),
       ],
       transcriptBlocks: [],
-      questions: crianca.map((qq) => q(qq, { status: "respondida", answerText: "Registrado nas notas." })),
+      questions: crianca.map((qq) =>
+        q(qq, { status: "respondida", answerText: "Registrado nas notas." }),
+      ),
       pendingItems: [],
       conclusion: "Escuta especializada realizada; adolescente estável e colaborativo.",
       createdAt: iso(2026, 7, 5, 9),
@@ -233,7 +264,12 @@ function seedInterviews(): InterviewRecord[] {
       status: "cancelada",
       scheduledAt: iso(2026, 7, 18, 15),
       notes: [
-        note("nota-701", "Cancelada por indisponibilidade do entrevistado.", "observacao", iso(2026, 7, 17, 18)),
+        note(
+          "nota-701",
+          "Cancelada por indisponibilidade do entrevistado.",
+          "observacao",
+          iso(2026, 7, 17, 18),
+        ),
       ],
       transcriptBlocks: [],
       questions: [],
@@ -261,11 +297,20 @@ function seedInterviews(): InterviewRecord[] {
   ];
 }
 
-function chk(id: string, text: string, state: DiligenceChecklistItem["state"] = "pendente"): DiligenceChecklistItem {
+function chk(
+  id: string,
+  text: string,
+  state: DiligenceChecklistItem["state"] = "pendente",
+): DiligenceChecklistItem {
   return { id, text, state };
 }
 
-function photo(id: string, name: string, category: DiligencePhotoMock["category"], caption: string): DiligencePhotoMock {
+function photo(
+  id: string,
+  name: string,
+  category: DiligencePhotoMock["category"],
+  caption: string,
+): DiligencePhotoMock {
   return {
     id,
     name,
@@ -328,7 +373,12 @@ function seedDiligences(): DiligenceRecord[] {
         chk("chk-023", "Conversar com vizinhos próximos", "nao_aplicavel"),
       ],
       notes: [
-        note("nota-8021", "Casa organizada, filhos presentes.", "observacao", iso(2026, 7, 25, 10, 30)),
+        note(
+          "nota-8021",
+          "Casa organizada, filhos presentes.",
+          "observacao",
+          iso(2026, 7, 25, 10, 30),
+        ),
       ],
       photos: [photo("pho-021", "fachada.jpg", "ambiente", "Fachada do imóvel")],
       pendingItems: [],
@@ -361,7 +411,12 @@ function seedDiligences(): DiligenceRecord[] {
         chk("chk-033", "Fotografar tanques", "concluido"),
       ],
       notes: [
-        note("nota-8031", "Sem indícios visuais de vazamento.", "conclusao_provisoria", iso(2026, 5, 10, 17)),
+        note(
+          "nota-8031",
+          "Sem indícios visuais de vazamento.",
+          "conclusao_provisoria",
+          iso(2026, 5, 10, 17),
+        ),
       ],
       photos: [
         photo("pho-031", "tanque-1.jpg", "objeto", "Tanque principal, sem vazamentos aparentes"),
@@ -390,7 +445,12 @@ function seedDiligences(): DiligenceRecord[] {
         chk("chk-042", "Copiar arquivos digitais", "pendente"),
       ],
       notes: [
-        note("nota-8041", "Necessária nova visita para copiar arquivos.", "pendencia", iso(2026, 7, 18, 17)),
+        note(
+          "nota-8041",
+          "Necessária nova visita para copiar arquivos.",
+          "pendencia",
+          iso(2026, 7, 18, 17),
+        ),
       ],
       photos: [],
       pendingItems: ["Retornar para copiar arquivos digitais"],
@@ -427,9 +487,7 @@ function seedDiligences(): DiligenceRecord[] {
       startedAt: iso(2026, 7, 24, 10, 10),
       address: "Av. Rio Branco, 1 — Rio de Janeiro/RJ",
       objective: "Complementar coleta de informações contábeis.",
-      checklistItems: [
-        chk("chk-061", "Confirmar dados bancários", "pendente"),
-      ],
+      checklistItems: [chk("chk-061", "Confirmar dados bancários", "pendente")],
       notes: [
         note("nota-8061", "Aguardando retorno do contador.", "observacao", iso(2026, 7, 24, 11)),
       ],
@@ -654,7 +712,12 @@ export function addTranscriptBlock(
 export function updateTranscriptBlock(
   id: string,
   blockId: string,
-  patch: Partial<Pick<TranscriptBlock, "timeLabel" | "personLabel" | "text" | "highlighted" | "linkedQuestionId" | "consolidated">>,
+  patch: Partial<
+    Pick<
+      TranscriptBlock,
+      "timeLabel" | "personLabel" | "text" | "highlighted" | "linkedQuestionId" | "consolidated"
+    >
+  >,
 ): InterviewRecord {
   const rec = requireInterview(id);
   const next = rec.transcriptBlocks.map((b) => (b.id === blockId ? { ...b, ...patch } : b));
@@ -673,7 +736,9 @@ export function removeTranscriptBlock(id: string, blockId: string): InterviewRec
 export function answerQuestion(
   id: string,
   questionId: string,
-  patch: Partial<Pick<InterviewQuestionAnswer, "status" | "answerText" | "observation" | "justification">>,
+  patch: Partial<
+    Pick<InterviewQuestionAnswer, "status" | "answerText" | "observation" | "justification">
+  >,
 ): InterviewRecord {
   const rec = requireInterview(id);
   const now = nowIso();
@@ -710,16 +775,15 @@ export function validateInterviewCompletion(
   if (!rec.title.trim()) pending.push("Informe o título.");
   if (rec.participantIds.length === 0) pending.push("Adicione participantes.");
   if (!rec.templateId) pending.push("Selecione um roteiro.");
-  const requiredMissing = rec.questions.filter(
-    (q) => q.required && q.status === "pendente",
-  );
+  const requiredMissing = rec.questions.filter((q) => q.required && q.status === "pendente");
   if (requiredMissing.length > 0) {
     for (const q of requiredMissing) pending.push(`Pergunta obrigatória: ${q.questionText}`);
   }
   for (const p of rec.pendingItems) pending.push(p);
   if (ctx.audioActive) warnings.push("Encerre a gravação de áudio antes de concluir.");
   if (ctx.hasUnsavedNoteDraft) warnings.push("Existe uma nota não salva.");
-  if (ctx.hasUnconsolidatedTranscript) warnings.push("Existem blocos de transcrição sem consolidar.");
+  if (ctx.hasUnconsolidatedTranscript)
+    warnings.push("Existem blocos de transcrição sem consolidar.");
   const hasPendingRequired = requiredMissing.length > 0;
   return {
     ok: pending.length === 0 && warnings.length === 0,
@@ -912,7 +976,12 @@ export function validateDiligenceCompletion(
   for (const p of rec.pendingItems) pending.push(p);
   if (ctx.hasUnsavedNoteDraft) warnings.push("Existe uma nota não salva.");
   if (ctx.hasUnsavedPhoto) warnings.push("Existe uma foto não confirmada.");
-  return { ok: pending.length === 0 && warnings.length === 0, hasPendingRequired: false, pending, warnings };
+  return {
+    ok: pending.length === 0 && warnings.length === 0,
+    hasPendingRequired: false,
+    pending,
+    warnings,
+  };
 }
 
 export function completeDiligence(
