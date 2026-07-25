@@ -50,7 +50,7 @@ export const APP_NAV: AppNavGroup[] = [
   {
     title: "Trabalho pericial",
     items: [
-      { label: "Documentos", to: "/app/documentos", icon: FolderOpen, construction: true, description: "Arquivos do caso" },
+      { label: "Documentos", to: "/app/documentos", icon: FolderOpen, description: "Arquivos do caso" },
       { label: "Entrevistas e diligências", to: "/app/entrevistas", icon: Mic, construction: true, description: "Registros de campo" },
       { label: "Quesitos e evidências", to: "/app/quesitos", icon: ListChecks, construction: true, description: "Perguntas e provas" },
       { label: "Laudos", to: "/app/laudos", icon: FileText, construction: true, description: "Peças técnicas" },
@@ -80,17 +80,6 @@ export const CONSTRUCTION_MODULES: Record<
   string,
   { title: string; purpose: string; features: string[] }
 > = {
-  "/app/documentos": {
-    title: "Documentos",
-    purpose:
-      "Organizar, versionar e vincular arquivos aos processos, perícias e partes envolvidas.",
-    features: [
-      "Upload manual e por lote",
-      "Versionamento com histórico",
-      "Vinculação a processo, perícia e pessoa",
-      "Marcação de sigilo e prazo",
-    ],
-  },
   "/app/entrevistas": {
     title: "Entrevistas e diligências",
     purpose:
