@@ -138,7 +138,8 @@ export class AudioRuntime {
   }
 
   snapshot(): RuntimeSnapshot {
-    return Object.freeze({
+    if (this.snapshotCache) return this.snapshotCache;
+    this.snapshotCache = Object.freeze({
       context: this.ctx,
       deviceId: this.deviceId,
       segments: this.segments,
@@ -151,9 +152,11 @@ export class AudioRuntime {
       supportsPause: this.supportsPause,
       nextSequence: this.nextSequence,
     });
+    return this.snapshotCache;
   }
 
   private notify(): void {
+    this.snapshotCache = null;
     for (const l of this.listeners) l();
   }
 
