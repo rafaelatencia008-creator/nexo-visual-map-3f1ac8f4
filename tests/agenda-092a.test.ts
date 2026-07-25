@@ -71,6 +71,7 @@ function baseInput(
     channel: "system",
     outcome: "informed",
     direction: "internal",
+    note: "Nota interna de teste",
     occurredAt: "2026-02-01T10:00:00.000Z" as IsoDateTime,
     ...overrides,
   };
