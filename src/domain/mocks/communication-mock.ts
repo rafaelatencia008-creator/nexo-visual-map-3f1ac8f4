@@ -218,7 +218,7 @@ export function createCommunicationServiceMock(
         if (m.caseId !== caseId) return false;
         if (m.appointmentId !== appointmentId) return false;
         if (kindsArr && !kindsArr.includes(m.kind)) return false;
-        if (channelsArr && !channelsArr.includes(m.channel)) return false;
+        if (channelsArr && (m.channel === undefined || !channelsArr.includes(m.channel))) return false;
         if (outcomesArr && !outcomesArr.includes(m.outcome)) return false;
         if (directionsArr && !directionsArr.includes(m.direction)) return false;
         return true;
