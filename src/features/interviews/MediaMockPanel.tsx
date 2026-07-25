@@ -174,7 +174,7 @@ export function MediaMockPanel({ diligenceId, photos, readOnly }: MediaMockPanel
               >
                 <div className="flex items-start gap-3">
                   {p.objectUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+                    
                     <img
                       src={p.objectUrl}
                       alt={p.caption || p.name}
