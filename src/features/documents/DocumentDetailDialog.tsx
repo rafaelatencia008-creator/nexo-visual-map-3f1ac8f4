@@ -32,6 +32,7 @@ export interface DocumentDetailDialogProps {
   onClose: () => void;
   onNewVersion: () => void;
   onAddAnnotation: () => void;
+  onView?: (versionId?: string) => void;
 }
 
 function fmt(iso: string): string {
@@ -50,6 +51,7 @@ export function DocumentDetailDialog({
   onClose,
   onNewVersion,
   onAddAnnotation,
+  onView,
 }: DocumentDetailDialogProps) {
   if (!document) return null;
   const caseNumber = getCaseNumberLabel(document.caseId);
@@ -124,13 +126,20 @@ export function DocumentDetailDialog({
         </section>
 
         <section className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-display text-sm font-semibold uppercase tracking-widest">
               Versões
             </h3>
-            <Button size="sm" variant="outline" onClick={onNewVersion}>
-              Adicionar nova versão
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {onView ? (
+                <Button size="sm" variant="outline" onClick={() => onView()}>
+                  Visualizar conteúdo
+                </Button>
+              ) : null}
+              <Button size="sm" variant="outline" onClick={onNewVersion}>
+                Adicionar nova versão
+              </Button>
+            </div>
           </div>
           <ul className="space-y-2">
             {document.versions.map((v) => (
@@ -147,7 +156,19 @@ export function DocumentDetailDialog({
                       <span className="ml-2 text-xs text-primary">atual</span>
                     ) : null}
                   </p>
-                  <p className="text-muted-foreground text-xs">{fmt(v.createdAt)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-muted-foreground text-xs">{fmt(v.createdAt)}</p>
+                    {onView ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onView(v.id)}
+                        aria-label={`Visualizar versão v${v.version}`}
+                      >
+                        Visualizar versão
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="text-muted-foreground text-xs break-words">
                   {v.fileName} · {v.fileSizeLabel} · {v.mimeType}
