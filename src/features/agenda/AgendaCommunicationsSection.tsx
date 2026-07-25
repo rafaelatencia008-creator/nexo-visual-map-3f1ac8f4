@@ -86,9 +86,10 @@ export function mapServiceErrorToHistory(code: string): HistoryLoadResult {
 }
 
 // Ações fixas (ordem estável).
+type ActionIcon = typeof PhoneOff;
 const ACTIONS: readonly {
   action: CommunicationQuickAction;
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: string }>;
+  icon: ActionIcon;
 }[] = [
   { action: "contact", icon: PhoneOff },
   { action: "confirm", icon: CheckCircle2 },
