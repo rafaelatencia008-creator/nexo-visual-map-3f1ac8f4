@@ -1,16 +1,11 @@
 /**
- * Entidade oficial de Comunicação da Agenda — LV-09.2A.
+ * Entidade oficial de Comunicação da Agenda — LV-09.2 (B1).
  *
- * `Communication` é um registro APPEND-ONLY vinculado a um `Appointment`
- * (compromisso) que documenta:
- *   - solicitações de confirmação enviadas,
- *   - respostas de confirmação recebidas,
- *   - declarações de ausência,
- *   - notas/comunicados avulsos.
+ * `Communication` é um registro APPEND-ONLY vinculado a um `Appointment`.
+ * Documenta solicitações, respostas, tentativas de contato, cancelamentos,
+ * pedidos de reagendamento, ausências e notas avulsas.
  *
  * Puro TypeScript. Sem armazenamento, sem rede, sem React. Sem PII.
- * O `recipientLabel` é apenas um rótulo curto para exibição, nunca um
- * dado pessoal identificável real (nome, telefone, e-mail).
  *
  * Regras de imutabilidade:
  *   - `metadata.version` é sempre 1 (jamais atualizado);
@@ -52,6 +47,9 @@ export const COMMUNICATION_KINDS = [
   "confirmation_response",
   "absence",
   "note",
+  "contact_attempt",
+  "cancellation",
+  "reschedule_request",
 ] as const;
 export type CommunicationKind = (typeof COMMUNICATION_KINDS)[number];
 
@@ -72,6 +70,11 @@ export const COMMUNICATION_OUTCOMES = [
   "rescheduled",
   "no_response",
   "informed",
+  "completed",
+  "message_left",
+  "absent",
+  "cancelled",
+  "reschedule_requested",
 ] as const;
 export type CommunicationOutcome = (typeof COMMUNICATION_OUTCOMES)[number];
 
@@ -98,44 +101,64 @@ export const isCommunicationDirection = (
 ): v is CommunicationDirection =>
   typeof v === "string" && DIRECTION_SET.has(v);
 
-// ---- Coerência semântica (kind ↔ direction/outcome) ----------------------
+// ---- Canal obrigatório por tipo ------------------------------------------
 
-/**
- * Regras de coerência interna do tipo × direção × desfecho:
- *
- * | kind                     | direções permitidas         | desfechos permitidos                                             |
- * |--------------------------|-----------------------------|------------------------------------------------------------------|
- * | confirmation_request     | outbound                    | pending, no_response                                             |
- * | confirmation_response    | inbound                     | confirmed, declined, rescheduled                                 |
- * | absence                  | inbound, internal           | informed, rescheduled                                            |
- * | note                     | outbound, inbound, internal | informed, pending, no_response, confirmed, declined, rescheduled |
- *
- * Essas regras existem para manter o histórico interpretável sem custo
- * de aplicação e sem depender de nenhuma UI.
- */
+const KINDS_REQUIRING_CHANNEL: ReadonlySet<CommunicationKind> = new Set([
+  "contact_attempt",
+  "confirmation_request",
+  "confirmation_response",
+]);
+
+export function kindRequiresChannel(kind: CommunicationKind): boolean {
+  return KINDS_REQUIRING_CHANNEL.has(kind);
+}
+
+// ---- Coerência semântica -------------------------------------------------
+
+const NOTE_OUTCOMES: ReadonlySet<CommunicationOutcome> = new Set([
+  "pending",
+  "confirmed",
+  "declined",
+  "rescheduled",
+  "no_response",
+  "informed",
+]);
+
 export function isCoherentCommunication(
   kind: CommunicationKind,
   direction: CommunicationDirection,
   outcome: CommunicationOutcome,
 ): boolean {
+  if (kind === "contact_attempt") {
+    if (direction !== "outbound") return false;
+    return (
+      outcome === "completed" ||
+      outcome === "no_response" ||
+      outcome === "message_left"
+    );
+  }
   if (kind === "confirmation_request") {
     if (direction !== "outbound") return false;
     return outcome === "pending" || outcome === "no_response";
   }
   if (kind === "confirmation_response") {
     if (direction !== "inbound") return false;
-    return (
-      outcome === "confirmed" ||
-      outcome === "declined" ||
-      outcome === "rescheduled"
-    );
+    return outcome === "confirmed" || outcome === "declined";
   }
   if (kind === "absence") {
     if (direction !== "inbound" && direction !== "internal") return false;
-    return outcome === "informed" || outcome === "rescheduled";
+    return outcome === "absent";
+  }
+  if (kind === "cancellation") {
+    if (direction !== "inbound" && direction !== "internal") return false;
+    return outcome === "cancelled";
+  }
+  if (kind === "reschedule_request") {
+    if (direction !== "inbound" && direction !== "internal") return false;
+    return outcome === "reschedule_requested";
   }
   // kind === "note"
-  return true;
+  return NOTE_OUTCOMES.has(outcome);
 }
 
 // ---- Entidade -------------------------------------------------------------
@@ -146,7 +169,7 @@ export type Communication = Readonly<{
   caseId: CaseId;
   appointmentId: AppointmentId;
   kind: CommunicationKind;
-  channel: CommunicationChannel;
+  channel?: CommunicationChannel;
   outcome: CommunicationOutcome;
   direction: CommunicationDirection;
   subject?: string;
@@ -181,6 +204,10 @@ function isValidOptionalTrimmed(v: unknown, max: number): boolean {
   return v.trim().length > 0;
 }
 
+function hasTrimmedContent(v: unknown): boolean {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 export function isCommunication(v: unknown): v is Communication {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   if (containsForbiddenKey(v)) return false;
@@ -191,7 +218,9 @@ export function isCommunication(v: unknown): v is Communication {
   if (!isCaseId(c.caseId)) return false;
   if (!isAppointmentId(c.appointmentId)) return false;
   if (!isCommunicationKind(c.kind)) return false;
-  if (!isCommunicationChannel(c.channel)) return false;
+  if (c.channel !== undefined && !isCommunicationChannel(c.channel))
+    return false;
+  if (kindRequiresChannel(c.kind) && c.channel === undefined) return false;
   if (!isCommunicationOutcome(c.outcome)) return false;
   if (!isCommunicationDirection(c.direction)) return false;
   if (!isCoherentCommunication(c.kind, c.direction, c.outcome)) return false;
@@ -199,10 +228,11 @@ export function isCommunication(v: unknown): v is Communication {
   if (!isValidOptionalTrimmed(c.note, COMMUNICATION_NOTE_MAX)) return false;
   if (!isValidOptionalTrimmed(c.recipientLabel, COMMUNICATION_RECIPIENT_MAX))
     return false;
+  // Conteúdo textual mínimo: subject OU note preenchido.
+  if (!hasTrimmedContent(c.subject) && !hasTrimmedContent(c.note)) return false;
   if (!isIsoDateTime(c.occurredAt)) return false;
   if (!isMembershipId(c.authorMembershipId)) return false;
   if (!isEntityMetadata(c.metadata)) return false;
-  // Append-only: version fixa em 1 e updatedAt === createdAt.
   if (c.metadata.version !== 1) return false;
   if (c.metadata.updatedAt !== c.metadata.createdAt) return false;
   return true;

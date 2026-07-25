@@ -884,10 +884,15 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       throw new Error(`Invalid seed appointment ${(a as Appointment).id}`);
   }
 
-  // ---- Communications (LV-09.2A) ------------------------------------------
+  // ---- Communications (LV-09.2 · B1) --------------------------------------
   const COMM_A2_1 = buildDomainId("communication", "seed_a2_conf_req");
   const COMM_A2_2 = buildDomainId("communication", "seed_a2_conf_resp");
   const COMM_A2_3 = buildDomainId("communication", "seed_a2_note");
+  const COMM_A2_4 = buildDomainId("communication", "seed_a2_attempt_phone");
+  const COMM_A2_5 = buildDomainId("communication", "seed_a2_attempt_wa");
+  const COMM_A2_6 = buildDomainId("communication", "seed_a2_reschedule");
+  const COMM_A1_1 = buildDomainId("communication", "seed_a1_absence");
+  const COMM_A1_2 = buildDomainId("communication", "seed_a1_cancellation");
 
   const communications: Communication[] = [
     {
@@ -933,12 +938,80 @@ export function buildSeedSnapshot(): MockDomainSnapshot {
       authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
       metadata: metaAt(T0),
     },
+    {
+      id: COMM_A2_4,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "contact_attempt",
+      channel: "phone",
+      outcome: "no_response",
+      direction: "outbound",
+      subject: "Tentativa telefônica sem retorno",
+      occurredAt: "2026-01-18T11:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A2_5,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "contact_attempt",
+      channel: "whatsapp",
+      outcome: "message_left",
+      direction: "outbound",
+      subject: "Mensagem enviada por WhatsApp",
+      occurredAt: "2026-01-18T13:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A2_6,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_2,
+      kind: "reschedule_request",
+      outcome: "reschedule_requested",
+      direction: "internal",
+      note: "Pedido de reagendamento registrado para análise.",
+      occurredAt: "2026-01-19T09:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A1_1,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_1,
+      kind: "absence",
+      outcome: "absent",
+      direction: "internal",
+      note: "Parte ausente na audiência.",
+      occurredAt: "2026-01-20T09:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
+    {
+      id: COMM_A1_2,
+      organizationId: SEED_ORG_ALFA_ID,
+      caseId: SEED_CASE_ALFA_2_ID,
+      appointmentId: AP_A2_1,
+      kind: "cancellation",
+      outcome: "cancelled",
+      direction: "internal",
+      note: "Cancelamento informado pela parte.",
+      occurredAt: "2026-01-20T10:00:00.000Z" as IsoDateTime,
+      authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+      metadata: metaAt(T0),
+    },
   ];
 
   for (const m of communications) {
     if (!isCommunication(m))
       throw new Error(`Invalid seed communication ${(m as Communication).id}`);
   }
+
 
   return {
     organizations,
@@ -1006,6 +1079,7 @@ export function validateMockDomainSeed(
   dup("caseSnapshot", seed.caseSnapshots);
   dup("deadline", seed.deadlines);
   dup("appointment", seed.appointments);
+  dup("communication", seed.communications);
 
   for (const e of seed.auditEvents) {
     const eid = e.id;
@@ -1274,5 +1348,40 @@ export function validateMockDomainSeed(
     }
   }
 
+  // Communications: coerência relacional (org, caso, compromisso, autoria).
+  {
+    const appointmentById = new Map(seed.appointments.map((ap) => [ap.id, ap]));
+    const membershipById = new Map(seed.memberships.map((m) => [m.id, m]));
+    for (const m of seed.communications) {
+      const cid = m.id;
+      if (!isCommunication(m)) {
+        issues.push({ entity: "communication", id: cid, reason: "invalid_shape" });
+        continue;
+      }
+      if (!orgIds.has(m.organizationId))
+        issues.push({ entity: "communication", id: cid, reason: "org_not_found" });
+      const c = caseByIdEarly.get(m.caseId);
+      if (!c)
+        issues.push({ entity: "communication", id: cid, reason: "case_not_found" });
+      else if (c.organizationId !== m.organizationId)
+        issues.push({ entity: "communication", id: cid, reason: "case_org_mismatch" });
+      const ap = appointmentById.get(m.appointmentId);
+      if (!ap)
+        issues.push({ entity: "communication", id: cid, reason: "appointment_not_found" });
+      else {
+        if (ap.caseId !== m.caseId)
+          issues.push({ entity: "communication", id: cid, reason: "appointment_case_mismatch" });
+        if (ap.organizationId !== m.organizationId)
+          issues.push({ entity: "communication", id: cid, reason: "appointment_org_mismatch" });
+      }
+      const mem = membershipById.get(m.authorMembershipId);
+      if (!mem)
+        issues.push({ entity: "communication", id: cid, reason: "author_membership_not_found" });
+      else if (mem.organizationId !== m.organizationId)
+        issues.push({ entity: "communication", id: cid, reason: "author_membership_org_mismatch" });
+    }
+  }
+
   return issues;
 }
+

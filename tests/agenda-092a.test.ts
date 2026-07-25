@@ -71,6 +71,7 @@ function baseInput(
     channel: "system",
     outcome: "informed",
     direction: "internal",
+    note: "Nota interna de teste",
     occurredAt: "2026-02-01T10:00:00.000Z" as IsoDateTime,
     ...overrides,
   };
@@ -81,9 +82,9 @@ function baseInput(
 // ---------------------------------------------------------------------------
 
 describe("LV-09.2A · catálogos", () => {
-  it("(1) tem 4 tipos", () => expect(COMMUNICATION_KINDS.length).toBe(4));
+  it("(1) tem 7 tipos", () => expect(COMMUNICATION_KINDS.length).toBe(7));
   it("(2) tem 6 canais", () => expect(COMMUNICATION_CHANNELS.length).toBe(6));
-  it("(3) tem 6 desfechos", () => expect(COMMUNICATION_OUTCOMES.length).toBe(6));
+  it("(3) tem 11 desfechos", () => expect(COMMUNICATION_OUTCOMES.length).toBe(11));
   it("(4) tem 3 direções", () => expect(COMMUNICATION_DIRECTIONS.length).toBe(3));
 
   it("(5) kinds únicos", () =>
@@ -162,24 +163,28 @@ describe("LV-09.2A · coerência kind × direction × outcome", () => {
     expect(isCoherentCommunication("confirmation_request", "outbound", "confirmed")).toBe(false);
     expect(isCoherentCommunication("confirmation_request", "inbound", "pending")).toBe(false);
   });
-  it("(18) confirmation_response exige inbound + confirmed/declined/rescheduled", () => {
+  it("(18) confirmation_response exige inbound + confirmed/declined (rescheduled não é mais permitido)", () => {
     expect(isCoherentCommunication("confirmation_response", "inbound", "confirmed")).toBe(true);
     expect(isCoherentCommunication("confirmation_response", "inbound", "declined")).toBe(true);
-    expect(isCoherentCommunication("confirmation_response", "inbound", "rescheduled")).toBe(true);
+    expect(isCoherentCommunication("confirmation_response", "inbound", "rescheduled")).toBe(false);
     expect(isCoherentCommunication("confirmation_response", "inbound", "pending")).toBe(false);
     expect(isCoherentCommunication("confirmation_response", "outbound", "confirmed")).toBe(false);
   });
-  it("(19) absence: inbound/internal + informed/rescheduled", () => {
-    expect(isCoherentCommunication("absence", "inbound", "informed")).toBe(true);
-    expect(isCoherentCommunication("absence", "internal", "informed")).toBe(true);
-    expect(isCoherentCommunication("absence", "inbound", "rescheduled")).toBe(true);
-    expect(isCoherentCommunication("absence", "outbound", "informed")).toBe(false);
-    expect(isCoherentCommunication("absence", "inbound", "confirmed")).toBe(false);
+  it("(19) absence: inbound/internal + absent exclusivamente", () => {
+    expect(isCoherentCommunication("absence", "inbound", "absent")).toBe(true);
+    expect(isCoherentCommunication("absence", "internal", "absent")).toBe(true);
+    expect(isCoherentCommunication("absence", "inbound", "informed")).toBe(false);
+    expect(isCoherentCommunication("absence", "inbound", "rescheduled")).toBe(false);
+    expect(isCoherentCommunication("absence", "outbound", "absent")).toBe(false);
   });
-  it("(20) note aceita qualquer combinação de direção/desfecho válida", () => {
+  it("(20) note aceita as seis combinações de outcome históricas em qualquer direção", () => {
+    const noteOutcomes = ["pending", "confirmed", "declined", "rescheduled", "no_response", "informed"] as const;
     for (const d of COMMUNICATION_DIRECTIONS)
-      for (const o of COMMUNICATION_OUTCOMES)
+      for (const o of noteOutcomes)
         expect(isCoherentCommunication("note", d, o)).toBe(true);
+    // Os novos outcomes não são liberados automaticamente para note.
+    expect(isCoherentCommunication("note", "internal", "absent")).toBe(false);
+    expect(isCoherentCommunication("note", "internal", "cancelled")).toBe(false);
   });
 });
 
@@ -190,8 +195,8 @@ describe("LV-09.2A · coerência kind × direction × outcome", () => {
 describe("LV-09.2A · isCommunication (guard)", () => {
   const env = createMockDomainEnvironment();
   const s = env.snapshot().communications;
-  it("(21) seed contém 3 comunicações válidas", () => {
-    expect(s.length).toBe(3);
+  it("(21) seed contém 8 comunicações válidas", () => {
+    expect(s.length).toBe(8);
     for (const c of s) expect(isCommunication(c)).toBe(true);
   });
   it("(22) rejeita objeto vazio", () => expect(isCommunication({})).toBe(false));
@@ -305,7 +310,7 @@ describe("LV-09.2A · permissões", () => {
 // ---------------------------------------------------------------------------
 
 describe("LV-09.2A · listByAppointment", () => {
-  it("(39) lista as 3 do seed em AP_A2_2 ordenadas por occurredAt", async () => {
+  it("(39) lista as 6 do seed em AP_A2_2 ordenadas por occurredAt DESC", async () => {
     const env = createMockDomainEnvironment();
     const r = await env.services.communications.listByAppointment(
       OWNER_ALFA,
@@ -314,10 +319,10 @@ describe("LV-09.2A · listByAppointment", () => {
     );
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(3);
+    expect(r.data.items.length).toBe(6);
     const times = r.data.items.map((c) => c.occurredAt);
     for (let i = 1; i < times.length; i++)
-      expect(times[i - 1] <= times[i]).toBe(true);
+      expect(times[i - 1] >= times[i]).toBe(true);
   });
 
   it("(40) filtra por kind", async () => {
@@ -344,8 +349,8 @@ describe("LV-09.2A · listByAppointment", () => {
     );
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(1);
-    expect(r.data.items[0].direction).toBe("outbound");
+    expect(r.data.items.length).toBe(3);
+    for (const it of r.data.items) expect(it.direction).toBe("outbound");
   });
 
   it("(42) filtra por outcome", async () => {
@@ -375,14 +380,16 @@ describe("LV-09.2A · listByAppointment", () => {
     expect(r.data.items[0].channel).toBe("system");
   });
 
-  it("(44) lista vazia para AP_A2_1 (sem seed)", async () => {
+  it("(44) AP_A2_1 lista as 2 comunicações do seed (absence + cancellation)", async () => {
     const env = createMockDomainEnvironment();
     const r = await env.services.communications.listByAppointment(
       OWNER_ALFA,
       SEED_CASE_ALFA_2_ID,
       AP_A2_1,
     );
-    expect(r.ok && r.data.items.length === 0).toBe(true);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("unreachable");
+    expect(r.data.items.length).toBe(2);
   });
 
   it("(45) appointment inexistente → not_found", async () => {
@@ -472,7 +479,7 @@ describe("LV-09.2A · listByAppointment", () => {
       AP_A2_2,
     );
     if (!r2.ok) throw new Error("unreachable");
-    expect(r2.data.items[0].kind).toBe("confirmation_request");
+    expect(r2.data.items[0].kind).toBe("reschedule_request");
   });
 });
 
@@ -585,7 +592,7 @@ describe("LV-09.2A · create", () => {
       AP_A2_2,
     );
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(4);
+    expect(r.data.items.length).toBe(7);
   });
 
   it("(59) rejeita kind inválido", async () => {
@@ -780,8 +787,8 @@ describe("LV-09.2A · isolamento e imutabilidade", () => {
     const e1 = createMockDomainEnvironment();
     const e2 = createMockDomainEnvironment();
     await e1.services.communications.create(OWNER_ALFA, baseInput());
-    expect(e1.snapshot().communications.length).toBe(4);
-    expect(e2.snapshot().communications.length).toBe(3);
+    expect(e1.snapshot().communications.length).toBe(9);
+    expect(e2.snapshot().communications.length).toBe(8);
   });
   it("(81) appointment de outro case (AP_A1_1) fica sem comunicações", async () => {
     const env = createMockDomainEnvironment();

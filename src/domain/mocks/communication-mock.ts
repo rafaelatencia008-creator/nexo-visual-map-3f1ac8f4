@@ -23,6 +23,7 @@ import {
   isCommunicationDirection,
   isCommunicationKind,
   isCommunicationOutcome,
+  kindRequiresChannel,
 } from "../core/communication";
 import {
   containsForbiddenKey,
@@ -106,9 +107,9 @@ function validateOptionalTrimmed(v: unknown, max: number): string | null | "abse
 }
 
 function compareCommunications(a: Communication, b: Communication): number {
-  const t = isoDateTimeToEpoch(a.occurredAt) - isoDateTimeToEpoch(b.occurredAt);
+  const t = isoDateTimeToEpoch(b.occurredAt) - isoDateTimeToEpoch(a.occurredAt);
   if (t !== 0) return t;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }
 
 function validateEnumArray<T extends string>(
@@ -217,7 +218,7 @@ export function createCommunicationServiceMock(
         if (m.caseId !== caseId) return false;
         if (m.appointmentId !== appointmentId) return false;
         if (kindsArr && !kindsArr.includes(m.kind)) return false;
-        if (channelsArr && !channelsArr.includes(m.channel)) return false;
+        if (channelsArr && (m.channel === undefined || !channelsArr.includes(m.channel))) return false;
         if (outcomesArr && !outcomesArr.includes(m.outcome)) return false;
         if (directionsArr && !directionsArr.includes(m.direction)) return false;
         return true;
@@ -257,8 +258,14 @@ export function createCommunicationServiceMock(
 
       if (!isCommunicationKind(raw.kind))
         return invalid<Communication>("invalid_kind");
-      if (!isCommunicationChannel(raw.channel))
-        return invalid<Communication>("invalid_channel");
+      let channel: CommunicationChannel | undefined;
+      if (raw.channel !== undefined) {
+        if (!isCommunicationChannel(raw.channel))
+          return invalid<Communication>("invalid_channel");
+        channel = raw.channel;
+      } else if (kindRequiresChannel(raw.kind)) {
+        return invalid<Communication>("communication_channel_required");
+      }
       if (!isCommunicationOutcome(raw.outcome))
         return invalid<Communication>("invalid_outcome");
       if (!isCommunicationDirection(raw.direction))
@@ -290,6 +297,9 @@ export function createCommunicationServiceMock(
         if (r === null) return invalid<Communication>("invalid_recipient_label");
         if (r !== "absent") recipientLabel = r;
       }
+      if (subject === undefined && note === undefined) {
+        return invalid<Communication>("communication_content_required");
+      }
 
       const previewId = ids.previewNext("communication");
       const previewTime = clock.previewNext();
@@ -299,7 +309,7 @@ export function createCommunicationServiceMock(
         caseId: raw.caseId,
         appointmentId: raw.appointmentId,
         kind: raw.kind,
-        channel: raw.channel,
+        ...(channel !== undefined ? { channel } : {}),
         outcome: raw.outcome,
         direction: raw.direction,
         ...(subject !== undefined ? { subject } : {}),
