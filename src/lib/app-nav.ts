@@ -80,17 +80,6 @@ export const CONSTRUCTION_MODULES: Record<
   string,
   { title: string; purpose: string; features: string[] }
 > = {
-  "/app/documentos": {
-    title: "Documentos",
-    purpose:
-      "Organizar, versionar e vincular arquivos aos processos, perícias e partes envolvidas.",
-    features: [
-      "Upload manual e por lote",
-      "Versionamento com histórico",
-      "Vinculação a processo, perícia e pessoa",
-      "Marcação de sigilo e prazo",
-    ],
-  },
   "/app/entrevistas": {
     title: "Entrevistas e diligências",
     purpose:
