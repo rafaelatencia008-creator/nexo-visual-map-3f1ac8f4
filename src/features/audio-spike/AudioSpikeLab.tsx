@@ -251,7 +251,7 @@ export function AudioSpikeLab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Trocar microfone durante gravação?</AlertDialogTitle>
             <AlertDialogDescription>
-              A gravação atual precisará ser encerrada manualmente antes.
+              A gravação atual será encerrada com segurança e os segmentos já capturados serão preservados antes de aplicar o novo microfone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
