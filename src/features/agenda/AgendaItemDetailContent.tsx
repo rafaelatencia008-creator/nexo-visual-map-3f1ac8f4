@@ -158,6 +158,7 @@ import {
   type AgendaDetailActivitySession,
   type AgendaDetailSelectionKey,
 } from "./detail-activity";
+import { AgendaCommunicationsSection } from "./AgendaCommunicationsSection";
 
 // LV-09.1B.6.3B.2.1.3.1 — hook isomórfico para confirmar a sessão de
 // atividade apenas no commit. `useLayoutEffect` no navegador (roda antes
