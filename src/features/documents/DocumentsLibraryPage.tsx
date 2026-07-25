@@ -14,6 +14,9 @@ import {
   MessageSquarePlus,
   FileUp,
   Eye,
+  Sparkles,
+  GitCompare,
+  Files,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -66,6 +69,9 @@ import { DocumentDetailDialog } from "./DocumentDetailDialog";
 import { DocumentVersionDialog } from "./DocumentVersionDialog";
 import { DocumentAnnotationDialog } from "./DocumentAnnotationDialog";
 import { DocumentViewerDialog } from "./DocumentViewerDialog";
+import { DocumentExtractionDialog } from "./DocumentExtractionDialog";
+import { DocumentCompareVersionsDialog } from "./DocumentCompareVersionsDialog";
+import { DocumentCompareDocumentsDialog } from "./DocumentCompareDocumentsDialog";
 
 type LoadState = "loading" | "ready" | "error" | "offline" | "forbidden";
 
@@ -97,6 +103,12 @@ export function DocumentsLibraryPage() {
   const [annotationOpen, setAnnotationOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerVersionId, setViewerVersionId] = useState<string | undefined>(undefined);
+  const [extractionOpen, setExtractionOpen] = useState(false);
+  const [extractionInitialId, setExtractionInitialId] = useState<string | undefined>(undefined);
+  const [compareVersionsOpen, setCompareVersionsOpen] = useState(false);
+  const [compareVersionsInitialId, setCompareVersionsInitialId] = useState<string | undefined>(undefined);
+  const [compareDocsOpen, setCompareDocsOpen] = useState(false);
+  const [compareDocsInitialLeftId, setCompareDocsInitialLeftId] = useState<string | undefined>(undefined);
   const openerRef = useRef<HTMLElement | null>(null);
   const [announcement, setAnnouncement] = useState<{ key: number; text: string }>({
     key: 0,
@@ -240,6 +252,39 @@ export function DocumentsLibraryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setExtractionInitialId(undefined);
+              setExtractionOpen(true);
+            }}
+            aria-label="Extrair informações"
+          >
+            <Sparkles className="mr-2 h-4 w-4" aria-hidden />
+            Extrair informações
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCompareVersionsInitialId(undefined);
+              setCompareVersionsOpen(true);
+            }}
+            aria-label="Comparar versões"
+          >
+            <GitCompare className="mr-2 h-4 w-4" aria-hidden />
+            Comparar versões
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCompareDocsInitialLeftId(undefined);
+              setCompareDocsOpen(true);
+            }}
+            aria-label="Comparar documentos"
+          >
+            <Files className="mr-2 h-4 w-4" aria-hidden />
+            Comparar documentos
+          </Button>
           <Button variant="outline" onClick={() => setBatchOpen(true)}>
             <FileUp className="mr-2 h-4 w-4" aria-hidden />
             Upload em lote
@@ -447,6 +492,24 @@ export function DocumentsLibraryPage() {
             queueMicrotask(() => opener.focus());
           }
         }}
+      />
+      <DocumentExtractionDialog
+        open={extractionOpen}
+        documents={documents}
+        initialDocumentId={extractionInitialId}
+        onClose={() => setExtractionOpen(false)}
+      />
+      <DocumentCompareVersionsDialog
+        open={compareVersionsOpen}
+        documents={documents}
+        initialDocumentId={compareVersionsInitialId}
+        onClose={() => setCompareVersionsOpen(false)}
+      />
+      <DocumentCompareDocumentsDialog
+        open={compareDocsOpen}
+        documents={documents}
+        initialLeftId={compareDocsInitialLeftId}
+        onClose={() => setCompareDocsOpen(false)}
       />
     </div>
   );
