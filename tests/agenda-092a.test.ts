@@ -592,7 +592,7 @@ describe("LV-09.2A · create", () => {
       AP_A2_2,
     );
     if (!r.ok) throw new Error("unreachable");
-    expect(r.data.items.length).toBe(4);
+    expect(r.data.items.length).toBe(7);
   });
 
   it("(59) rejeita kind inválido", async () => {
