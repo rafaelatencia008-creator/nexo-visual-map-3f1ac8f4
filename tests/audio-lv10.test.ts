@@ -524,7 +524,7 @@ describe("LV-10 audio-queue", () => {
   });
 
   test("enqueue duplicado é no-op", () => {
-    let q = enqueueSegment(EMPTY_QUEUE, makeSegment(1));
+    const q = enqueueSegment(EMPTY_QUEUE, makeSegment(1));
     const q2 = enqueueSegment(q, makeSegment(1));
     expect(q2).toBe(q);
   });

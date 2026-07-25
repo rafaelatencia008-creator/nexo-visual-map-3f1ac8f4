@@ -25,13 +25,11 @@ const NEXT_STATUS: Record<ManualCheckStatus, ManualCheckStatus> = {
 
 export function AudioDiagnosticsPanel({ snapshot }: { snapshot: DiagnosticsSnapshot }) {
   const [copied, setCopied] = useState(false);
-  const [checks, setChecks] = useState<Record<ManualChecklistItem, ManualCheckStatus>>(
-    () => {
-      const initial: Partial<Record<ManualChecklistItem, ManualCheckStatus>> = {};
-      for (const item of MANUAL_CHECKLIST_ITEMS) initial[item] = "not_tested";
-      return initial as Record<ManualChecklistItem, ManualCheckStatus>;
-    },
-  );
+  const [checks, setChecks] = useState<Record<ManualChecklistItem, ManualCheckStatus>>(() => {
+    const initial: Partial<Record<ManualChecklistItem, ManualCheckStatus>> = {};
+    for (const item of MANUAL_CHECKLIST_ITEMS) initial[item] = "not_tested";
+    return initial as Record<ManualChecklistItem, ManualCheckStatus>;
+  });
 
   const report = buildDiagnosticsReport(snapshot);
 
@@ -57,7 +55,7 @@ export function AudioDiagnosticsPanel({ snapshot }: { snapshot: DiagnosticsSnaps
       </CardHeader>
       <CardContent className="space-y-4">
         <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-3 text-xs">
-{report}
+          {report}
         </pre>
 
         <div>
@@ -65,8 +63,8 @@ export function AudioDiagnosticsPanel({ snapshot }: { snapshot: DiagnosticsSnaps
             Checklist de validação manual
           </h3>
           <p className="mb-3 text-xs text-muted-foreground">
-            Estado apenas em memória. Nenhum dispositivo é marcado
-            automaticamente. Clique para alternar.
+            Estado apenas em memória. Nenhum dispositivo é marcado automaticamente. Clique para
+            alternar.
           </p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {MANUAL_CHECKLIST_ITEMS.map((item) => (

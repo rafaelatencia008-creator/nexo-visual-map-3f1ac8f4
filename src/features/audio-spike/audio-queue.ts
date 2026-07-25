@@ -3,11 +3,7 @@
  * Sem backend: “processar” = validar Blob, calcular metadados, preparar URL local.
  */
 
-import type {
-  AudioQueueItemState,
-  AudioSegment,
-  AudioSegmentStatus,
-} from "./audio-types";
+import type { AudioQueueItemState, AudioSegment, AudioSegmentStatus } from "./audio-types";
 
 export type QueueState = Readonly<{
   order: readonly string[];
@@ -19,14 +15,9 @@ export const EMPTY_QUEUE: QueueState = Object.freeze({
   items: Object.freeze({}),
 });
 
-export function enqueueSegment(
-  state: QueueState,
-  segment: AudioSegment,
-): QueueState {
+export function enqueueSegment(state: QueueState, segment: AudioSegment): QueueState {
   if (state.items[segment.id]) return state;
-  const initialStatus: AudioSegmentStatus = segment.incomplete
-    ? "incomplete"
-    : "queued";
+  const initialStatus: AudioSegmentStatus = segment.incomplete ? "incomplete" : "queued";
   const item: AudioQueueItemState = {
     segmentId: segment.id,
     status: initialStatus,
@@ -46,10 +37,7 @@ export type ProcessOutcome =
 
 export type Processor = (segment: AudioSegment) => ProcessOutcome;
 
-export function beginProcessing(
-  state: QueueState,
-  segmentId: string,
-): QueueState {
+export function beginProcessing(state: QueueState, segmentId: string): QueueState {
   const item = state.items[segmentId];
   if (!item) return state;
   if (item.status !== "queued" && item.status !== "retrying") return state;
@@ -132,9 +120,7 @@ export function nextPending(state: QueueState): string | null {
   return null;
 }
 
-export function countByStatus(
-  state: QueueState,
-): Record<AudioSegmentStatus, number> {
+export function countByStatus(state: QueueState): Record<AudioSegmentStatus, number> {
   const counts: Record<AudioSegmentStatus, number> = {
     captured: 0,
     queued: 0,

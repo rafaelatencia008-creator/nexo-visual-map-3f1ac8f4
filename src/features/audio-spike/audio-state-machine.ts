@@ -36,10 +36,7 @@ export function initialContext(unsupportedReason: string | null): AudioMachineCo
  * A intenção é que o consumidor consulte `canTransition` para bloquear a UI
  * antes de disparar eventos ilegais.
  */
-export function reduce(
-  ctx: AudioMachineContext,
-  event: AudioRecorderEvent,
-): AudioMachineContext {
+export function reduce(ctx: AudioMachineContext, event: AudioRecorderEvent): AudioMachineContext {
   switch (event.type) {
     case "detect_unsupported":
       return {
@@ -73,12 +70,7 @@ export function reduce(
       if (ctx.state !== "stopping") return ctx;
       return { ...ctx, state: "completed" };
     case "device_lost":
-      if (
-        ctx.state !== "recording" &&
-        ctx.state !== "paused" &&
-        ctx.state !== "ready"
-      )
-        return ctx;
+      if (ctx.state !== "recording" && ctx.state !== "paused" && ctx.state !== "ready") return ctx;
       return {
         ...ctx,
         state: "recovering",
@@ -108,13 +100,9 @@ export function reduce(
   }
 }
 
-export function canTransition(
-  ctx: AudioMachineContext,
-  event: AudioRecorderEvent,
-): boolean {
+export function canTransition(ctx: AudioMachineContext, event: AudioRecorderEvent): boolean {
   const next = reduce(ctx, event);
-  if (event.type === "detect_unsupported" || event.type === "fatal")
-    return next !== ctx;
+  if (event.type === "detect_unsupported" || event.type === "fatal") return next !== ctx;
   return next.state !== ctx.state || next.error !== ctx.error;
 }
 

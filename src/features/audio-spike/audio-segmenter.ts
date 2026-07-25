@@ -22,8 +22,7 @@ export type SegmenterState = Readonly<{
 }>;
 
 export function initSegmenter(config: SegmenterConfig): SegmenterState {
-  if (config.segmentDurationMs <= 0)
-    throw new Error("segmentDurationMs must be positive");
+  if (config.segmentDurationMs <= 0) throw new Error("segmentDurationMs must be positive");
   if (config.overlapMs < 0 || config.overlapMs >= config.segmentDurationMs)
     throw new Error("overlapMs must be between 0 and segmentDurationMs");
   return {
@@ -53,12 +52,8 @@ function sumSize(chunks: readonly AudioChunk[]): number {
 /**
  * Adiciona um chunk. Pode emitir 0 ou mais segmentos.
  */
-export function pushChunk(
-  state: SegmenterState,
-  chunk: AudioChunk,
-): SegmenterState {
-  if (state.finalized)
-    throw new Error("segmenter finalized: cannot push more chunks");
+export function pushChunk(state: SegmenterState, chunk: AudioChunk): SegmenterState {
+  if (state.finalized) throw new Error("segmenter finalized: cannot push more chunks");
   const bufferChunks = [...state.bufferChunks, chunk];
   const bufferStartMs = state.bufferStartMs ?? chunk.startedAtMs;
   const currentDuration = chunk.endedAtMs - bufferStartMs;
@@ -88,9 +83,7 @@ export function pushChunk(
   const overlapThreshold = endedAtMs - state.config.overlapMs;
   const carry = bufferChunks.filter((c) => c.endedAtMs > overlapThreshold);
   const carryStartMs =
-    carry.length > 0
-      ? Math.max(carry[0].startedAtMs, overlapThreshold)
-      : endedAtMs;
+    carry.length > 0 ? Math.max(carry[0].startedAtMs, overlapThreshold) : endedAtMs;
 
   return {
     ...state,
@@ -98,8 +91,7 @@ export function pushChunk(
     bufferChunks: carry,
     bufferStartMs: carry.length > 0 ? carryStartMs : null,
     segments: [...state.segments, segment],
-    overlapMsPendingForNext:
-      carry.length > 0 ? endedAtMs - carryStartMs : 0,
+    overlapMsPendingForNext: carry.length > 0 ? endedAtMs - carryStartMs : 0,
     finalized: false,
   };
 }

@@ -39,9 +39,7 @@ export function AudioSpikeLab() {
   const isCompleted = context.state === "completed";
   const isRecovering = context.state === "recovering";
   const busy =
-    context.state === "requesting_permission" ||
-    context.state === "stopping" ||
-    isRecovering;
+    context.state === "requesting_permission" || context.state === "stopping" || isRecovering;
 
   const handleDeviceChange = (id: string) => {
     if (isRecording || isPaused) {
@@ -60,8 +58,7 @@ export function AudioSpikeLab() {
   const snapshot = {
     capability,
     microphoneCount: rec.devices.length,
-    selectedDeviceLabel:
-      rec.devices.find((d) => d.deviceId === rec.deviceId)?.label || "",
+    selectedDeviceLabel: rec.devices.find((d) => d.deviceId === rec.deviceId)?.label || "",
     recordedMs: rec.elapsedMs,
     chunksReceived: rec.chunksReceived,
     segmentsCompleted: rec.segments.filter((s) => !s.incomplete).length,
@@ -82,9 +79,9 @@ export function AudioSpikeLab() {
           Laboratório de gravação de áudio
         </h1>
         <p className="text-sm text-muted-foreground">
-          Prova técnica exclusiva de captura, segmentação, fila local e recuperação.
-          A funcionalidade completa de <strong>Entrevistas e diligências</strong>{" "}
-          será entregue em etapa futura.
+          Prova técnica exclusiva de captura, segmentação, fila local e recuperação. A
+          funcionalidade completa de <strong>Entrevistas e diligências</strong> será entregue em
+          etapa futura.
         </p>
       </header>
 
@@ -114,8 +111,8 @@ export function AudioSpikeLab() {
         <Alert role="alert" aria-busy="true">
           <AlertTitle>{AUDIO_MESSAGES.deviceDisconnected}</AlertTitle>
           <AlertDescription>
-            A recuperação após fechar ou recarregar a página dependerá de
-            armazenamento local ou backend em etapa futura.
+            A recuperação após fechar ou recarregar a página dependerá de armazenamento local ou
+            backend em etapa futura.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -133,9 +130,7 @@ export function AudioSpikeLab() {
               disabled={busy}
             />
             <div className="space-y-1">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                Estado
-              </div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Estado</div>
               <div
                 className="font-display text-lg font-semibold"
                 aria-live="polite"
@@ -144,23 +139,16 @@ export function AudioSpikeLab() {
                 {describeState(context.state)}
               </div>
               <div className="font-mono text-xs text-muted-foreground">
-                MIME: {capability.selectedMimeType ?? "n/d"} · Codec:{" "}
-                {capability.codec ?? "n/d"}
+                MIME: {capability.selectedMimeType ?? "n/d"} · Codec: {capability.codec ?? "n/d"}
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <div
-              className="font-mono text-3xl tabular-nums"
-              aria-label="Tempo gravado"
-            >
+            <div className="font-mono text-3xl tabular-nums" aria-label="Tempo gravado">
               {formatDurationMs(rec.elapsedMs)}
             </div>
-            <AudioLevelMeter
-              level={rec.level}
-              active={isRecording || isPaused}
-            />
+            <AudioLevelMeter level={rec.level} active={isRecording || isPaused} />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -185,36 +173,22 @@ export function AudioSpikeLab() {
               <Play className="mr-2 h-4 w-4" />
               Iniciar gravação
             </Button>
-            <Button
-              variant="outline"
-              onClick={rec.pause}
-              disabled={!isRecording}
-            >
+            <Button variant="outline" onClick={rec.pause} disabled={!isRecording}>
               <Pause className="mr-2 h-4 w-4" />
               Pausar
             </Button>
-            <Button
-              variant="outline"
-              onClick={rec.resume}
-              disabled={!isPaused}
-            >
+            <Button variant="outline" onClick={rec.resume} disabled={!isPaused}>
               <Play className="mr-2 h-4 w-4" />
               Continuar
             </Button>
-            <Button
-              variant="outline"
-              onClick={rec.stop}
-              disabled={!isRecording && !isPaused}
-            >
+            <Button variant="outline" onClick={rec.stop} disabled={!isRecording && !isPaused}>
               <Square className="mr-2 h-4 w-4" />
               Encerrar
             </Button>
             <Button
               variant="ghost"
               onClick={() => setConfirmDiscard(true)}
-              disabled={
-                rec.segments.length === 0 && !isRecording && !isPaused && !isCompleted
-              }
+              disabled={rec.segments.length === 0 && !isRecording && !isPaused && !isCompleted}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Descartar
@@ -251,8 +225,8 @@ export function AudioSpikeLab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Descartar gravação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Todos os segmentos e prévias locais serão liberados da memória.
-              Esta ação não pode ser desfeita.
+              Todos os segmentos e prévias locais serão liberados da memória. Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -282,9 +256,7 @@ export function AudioSpikeLab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Manter atual</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmChangeDevice}>
-              Confirmar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmChangeDevice}>Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -295,9 +267,7 @@ export function AudioSpikeLab() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-border/70 bg-muted/20 p-2">
-      <dt className="text-[11px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="text-[11px] uppercase tracking-widest text-muted-foreground">{label}</dt>
       <dd className="font-mono text-base">{value}</dd>
     </div>
   );

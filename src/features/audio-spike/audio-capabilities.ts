@@ -89,8 +89,7 @@ export function readCapabilitiesFromWindow(): CapabilityReport {
     });
   }
   const md = navigator.mediaDevices;
-  const MR = (window as unknown as { MediaRecorder?: typeof MediaRecorder })
-    .MediaRecorder;
+  const MR = (window as unknown as { MediaRecorder?: typeof MediaRecorder }).MediaRecorder;
   const AC =
     (window as unknown as { AudioContext?: unknown }).AudioContext ??
     (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext;

@@ -56,9 +56,7 @@ export type RecorderOptions = {
 export type UseAudioRecorder = ReturnType<typeof useAudioRecorder>;
 
 function now(): number {
-  return typeof performance !== "undefined" && performance.now
-    ? performance.now()
-    : Date.now();
+  return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 }
 
 export function useAudioRecorder(options: RecorderOptions = {}) {
@@ -118,8 +116,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
     if (typeof window === "undefined") return;
     const c = readCapabilitiesFromWindow();
     setCapability(c);
-    if (!c.supported)
-      dispatch({ type: "detect_unsupported", reason: c.reason ?? "não suportado" });
+    if (!c.supported) dispatch({ type: "detect_unsupported", reason: c.reason ?? "não suportado" });
   }, [dispatch]);
 
   // Cronômetro derivado via tick.
@@ -170,8 +167,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
   const cleanupRecorder = useCallback(() => {
     if (recorderRef.current) {
       try {
-        if (recorderRef.current.state !== "inactive")
-          recorderRef.current.stop();
+        if (recorderRef.current.state !== "inactive") recorderRef.current.stop();
       } catch {
         /* noop */
       }
@@ -210,10 +206,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
   // beforeunload guard
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const hasContent =
-      ctx.state === "recording" ||
-      ctx.state === "paused" ||
-      segments.length > 0;
+    const hasContent = ctx.state === "recording" || ctx.state === "paused" || segments.length > 0;
     if (!hasContent) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -224,11 +217,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
   }, [ctx.state, segments.length]);
 
   const refreshDevices = useCallback(async () => {
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.mediaDevices?.enumerateDevices
-    )
-      return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
     try {
       const list = await navigator.mediaDevices.enumerateDevices();
       setDevices(list.filter((d) => d.kind === "audioinput"));
@@ -243,8 +232,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
       void refreshDevices();
     };
     navigator.mediaDevices.addEventListener?.("devicechange", handler);
-    return () =>
-      navigator.mediaDevices.removeEventListener?.("devicechange", handler);
+    return () => navigator.mediaDevices.removeEventListener?.("devicechange", handler);
   }, [refreshDevices]);
 
   const requestPermission = useCallback(async () => {
@@ -273,8 +261,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
       dispatch({ type: "permission_granted" });
       await refreshDevices();
     } catch (err) {
-      const reason =
-        err instanceof Error ? err.message : AUDIO_MESSAGES.permissionDenied;
+      const reason = err instanceof Error ? err.message : AUDIO_MESSAGES.permissionDenied;
       dispatch({ type: "permission_denied", reason });
     }
   }, [capability, deviceId, dispatch, refreshDevices]);
@@ -283,8 +270,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
     if (!streamRef.current) return;
     const AC =
       (window as unknown as { AudioContext?: typeof AudioContext }).AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (typeof AC !== "function") return;
     try {
       const audioCtx = new AC();
@@ -339,7 +325,7 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
     rec.addEventListener("dataavailable", (ev: BlobEvent) => {
       if (!ev.data || ev.data.size === 0) return;
       const idx = chunkCounterRef.current++;
-      const startedAtMs = (chunkStartRef.current ?? 0);
+      const startedAtMs = chunkStartRef.current ?? 0;
       const endedAtMs = startedAtMs + timesliceMs;
       chunkStartRef.current = endedAtMs;
       const chunk: AudioChunk = {
@@ -459,13 +445,10 @@ export function useAudioRecorder(options: RecorderOptions = {}) {
       setQueue((q) => beginProcessing(q, segmentId));
       queueMicrotask(() => {
         try {
-          if (seg.sizeBytes === 0)
-            throw new Error("segmento vazio");
+          if (seg.sizeBytes === 0) throw new Error("segmento vazio");
           const url = URL.createObjectURL(seg.blob);
           previewUrlsRef.current.push(url);
-          setQueue((q) =>
-            completeProcessing(q, segmentId, { kind: "success", previewUrl: url }),
-          );
+          setQueue((q) => completeProcessing(q, segmentId, { kind: "success", previewUrl: url }));
         } catch (err) {
           setFailuresCount((n) => n + 1);
           setQueue((q) =>

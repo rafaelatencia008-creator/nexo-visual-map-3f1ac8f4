@@ -36,26 +36,19 @@ export function AudioSegmentsPanel({
       </CardHeader>
       <CardContent className="space-y-3">
         {segments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhum segmento capturado ainda.
-          </p>
+          <p className="text-sm text-muted-foreground">Nenhum segmento capturado ainda.</p>
         ) : (
           <ul className="space-y-3">
             {segments.map((seg) => {
               const item = items[seg.id];
               return (
-                <li
-                  key={seg.id}
-                  className="rounded-lg border border-border/70 bg-muted/20 p-3"
-                >
+                <li key={seg.id} className="rounded-lg border border-border/70 bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm">{seg.id}</span>
                         <Badge variant="outline" className="text-[10px]">
-                          {STATUS_LABEL[item?.status ?? seg.status] ??
-                            item?.status ??
-                            seg.status}
+                          {STATUS_LABEL[item?.status ?? seg.status] ?? item?.status ?? seg.status}
                         </Badge>
                         {seg.incomplete ? (
                           <Badge variant="secondary" className="text-[10px]">
@@ -71,31 +64,17 @@ export function AudioSegmentsPanel({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {item?.status === "queued" || item?.status === "retrying" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onProcess(seg.id)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => onProcess(seg.id)}>
                           Processar
                         </Button>
                       ) : null}
                       {item?.status === "failed" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onRetry(seg.id)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => onRetry(seg.id)}>
                           Tentar novamente
                         </Button>
                       ) : null}
-                      {item?.status === "ready" ? (
-                        <SegmentPlayer url={item.previewUrl} />
-                      ) : null}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onDiscard(seg.id)}
-                      >
+                      {item?.status === "ready" ? <SegmentPlayer url={item.previewUrl} /> : null}
+                      <Button size="sm" variant="ghost" onClick={() => onDiscard(seg.id)}>
                         Descartar
                       </Button>
                     </div>
