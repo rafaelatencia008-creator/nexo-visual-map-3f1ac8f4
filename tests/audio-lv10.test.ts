@@ -1142,7 +1142,7 @@ describe("LV-10 audio-runtime — troca real de microfone", () => {
     expect(streams.length).toBe(2);
   });
 
-  test("troca durante gravação encerra o gravador antes de aplicar o novo dispositivo", async () => {
+  test("troca durante gravação encerra o gravador antigo e continua a sessão", async () => {
     const h = makeHarness();
     h.runtime.setDevice("mic-A");
     await permitAndReady(h);
@@ -1152,9 +1152,10 @@ describe("LV-10 audio-runtime — troca real de microfone", () => {
 
     await h.runtime.setDevice("mic-B");
 
-    expect(oldRecorder.state).toBe("inactive"); // encerrado antes da troca
+    expect(oldRecorder.state).toBe("inactive"); // gravador antigo encerrado
     expect(h.streams.length).toBe(2);
-    expect(h.runtime.snapshot().context.state).toBe("ready");
+    // A sessão continua ativa no novo dispositivo, sem reset.
+    expect(h.runtime.snapshot().context.state).toBe("recording");
     expect(h.runtime.snapshot().deviceId).toBe("mic-B");
   });
 
