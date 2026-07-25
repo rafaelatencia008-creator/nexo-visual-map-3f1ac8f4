@@ -71,7 +71,7 @@ export function QuestionDetailDialog({
   const [conclusion, setConclusion] = useState(q?.conclusion ?? "");
   const [observations, setObservations] = useState(q?.observations ?? "");
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
-  const [prepared, setPrepared] = useState(false);
+  const [, setPrepared] = useState(false);
 
   // gap form
   const [gapKind, setGapKind] = useState<GapKind>("documento_ausente");
