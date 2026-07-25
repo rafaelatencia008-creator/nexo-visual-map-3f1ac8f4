@@ -479,7 +479,7 @@ describe("LV-09.2A · listByAppointment", () => {
       AP_A2_2,
     );
     if (!r2.ok) throw new Error("unreachable");
-    expect(r2.data.items[0].kind).toBe("confirmation_request");
+    expect(r2.data.items[0].kind).toBe("reschedule_request");
   });
 });
 
