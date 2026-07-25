@@ -203,7 +203,19 @@ export class AudioRuntime {
     }
 
     if (this.ctx.state === "recording" || this.ctx.state === "paused") {
-      await this.stopPreservingAndReopen(deviceId);
+      const prevDevice2 = prevDevice;
+      const prevSegments = this.segments;
+      try {
+        await this.continueOnNewDevice(deviceId);
+      } catch (err) {
+        // Rollback deviceId; segmentos permanecem preservados.
+        this.deviceId = prevDevice2;
+        this.segments = prevSegments;
+        this.dispatch({
+          type: "fatal",
+          reason: err instanceof Error ? err.message : "Falha ao trocar microfone",
+        });
+      }
     }
   }
 
