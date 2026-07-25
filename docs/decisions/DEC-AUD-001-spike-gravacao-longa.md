@@ -127,6 +127,6 @@ teste físico.
 
 ## Ausência de backend e transcrição
 
-Reafirma-se: **nenhum backend** foi consumido, **nenhum áudio** trafegou
-pela rede, **nenhuma IA/transcrição** foi executada. O motor é
-inteiramente client-side e temporário.
+Sem backend. Reafirma-se: **nenhum backend** foi consumido, **nenhum
+áudio** trafegou pela rede, **nenhuma IA/transcrição** foi executada. O
+motor é inteiramente client-side e temporário.

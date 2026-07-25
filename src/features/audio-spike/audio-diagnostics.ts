@@ -58,7 +58,7 @@ export function buildDiagnosticsReport(snap: DiagnosticsSnapshot): string {
     `Recuperações: ${snap.recoveries}`,
     `Memória aproximada: ${fmtBytes(snap.approxMemoryBytes)}`,
     "----------------------------------------",
-    "Sem backend. Sem transcrição. Sem IA real.",
+    "Sem backend. Sem envio remoto. Sem IA real.",
   ];
   return lines.join("\n");
 }
