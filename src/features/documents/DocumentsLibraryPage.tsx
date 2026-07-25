@@ -65,6 +65,7 @@ import { DocumentBatchDialog } from "./DocumentBatchDialog";
 import { DocumentDetailDialog } from "./DocumentDetailDialog";
 import { DocumentVersionDialog } from "./DocumentVersionDialog";
 import { DocumentAnnotationDialog } from "./DocumentAnnotationDialog";
+import { DocumentViewerDialog } from "./DocumentViewerDialog";
 
 type LoadState = "loading" | "ready" | "error" | "offline" | "forbidden";
 
@@ -94,6 +95,9 @@ export function DocumentsLibraryPage() {
   const [selected, setSelected] = useState<DocumentRecord | null>(null);
   const [versionOpen, setVersionOpen] = useState(false);
   const [annotationOpen, setAnnotationOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerVersionId, setViewerVersionId] = useState<string | undefined>(undefined);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [announcement, setAnnouncement] = useState<{ key: number; text: string }>({
     key: 0,
     text: "",
@@ -394,6 +398,12 @@ export function DocumentsLibraryPage() {
               onOpen={() => setSelected(doc)}
               onNewVersion={() => { setSelected(doc); setVersionOpen(true); }}
               onAnnotate={() => { setSelected(doc); setAnnotationOpen(true); }}
+              onView={(e) => {
+                openerRef.current = e?.currentTarget ?? null;
+                setSelected(doc);
+                setViewerVersionId(undefined);
+                setViewerOpen(true);
+              }}
             />
           ))}
         </ul>
@@ -402,12 +412,16 @@ export function DocumentsLibraryPage() {
       <DocumentFormDialog open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSave} />
       <DocumentBatchDialog open={batchOpen} onClose={() => setBatchOpen(false)} onConfirm={handleBatch} />
       <DocumentDetailDialog
-        open={!!selected && !versionOpen && !annotationOpen}
+        open={!!selected && !versionOpen && !annotationOpen && !viewerOpen}
         document={selected}
         referenceIsoDate={referenceDate}
         onClose={() => setSelected(null)}
         onNewVersion={() => setVersionOpen(true)}
         onAddAnnotation={() => setAnnotationOpen(true)}
+        onView={(versionId) => {
+          setViewerVersionId(versionId);
+          setViewerOpen(true);
+        }}
       />
       <DocumentVersionDialog
         open={versionOpen}
@@ -419,6 +433,20 @@ export function DocumentsLibraryPage() {
         open={annotationOpen}
         onClose={() => setAnnotationOpen(false)}
         onSave={handleAddAnnotation}
+      />
+      <DocumentViewerDialog
+        open={viewerOpen && !!selected}
+        document={selected}
+        initialVersionId={viewerVersionId}
+        onClose={() => {
+          setViewerOpen(false);
+          setViewerVersionId(undefined);
+          // Restauração do foco ao elemento que abriu o visualizador.
+          const opener = openerRef.current;
+          if (opener && typeof opener.focus === "function") {
+            queueMicrotask(() => opener.focus());
+          }
+        }}
       />
     </div>
   );
@@ -466,12 +494,14 @@ function DocumentRow({
   onOpen,
   onNewVersion,
   onAnnotate,
+  onView,
 }: {
   doc: DocumentRecord;
   referenceDate: string;
   onOpen: () => void;
   onNewVersion: () => void;
   onAnnotate: () => void;
+  onView: (e?: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const caseNumber = getCaseNumberLabel(doc.caseId);
   return (
@@ -512,6 +542,15 @@ function DocumentRow({
               </div>
             </button>
             <div className="flex flex-wrap gap-2 sm:flex-col">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => onView(e)}
+                aria-label={`Visualizar conteúdo de ${doc.name}`}
+              >
+                <Eye className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Visualizar conteúdo
+              </Button>
               <Button size="sm" variant="outline" onClick={onOpen}>
                 Abrir
               </Button>
