@@ -1079,6 +1079,7 @@ export function validateMockDomainSeed(
   dup("caseSnapshot", seed.caseSnapshots);
   dup("deadline", seed.deadlines);
   dup("appointment", seed.appointments);
+  dup("communication", seed.communications);
 
   for (const e of seed.auditEvents) {
     const eid = e.id;
