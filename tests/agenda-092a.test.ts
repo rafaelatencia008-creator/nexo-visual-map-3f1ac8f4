@@ -380,14 +380,16 @@ describe("LV-09.2A · listByAppointment", () => {
     expect(r.data.items[0].channel).toBe("system");
   });
 
-  it("(44) lista vazia para AP_A2_1 (sem seed)", async () => {
+  it("(44) AP_A2_1 lista as 2 comunicações do seed (absence + cancellation)", async () => {
     const env = createMockDomainEnvironment();
     const r = await env.services.communications.listByAppointment(
       OWNER_ALFA,
       SEED_CASE_ALFA_2_ID,
       AP_A2_1,
     );
-    expect(r.ok && r.data.items.length === 0).toBe(true);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("unreachable");
+    expect(r.data.items.length).toBe(2);
   });
 
   it("(45) appointment inexistente → not_found", async () => {
