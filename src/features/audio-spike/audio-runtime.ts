@@ -113,12 +113,14 @@ export class AudioRuntime {
   private chunkStartMs = 0;
   private previewUrls = new Set<string>();
   private intentionalStop = false;
+  private silentFinalize = false;
   private trackEndedHandler: (() => void) | null = null;
   private recorderListeners = new Map<
     "dataavailable" | "stop" | "error",
     (payload: unknown) => void
   >();
   private listeners = new Set<() => void>();
+  private snapshotCache: RuntimeSnapshot | null = null;
 
   constructor(
     private deps: AudioRuntimeDeps,
