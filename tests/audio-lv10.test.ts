@@ -1386,3 +1386,242 @@ describe("LV-10 audio-runtime — descarte e cleanup", () => {
     expect(h.runtime.snapshot().context.state).toBe("idle");
   });
 });
+
+// ============================================================================
+// LV-10 correção final e única — bloqueadores:
+// (1) snapshot estável do useSyncExternalStore
+// (2) continuação após troca de microfone (mesma sessão)
+// (3) finalização assíncrona durante recuperação
+// ============================================================================
+
+describe("LV-10 correção final — snapshot estável", () => {
+  test("duas leituras consecutivas sem mudança retornam a mesma referência", async () => {
+    const h = makeHarness();
+    await permitAndReady(h);
+    const a = h.runtime.snapshot();
+    const b = h.runtime.snapshot();
+    expect(a).toBe(b);
+  });
+
+  test("após uma mutação a referência muda; a leitura seguinte volta a ser estável", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    const before = h.runtime.snapshot();
+    h.runtime.start();
+    const afterStart = h.runtime.snapshot();
+    expect(afterStart).not.toBe(before);
+    const afterStart2 = h.runtime.snapshot();
+    expect(afterStart2).toBe(afterStart);
+    h.emitData(100);
+    const afterChunk = h.runtime.snapshot();
+    expect(afterChunk).not.toBe(afterStart2);
+    const afterChunk2 = h.runtime.snapshot();
+    expect(afterChunk2).toBe(afterChunk);
+  });
+
+  test("notify publica um snapshot com dados atualizados", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    const before = h.runtime.snapshot();
+    h.emitData(100);
+    h.emitData(100);
+    const after = h.runtime.snapshot();
+    expect(after).not.toBe(before);
+    expect(after.segments.length).toBeGreaterThan(before.segments.length);
+  });
+});
+
+describe("LV-10 correção final — continuação após troca de microfone", () => {
+  test("troca durante recording preserva segment-0001 e mantém segments/queue", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100); // fecha segment-0001
+    const before = h.runtime.snapshot();
+    expect(before.segments.some((s) => s.id === "segment-0001")).toBe(true);
+    expect(before.queue.order).toContain("segment-0001");
+    await h.runtime.setDevice("mic-outro");
+    const after = h.runtime.snapshot();
+    expect(after.segments.some((s) => s.id === "segment-0001" && !s.incomplete)).toBe(true);
+    expect(after.queue.order).toContain("segment-0001");
+    expect(after.context.state).toBe("recording");
+  });
+
+  test("novo segmento após troca continua com o próximo ID", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100); // segment-0001
+    const seqBefore = h.runtime.snapshot().nextSequence;
+    await h.runtime.setDevice("mic-outro");
+    // Após a troca, novos chunks alimentam um segmenter cuja sequência inicia
+    // em nextSequence anterior.
+    h.emitData(100);
+    h.emitData(100);
+    const ids = h.runtime.snapshot().segments.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(h.runtime.snapshot().nextSequence).toBeGreaterThanOrEqual(seqBefore + 1);
+  });
+
+  test("troca não reinicia o cronômetro nem zera contadores", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    h.nowMs = 1_000;
+    await permitAndReady(h);
+    h.runtime.start();
+    h.nowMs = 5_000;
+    h.emitData(200);
+    h.emitData(200);
+    const before = h.runtime.snapshot();
+    await h.runtime.setDevice("mic-outro");
+    const after = h.runtime.snapshot();
+    expect(after.clock.startedAtMs).toBe(before.clock.startedAtMs);
+    expect(after.chunksReceived).toBe(before.chunksReceived);
+    expect(after.approxBytes).toBe(before.approxBytes);
+  });
+
+  test("falha ao abrir o novo microfone restaura o deviceId anterior e preserva segmentos", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    h.runtime.setDevice("mic-A");
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100);
+    const segsBefore = h.runtime.snapshot().segments.map((s) => s.id);
+    h.streamFailQueue.push(true);
+    await h.runtime.setDevice("mic-quebrado");
+    const snap = h.runtime.snapshot();
+    expect(snap.deviceId).toBe("mic-A");
+    for (const id of segsBefore) expect(snap.segments.map((s) => s.id)).toContain(id);
+    expect(snap.context.state).toBe("error");
+  });
+});
+
+// Gravador falso assíncrono para o teste (3): stop() não emite imediatamente.
+type AsyncFakeRecorder = FakeRecorder & { _finish: () => void };
+
+function makeAsyncRecorder(stream: FakeStream): AsyncFakeRecorder {
+  const base = makeRecorder(stream);
+  // Sobrescreve stop para NÃO emitir "stop" imediatamente. O teste controla
+  // quando o ciclo final termina via _finish().
+  const r = base as AsyncFakeRecorder;
+  r.stop = () => {
+    // permanece no estado "recording" até _finish; o real MediaRecorder passa
+    // por "inactive" após o stop event, mas para o teste basta simular o
+    // atraso assíncrono da emissão.
+  };
+  r._finish = () => {
+    // Emite dataavailable final e depois stop, então marca inactive.
+    for (const l of Array.from(r._listeners.dataavailable)) l({ data: fakeBlob(321) });
+    for (const l of Array.from(r._listeners.stop)) l({});
+    r.state = "inactive";
+  };
+  return r;
+}
+
+describe("LV-10 correção final — finalização assíncrona da recuperação", () => {
+  test("aguarda dataavailable final e stop antes de abrir o novo stream", async () => {
+    const streams: FakeStream[] = [];
+    const asyncRecorders: AsyncFakeRecorder[] = [];
+    const deps: AudioRuntimeDeps = {
+      async getUserMedia() {
+        const s = makeStream(`s-${streams.length + 1}`);
+        streams.push(s);
+        return s;
+      },
+      createRecorder(stream) {
+        const r = makeAsyncRecorder(stream as FakeStream);
+        asyncRecorders.push(r);
+        return r;
+      },
+      createObjectURL: () => "u",
+      revokeObjectURL: () => {},
+      now: () => 0,
+    };
+    const rt = new AudioRuntime(deps, {
+      mimeType: "audio/webm",
+      segmentDurationMs: 2000,
+      overlapMs: 0,
+      timesliceMs: 1000,
+    });
+    await rt.requestPermission();
+    rt.start();
+    // primeiro segmento fecha síncrono
+    asyncRecorders[0]._emit("dataavailable", { data: fakeBlob(100) });
+    asyncRecorders[0]._emit("dataavailable", { data: fakeBlob(100) });
+    // simula queda de dispositivo
+    streams[0].tracks[0]._fireEnded();
+    expect(rt.snapshot().context.state).toBe("recovering");
+
+    // tryRecover deve aguardar o ciclo final do gravador antigo.
+    const recoverPromise = rt.tryRecover();
+    // Antes de finalizar o gravador antigo, nenhum novo stream ainda foi criado.
+    // (Em um microtask, a promise ainda não resolveu.)
+    await Promise.resolve();
+    expect(streams.length).toBe(1);
+
+    // Emite o dataavailable final + stop assíncronos do gravador antigo.
+    asyncRecorders[0]._finish();
+    await recoverPromise;
+
+    // O último Blob entrou no segmento, e um novo stream foi aberto.
+    expect(streams.length).toBe(2);
+    expect(rt.snapshot().context.state).toBe("recording");
+    expect(rt.snapshot().chunksReceived).toBeGreaterThanOrEqual(3);
+  });
+
+  test("evento tardio no gravador antigo após recuperação assíncrona não altera a nova sessão", async () => {
+    const streams: FakeStream[] = [];
+    const asyncRecorders: AsyncFakeRecorder[] = [];
+    const deps: AudioRuntimeDeps = {
+      async getUserMedia() {
+        const s = makeStream(`s-${streams.length + 1}`);
+        streams.push(s);
+        return s;
+      },
+      createRecorder(stream) {
+        const r = makeAsyncRecorder(stream as FakeStream);
+        asyncRecorders.push(r);
+        return r;
+      },
+      createObjectURL: () => "u",
+      revokeObjectURL: () => {},
+      now: () => 0,
+    };
+    const rt = new AudioRuntime(deps, {
+      mimeType: "audio/webm",
+      segmentDurationMs: 2000,
+      overlapMs: 0,
+      timesliceMs: 1000,
+    });
+    await rt.requestPermission();
+    rt.start();
+    streams[0].tracks[0]._fireEnded();
+    const p = rt.tryRecover();
+    await Promise.resolve();
+    asyncRecorders[0]._finish();
+    await p;
+    const snapAfter = rt.snapshot();
+    // Emite mais eventos no gravador antigo: já teve listeners removidos.
+    asyncRecorders[0]._emit("dataavailable", { data: fakeBlob(999) });
+    asyncRecorders[0]._emit("stop", {});
+    const snapNow = rt.snapshot();
+    expect(snapNow.chunksReceived).toBe(snapAfter.chunksReceived);
+    expect(snapNow.context.state).toBe(snapAfter.context.state);
+  });
+
+  test("tryRecover com gravador já inactive não trava aguardando stop", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    // Força inactive antes do device_lost.
+    h.latestRecorder().state = "inactive";
+    h.latestStream().tracks[0]._fireEnded();
+    expect(h.runtime.snapshot().context.state).toBe("recovering");
+    await h.runtime.tryRecover();
+    expect(h.runtime.snapshot().context.state).toBe("recording");
+  });
+});
+
