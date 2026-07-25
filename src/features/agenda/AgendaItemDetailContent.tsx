@@ -1482,6 +1482,15 @@ export const AgendaItemDetailContent = React.forwardRef<
                     perm={perm}
                     referenceEpoch={referenceEpoch}
                   />
+                  {detail.loaded.type === "appointment" && (
+                    <AgendaCommunicationsSection
+                      active={active}
+                      environment={environment}
+                      context={context}
+                      caseId={detail.loaded.item.caseId}
+                      appointmentId={detail.loaded.item.id}
+                    />
+                  )}
                   <ItemActionsSection
                     loaded={detail.loaded}
                     permChangeStatus={permChangeStatus}
