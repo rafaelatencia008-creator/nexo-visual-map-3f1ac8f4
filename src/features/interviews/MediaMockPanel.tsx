@@ -174,7 +174,6 @@ export function MediaMockPanel({ diligenceId, photos, readOnly }: MediaMockPanel
               >
                 <div className="flex items-start gap-3">
                   {p.objectUrl ? (
-                    
                     <img
                       src={p.objectUrl}
                       alt={p.caption || p.name}
