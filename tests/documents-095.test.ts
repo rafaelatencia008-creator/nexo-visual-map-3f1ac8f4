@@ -68,7 +68,12 @@ describe("LV-09.5 — auditoria estática", () => {
   });
 
   test("nenhum uso proibido em document-analysis.ts", () => {
-    const src = read("src/features/documents/document-analysis.ts");
+    // Remove comentários de bloco/linha antes de auditar, para permitir apenas
+    // menções em documentação e proibir o uso real nas expressões.
+    const raw = read("src/features/documents/document-analysis.ts");
+    const src = raw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
     expect(src).not.toMatch(/Math\.random/);
     expect(src).not.toMatch(/crypto\.randomUUID/);
     expect(src).not.toMatch(/Date\.now/);
