@@ -465,7 +465,6 @@ export class AudioRuntime {
 
   private async stopAndFinalize(): Promise<void> {
     if (!this.recorder) return;
-    this.dispatch({ type: "stop" });
     const recorder = this.recorder;
     const done = new Promise<void>((resolve) => {
       const listener = () => {
@@ -474,18 +473,15 @@ export class AudioRuntime {
       };
       recorder.addEventListener("stop", listener);
     });
+    this.dispatch({ type: "stop" });
     try {
       if (recorder.state !== "inactive") recorder.stop();
     } catch {
-      resolve: {
-        break resolve;
-      }
+      /* noop */
     }
-    await Promise.race([
-      done,
-      new Promise<void>((r) => setTimeout(r, 0)),
-    ]);
+    await done;
   }
+
 
   stop(): void {
     if (!this.recorder) return;
