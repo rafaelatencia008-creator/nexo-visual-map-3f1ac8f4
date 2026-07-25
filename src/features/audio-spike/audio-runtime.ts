@@ -113,12 +113,14 @@ export class AudioRuntime {
   private chunkStartMs = 0;
   private previewUrls = new Set<string>();
   private intentionalStop = false;
+  private silentFinalize = false;
   private trackEndedHandler: (() => void) | null = null;
   private recorderListeners = new Map<
     "dataavailable" | "stop" | "error",
     (payload: unknown) => void
   >();
   private listeners = new Set<() => void>();
+  private snapshotCache: RuntimeSnapshot | null = null;
 
   constructor(
     private deps: AudioRuntimeDeps,
@@ -136,7 +138,8 @@ export class AudioRuntime {
   }
 
   snapshot(): RuntimeSnapshot {
-    return Object.freeze({
+    if (this.snapshotCache) return this.snapshotCache;
+    this.snapshotCache = Object.freeze({
       context: this.ctx,
       deviceId: this.deviceId,
       segments: this.segments,
@@ -149,9 +152,11 @@ export class AudioRuntime {
       supportsPause: this.supportsPause,
       nextSequence: this.nextSequence,
     });
+    return this.snapshotCache;
   }
 
   private notify(): void {
+    this.snapshotCache = null;
     for (const l of this.listeners) l();
   }
 
@@ -198,7 +203,19 @@ export class AudioRuntime {
     }
 
     if (this.ctx.state === "recording" || this.ctx.state === "paused") {
-      await this.stopPreservingAndReopen(deviceId);
+      const prevDevice2 = prevDevice;
+      const prevSegments = this.segments;
+      try {
+        await this.continueOnNewDevice(deviceId);
+      } catch (err) {
+        // Rollback deviceId; segmentos permanecem preservados.
+        this.deviceId = prevDevice2;
+        this.segments = prevSegments;
+        this.dispatch({
+          type: "fatal",
+          reason: err instanceof Error ? err.message : "Falha ao trocar microfone",
+        });
+      }
     }
   }
 
@@ -215,29 +232,95 @@ export class AudioRuntime {
     this.notify();
   }
 
-  private async stopPreservingAndReopen(deviceId: string | null): Promise<void> {
-    // Fecha o gravador; segmentos já capturados permanecem em `this.segments`.
-    await this.stopAndFinalize();
-    // Após o stop, ctx é "completed" (via evento). Movemos manualmente para ready
-    // já apontando para o novo dispositivo.
+  /**
+   * Aguarda o encerramento assíncrono do gravador atual: mantém os listeners
+   * até o último `dataavailable` e o evento `stop` chegarem. Se já estiver
+   * inactive, retorna imediatamente. `silentFinalize=true` impede que o
+   * `onStop` publique transição de estado.
+   */
+  private awaitRecorderStop(): Promise<void> {
+    const recorder = this.recorder;
+    if (!recorder) return Promise.resolve();
+    if (recorder.state === "inactive") {
+      // O gravador já parou; drenar o segmenter manualmente se ainda houver
+      // segmento aberto.
+      const seg = this.segmenter;
+      if (seg && !seg.finalized) {
+        const finalized = finalizeSegmenter(seg);
+        this.segmenter = finalized;
+        if (finalized.segments.length > seg.segments.length) {
+          const additions = finalized.segments.slice(seg.segments.length);
+          this.segments = [...this.segments, ...additions];
+          let q = this.queue;
+          for (const s of additions) if (!q.items[s.id]) q = enqueueSegment(q, s);
+          this.queue = q;
+        }
+        this.nextSequence = finalized.nextSequence;
+      }
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      const l = () => {
+        recorder.removeEventListener?.("stop", l);
+        resolve();
+      };
+      recorder.addEventListener("stop", l);
+      try {
+        recorder.stop();
+      } catch {
+        recorder.removeEventListener?.("stop", l);
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Troca de microfone durante `recording`/`paused` preservando integralmente
+   * a sessão: segmentos, fila, previewUrls, cronômetro, contadores e
+   * `nextSequence`. Finaliza o gravador antigo de forma assíncrona (aguardando
+   * o último `dataavailable` e o `stop`), remove seus listeners somente ao
+   * final do ciclo e então reabre um novo stream com o dispositivo alvo.
+   */
+  private async continueOnNewDevice(deviceId: string | null): Promise<void> {
+    const wasPaused = this.ctx.state === "paused";
+    this.intentionalStop = true;
+    this.silentFinalize = true;
     try {
-      this.intentionalStop = true;
-      this.stopStreamOnly();
-      const stream = await this.deps.getUserMedia({
-        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
-      });
-      this.intentionalStop = false;
-      this.stream = stream;
-      this.attachTrackEnded();
-      // completed → ready via reset preservando segmentos? Não: o dispatch reset
-      // apagaria a interrupçãoCount. Aqui apenas remontamos o ctx para "ready".
-      this.ctx = { ...this.ctx, state: "ready", error: null };
-      this.notify();
-    } catch (err) {
-      this.dispatch({
-        type: "fatal",
-        reason: err instanceof Error ? err.message : "Falha ao trocar microfone",
-      });
+      await this.awaitRecorderStop();
+    } finally {
+      this.silentFinalize = false;
+      this.detachRecorderListeners();
+      this.recorder = null;
+    }
+    this.detachTrackEnded();
+    this.stopStreamOnly();
+    const stream = await this.deps.getUserMedia({
+      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+    });
+    this.intentionalStop = false;
+    this.stream = stream;
+    this.attachTrackEnded();
+    this.segmenter = initSegmenter(
+      {
+        segmentDurationMs: this.options.segmentDurationMs,
+        overlapMs: this.options.overlapMs,
+        mimeType: this.options.mimeType,
+      },
+      { startSequence: this.nextSequence },
+    );
+    this.chunkStartMs = 0;
+    this.attachRecorder({ startSequence: this.nextSequence });
+    // Preserva o estado da sessão: continua em recording/paused.
+    this.ctx = { ...this.ctx, state: wasPaused ? "paused" : "recording", error: null };
+    this.notify();
+    this.startRecorderSafely();
+    if (wasPaused) {
+      const rec = this.recorder as MinimalMediaRecorder | null;
+      try {
+        rec?.pause?.();
+      } catch {
+        /* noop */
+      }
     }
   }
 
@@ -384,7 +467,14 @@ export class AudioRuntime {
           }
           this.queue = q;
           this.nextSequence = finalized.nextSequence;
+        } else {
+          this.nextSequence = finalized.nextSequence;
         }
+      }
+      if (this.silentFinalize) {
+        // Finalização silenciosa (troca de microfone/recuperação): não muda o estado.
+        this.notify();
+        return;
       }
       this.dispatch({ type: "stopped" });
     };
@@ -485,38 +575,21 @@ export class AudioRuntime {
    */
   async tryRecover(): Promise<void> {
     if (this.ctx.state !== "recovering") return;
-    // Encerra e finaliza segmento parcial (se houver) sem destruir a fila.
+    // Encerra o gravador antigo de forma assíncrona: mantém os listeners até
+    // o último `dataavailable` e o evento `stop` chegarem. Só então libera o
+    // gravador antigo e abre um novo stream.
     this.intentionalStop = true;
+    this.silentFinalize = true;
     try {
-      if (this.recorder && this.recorder.state !== "inactive") {
-        try {
-          this.recorder.stop();
-        } catch {
-          /* noop */
-        }
-      }
+      await this.awaitRecorderStop();
     } finally {
-      // Detach listeners of previous recorder so late events not affect the new session.
+      this.silentFinalize = false;
       this.detachRecorderListeners();
       this.recorder = null;
     }
-    const seg = this.segmenter;
-    if (seg && !seg.finalized) {
-      const finalized = finalizeSegmenter(seg);
-      if (finalized.segments.length > seg.segments.length) {
-        const additions = finalized.segments.slice(seg.segments.length);
-        this.segments = [...this.segments, ...additions];
-        let q = this.queue;
-        for (const s of additions) if (!q.items[s.id]) q = enqueueSegment(q, s);
-        this.queue = q;
-        this.nextSequence = finalized.nextSequence;
-      } else {
-        this.nextSequence = finalized.nextSequence;
-      }
-      this.segmenter = finalized;
-    }
     this.detachTrackEnded();
     this.stopStreamOnly();
+
 
     try {
       const stream = await this.deps.getUserMedia({
