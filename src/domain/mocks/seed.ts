@@ -1348,5 +1348,40 @@ export function validateMockDomainSeed(
     }
   }
 
+  // Communications: coerência relacional (org, caso, compromisso, autoria).
+  {
+    const appointmentById = new Map(seed.appointments.map((ap) => [ap.id, ap]));
+    const membershipById = new Map(seed.memberships.map((m) => [m.id, m]));
+    for (const m of seed.communications) {
+      const cid = m.id;
+      if (!isCommunication(m)) {
+        issues.push({ entity: "communication", id: cid, reason: "invalid_shape" });
+        continue;
+      }
+      if (!orgIds.has(m.organizationId))
+        issues.push({ entity: "communication", id: cid, reason: "org_not_found" });
+      const c = caseByIdEarly.get(m.caseId);
+      if (!c)
+        issues.push({ entity: "communication", id: cid, reason: "case_not_found" });
+      else if (c.organizationId !== m.organizationId)
+        issues.push({ entity: "communication", id: cid, reason: "case_org_mismatch" });
+      const ap = appointmentById.get(m.appointmentId);
+      if (!ap)
+        issues.push({ entity: "communication", id: cid, reason: "appointment_not_found" });
+      else {
+        if (ap.caseId !== m.caseId)
+          issues.push({ entity: "communication", id: cid, reason: "appointment_case_mismatch" });
+        if (ap.organizationId !== m.organizationId)
+          issues.push({ entity: "communication", id: cid, reason: "appointment_org_mismatch" });
+      }
+      const mem = membershipById.get(m.authorMembershipId);
+      if (!mem)
+        issues.push({ entity: "communication", id: cid, reason: "author_membership_not_found" });
+      else if (mem.organizationId !== m.organizationId)
+        issues.push({ entity: "communication", id: cid, reason: "author_membership_org_mismatch" });
+    }
+  }
+
   return issues;
 }
+
