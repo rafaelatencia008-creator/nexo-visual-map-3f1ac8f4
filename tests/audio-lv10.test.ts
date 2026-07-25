@@ -1170,6 +1170,9 @@ describe("LV-10 audio-runtime — troca real de microfone", () => {
     const snap = h.runtime.snapshot();
     expect(snap.segments.some((s) => s.id === "segment-0001" && !s.incomplete)).toBe(true);
     expect(snap.queue.order).toContain("segment-0001");
+  });
+
+
 
 
   test("setDevice para o mesmo id é no-op", async () => {
