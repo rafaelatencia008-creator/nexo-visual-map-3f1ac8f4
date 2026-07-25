@@ -874,3 +874,513 @@ describe("LV-10 responsividade estrutural", () => {
     expect(src).toContain("overflow-auto");
   });
 });
+
+// ============================================================================
+// LV-10 correção final — audio-runtime.ts (troca real de microfone, recuperação
+// preservando segmentos, enfileiramento durante gravação e descarte com cleanup).
+// ============================================================================
+
+import { AudioRuntime, type AudioRuntimeDeps } from "../src/features/audio-spike/audio-runtime";
+import { initSegmenter as initSeg2 } from "../src/features/audio-spike/audio-segmenter";
+
+// -------- Fake browser primitives -------------------------------------------
+
+type FakeTrack = {
+  _ended: boolean;
+  stop: () => void;
+  addEventListener: (t: "ended", l: () => void) => void;
+  removeEventListener: (t: "ended", l: () => void) => void;
+  _fireEnded: () => void;
+  _listeners: Set<() => void>;
+};
+
+function makeTrack(): FakeTrack {
+  const t: FakeTrack = {
+    _ended: false,
+    _listeners: new Set(),
+    stop() {
+      t._ended = true;
+    },
+    addEventListener(_type, l) {
+      t._listeners.add(l);
+    },
+    removeEventListener(_type, l) {
+      t._listeners.delete(l);
+    },
+    _fireEnded() {
+      for (const l of Array.from(t._listeners)) l();
+    },
+  };
+  return t;
+}
+
+type FakeStream = {
+  id: string;
+  tracks: FakeTrack[];
+  getTracks: () => FakeTrack[];
+  getAudioTracks: () => FakeTrack[];
+};
+
+function makeStream(id: string): FakeStream {
+  const track = makeTrack();
+  const s: FakeStream = {
+    id,
+    tracks: [track],
+    getTracks: () => s.tracks,
+    getAudioTracks: () => s.tracks,
+  };
+  return s;
+}
+
+type FakeRecorder = {
+  state: "inactive" | "recording" | "paused";
+  _listeners: {
+    dataavailable: Set<(e: unknown) => void>;
+    stop: Set<(e: unknown) => void>;
+    error: Set<(e: unknown) => void>;
+  };
+  start: (timeslice?: number) => void;
+  stop: () => void;
+  pause: () => void;
+  resume: () => void;
+  addEventListener: (t: "dataavailable" | "stop" | "error", l: (e: unknown) => void) => void;
+  removeEventListener: (t: "dataavailable" | "stop" | "error", l: (e: unknown) => void) => void;
+  _stream: FakeStream;
+  _emit: (t: "dataavailable" | "stop" | "error", payload: unknown) => void;
+};
+
+function makeRecorder(stream: FakeStream): FakeRecorder {
+  const r: FakeRecorder = {
+    state: "inactive",
+    _stream: stream,
+    _listeners: { dataavailable: new Set(), stop: new Set(), error: new Set() },
+    start() {
+      r.state = "recording";
+    },
+    stop() {
+      const wasActive = r.state !== "inactive";
+      r.state = "inactive";
+      if (wasActive) {
+        // Emit stop event on stop like the real API.
+        for (const l of Array.from(r._listeners.stop)) l({});
+      }
+    },
+    pause() {
+      if (r.state === "recording") r.state = "paused";
+    },
+    resume() {
+      if (r.state === "paused") r.state = "recording";
+    },
+    addEventListener(t, l) {
+      r._listeners[t].add(l);
+    },
+    removeEventListener(t, l) {
+      r._listeners[t].delete(l);
+    },
+    _emit(t, payload) {
+      for (const l of Array.from(r._listeners[t])) l(payload);
+    },
+  };
+  return r;
+}
+
+type Harness = {
+  runtime: AudioRuntime;
+  deps: AudioRuntimeDeps;
+  streams: FakeStream[];
+  recorders: FakeRecorder[];
+  urls: string[];
+  revoked: string[];
+  streamFailQueue: boolean[]; // if true, next getUserMedia rejects
+  nowMs: number;
+  step: (ms: number) => void;
+  // helpers
+  latestRecorder: () => FakeRecorder;
+  latestStream: () => FakeStream;
+  emitData: (sizeBytes: number) => void;
+};
+
+function makeHarness(opts?: {
+  segmentDurationMs?: number;
+  overlapMs?: number;
+  timesliceMs?: number;
+  mimeType?: string;
+}): Harness {
+  const streams: FakeStream[] = [];
+  const recorders: FakeRecorder[] = [];
+  const urls: string[] = [];
+  const revoked: string[] = [];
+  const streamFailQueue: boolean[] = [];
+  const h = {
+    nowMs: 0,
+    step(ms: number) {
+      h.nowMs += ms;
+    },
+  } as Harness;
+  let urlCounter = 0;
+  const deps: AudioRuntimeDeps = {
+    async getUserMedia() {
+      if (streamFailQueue.shift() === true) throw new Error("device unavailable");
+      const s = makeStream(`stream-${streams.length + 1}`);
+      streams.push(s);
+      return s;
+    },
+    createRecorder(stream) {
+      const r = makeRecorder(stream as FakeStream);
+      recorders.push(r);
+      return r;
+    },
+    createObjectURL() {
+      const u = `blob:fake/${++urlCounter}`;
+      urls.push(u);
+      return u;
+    },
+    revokeObjectURL(u) {
+      revoked.push(u);
+    },
+    now: () => h.nowMs,
+  };
+  const runtime = new AudioRuntime(deps, {
+    mimeType: opts?.mimeType ?? "audio/webm",
+    segmentDurationMs: opts?.segmentDurationMs ?? 3_000,
+    overlapMs: opts?.overlapMs ?? 500,
+    timesliceMs: opts?.timesliceMs ?? 1_000,
+  });
+  h.runtime = runtime;
+  h.deps = deps;
+  h.streams = streams;
+  h.recorders = recorders;
+  h.urls = urls;
+  h.revoked = revoked;
+  h.streamFailQueue = streamFailQueue;
+  h.latestRecorder = () => recorders[recorders.length - 1];
+  h.latestStream = () => streams[streams.length - 1];
+  h.emitData = (sizeBytes: number) => {
+    const rec = h.latestRecorder();
+    // Real MediaRecorder passes a BlobEvent; the runtime reads ev.data.size and ev.data.
+    rec._emit("dataavailable", { data: fakeBlob(sizeBytes) });
+  };
+  return h;
+}
+
+async function permitAndReady(h: Harness): Promise<void> {
+  await h.runtime.requestPermission();
+}
+
+describe("LV-10 audio-segmenter startSequence", () => {
+  test("initSegmenter aceita startSequence e continua a numeração", () => {
+    let s = initSeg2(
+      { segmentDurationMs: 2_000, overlapMs: 500, mimeType: "audio/webm" },
+      { startSequence: 5 },
+    );
+    expect(s.nextSequence).toBe(5);
+    s = pushChunk(s, chunk(0, 0, 1000));
+    s = pushChunk(s, chunk(1, 1000, 2000));
+    expect(s.segments[0].sequence).toBe(5);
+    expect(s.segments[0].id).toBe("segment-0005");
+  });
+
+  test("initSegmenter rejeita startSequence inválido", () => {
+    expect(() =>
+      initSeg2(
+        { segmentDurationMs: 1000, overlapMs: 0, mimeType: "audio/webm" },
+        { startSequence: 0 },
+      ),
+    ).toThrow();
+    expect(() =>
+      initSeg2(
+        { segmentDurationMs: 1000, overlapMs: 0, mimeType: "audio/webm" },
+        { startSequence: 1.5 },
+      ),
+    ).toThrow();
+  });
+});
+
+describe("LV-10 audio-runtime — troca real de microfone", () => {
+  test("setDevice em ready reabre o stream com o novo dispositivo", async () => {
+    const h = makeHarness();
+    h.runtime.setDevice("mic-A");
+    await permitAndReady(h);
+    expect(h.streams.length).toBe(1);
+    expect(h.runtime.snapshot().context.state).toBe("ready");
+
+    await h.runtime.setDevice("mic-B");
+    // reabriu: um novo stream foi criado e o anterior parou.
+    expect(h.streams.length).toBe(2);
+    expect(h.streams[0].tracks[0]._ended).toBe(true);
+    expect(h.runtime.snapshot().context.state).toBe("ready");
+    expect(h.runtime.snapshot().deviceId).toBe("mic-B");
+  });
+
+  test("microfone escolhido após permissão é realmente usado pelo novo stream", async () => {
+    let requested: unknown = null;
+    const streams: FakeStream[] = [];
+    const deps: AudioRuntimeDeps = {
+      async getUserMedia(c) {
+        requested = c;
+        const s = makeStream(`s-${streams.length + 1}`);
+        streams.push(s);
+        return s;
+      },
+      createRecorder: (s) => makeRecorder(s as FakeStream),
+      createObjectURL: () => "u",
+      revokeObjectURL: () => {},
+      now: () => 0,
+    };
+    const rt = new AudioRuntime(deps, {
+      mimeType: "audio/webm",
+      segmentDurationMs: 3000,
+      overlapMs: 0,
+      timesliceMs: 1000,
+    });
+    await rt.requestPermission(); // sem device selecionado
+    expect((requested as { audio: unknown }).audio).toBe(true);
+    await rt.setDevice("mic-USB-1");
+    expect((requested as { audio: { deviceId?: { exact: string } } }).audio).toEqual({
+      deviceId: { exact: "mic-USB-1" },
+    });
+    expect(streams.length).toBe(2);
+  });
+
+  test("troca durante gravação encerra o gravador antes de aplicar o novo dispositivo", async () => {
+    const h = makeHarness();
+    h.runtime.setDevice("mic-A");
+    await permitAndReady(h);
+    h.runtime.start();
+    expect(h.runtime.snapshot().context.state).toBe("recording");
+    const oldRecorder = h.latestRecorder();
+
+    await h.runtime.setDevice("mic-B");
+
+    expect(oldRecorder.state).toBe("inactive"); // encerrado antes da troca
+    expect(h.streams.length).toBe(2);
+    expect(h.runtime.snapshot().context.state).toBe("ready");
+    expect(h.runtime.snapshot().deviceId).toBe("mic-B");
+  });
+
+  test("troca durante gravação preserva segmentos já capturados", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 500, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(200); // 0-1000
+    h.emitData(200); // 1000-2000 → fecha segmento 1
+    expect(h.runtime.snapshot().segments.length).toBe(1);
+    await h.runtime.setDevice("mic-new");
+    // Segmento capturado permanece na fila e em segments.
+    expect(h.runtime.snapshot().segments.length).toBe(1);
+    expect(h.runtime.snapshot().queue.order).toContain("segment-0001");
+  });
+
+  test("setDevice para o mesmo id é no-op", async () => {
+    const h = makeHarness();
+    h.runtime.setDevice("mic-A");
+    await permitAndReady(h);
+    const before = h.streams.length;
+    await h.runtime.setDevice("mic-A");
+    expect(h.streams.length).toBe(before);
+  });
+
+  test("falha ao reabrir stream em ready reverte deviceId e reporta erro", async () => {
+    const h = makeHarness();
+    h.runtime.setDevice("mic-A");
+    await permitAndReady(h);
+    h.streamFailQueue.push(true);
+    await h.runtime.setDevice("mic-broken");
+    const s = h.runtime.snapshot();
+    expect(s.context.state).toBe("error");
+    expect(s.deviceId).toBe("mic-A");
+  });
+});
+
+describe("LV-10 audio-runtime — enfileiramento durante a gravação", () => {
+  test("segmento completo entra na fila imediatamente, antes do stop", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100); // fecha
+    const snap = h.runtime.snapshot();
+    expect(snap.segments.length).toBe(1);
+    expect(snap.queue.order).toEqual(["segment-0001"]);
+    expect(snap.queue.items["segment-0001"].status).toBe("queued");
+    expect(snap.context.state).toBe("recording"); // não parou
+  });
+
+  test("stop finaliza restante e não duplica IDs", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100); // segmento 1 fecha
+    h.emitData(100); // buffer
+    h.runtime.stop();
+    // stop() chama recorder.stop() que emite "stop"
+    const snap = h.runtime.snapshot();
+    const ids = snap.segments.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("segment-0001");
+    expect(ids).toContain("segment-0002");
+  });
+
+  test("múltiplos segmentos consecutivos aparecem na fila em ordem", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    for (let i = 0; i < 6; i++) h.emitData(100); // 3 segmentos
+    const snap = h.runtime.snapshot();
+    expect(snap.segments.length).toBe(3);
+    expect(snap.queue.order).toEqual(["segment-0001", "segment-0002", "segment-0003"]);
+  });
+});
+
+describe("LV-10 audio-runtime — recuperação preservando conteúdo", () => {
+  async function recordAndLoseDevice(h: Harness): Promise<void> {
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100); // fecha segmento 1
+    // Simula queda: track ended dispara device_lost.
+    h.latestStream().tracks[0]._fireEnded();
+    expect(h.runtime.snapshot().context.state).toBe("recovering");
+  }
+
+  test("device_lost move para recovering e conta interrupção", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await recordAndLoseDevice(h);
+    expect(h.runtime.snapshot().interruptionCount).toBe(1);
+  });
+
+  test("tryRecover preserva segmentos anteriores", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await recordAndLoseDevice(h);
+    const beforeIds = h.runtime.snapshot().segments.map((s) => s.id);
+    await h.runtime.tryRecover();
+    const afterIds = h.runtime.snapshot().segments.map((s) => s.id);
+    for (const id of beforeIds) expect(afterIds).toContain(id);
+  });
+
+  test("tryRecover preserva fila anterior", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await recordAndLoseDevice(h);
+    const beforeOrder = h.runtime.snapshot().queue.order.slice();
+    await h.runtime.tryRecover();
+    const afterOrder = h.runtime.snapshot().queue.order;
+    for (const id of beforeOrder) expect(afterOrder).toContain(id);
+  });
+
+  test("tryRecover continua sequência sem IDs duplicados", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await recordAndLoseDevice(h);
+    await h.runtime.tryRecover();
+    // Novo segmento após recuperação.
+    expect(h.runtime.snapshot().context.state).toBe("recording");
+    h.emitData(100);
+    h.emitData(100); // fecha um novo segmento
+    const ids = h.runtime.snapshot().segments.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids[0]).toBe("segment-0001");
+    // Próxima sequência é maior que a anterior.
+    expect(h.runtime.snapshot().nextSequence).toBeGreaterThanOrEqual(3);
+  });
+
+  test("tryRecover não zera o cronômetro acumulado", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    h.nowMs = 1_000;
+    await permitAndReady(h);
+    h.runtime.start(); // startedAt = 1000
+    h.nowMs = 5_000;
+    h.emitData(100);
+    h.emitData(100);
+    h.latestStream().tracks[0]._fireEnded();
+    const clockBefore = h.runtime.snapshot().clock;
+    await h.runtime.tryRecover();
+    const clockAfter = h.runtime.snapshot().clock;
+    expect(clockAfter.startedAtMs).toBe(clockBefore.startedAtMs);
+  });
+
+  test("evento tardio do gravador antigo não altera a nova sessão após recuperação", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await recordAndLoseDevice(h);
+    const oldRecorder = h.latestRecorder();
+    await h.runtime.tryRecover();
+    const snapAfterRecover = h.runtime.snapshot();
+    // Emite evento tardio no recorder antigo — deve ser ignorado.
+    oldRecorder._emit("dataavailable", { data: fakeBlob(999) });
+    oldRecorder._emit("stop", {});
+    const snapNow = h.runtime.snapshot();
+    expect(snapNow.chunksReceived).toBe(snapAfterRecover.chunksReceived);
+    expect(snapNow.context.state).toBe(snapAfterRecover.context.state);
+  });
+});
+
+describe("LV-10 audio-runtime — descarte e cleanup", () => {
+  test("descarte durante gravação para recorder e tracks e volta a idle", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    const rec = h.latestRecorder();
+    const stream = h.latestStream();
+    h.runtime.discardAll();
+    expect(rec.state).toBe("inactive");
+    expect(stream.tracks[0]._ended).toBe(true);
+    const s = h.runtime.snapshot();
+    expect(s.context.state).toBe("idle");
+    expect(s.segments.length).toBe(0);
+    expect(s.queue.order.length).toBe(0);
+    expect(s.chunksReceived).toBe(0);
+  });
+
+  test("descarte intencional não coloca a máquina em recovering", async () => {
+    const h = makeHarness();
+    await permitAndReady(h);
+    h.runtime.start();
+    const stream = h.latestStream();
+    h.runtime.discardAll();
+    // A track "ended" dispara logo após o stop; deve ser ignorado.
+    stream.tracks[0]._fireEnded();
+    expect(h.runtime.snapshot().context.state).toBe("idle");
+    expect(h.runtime.snapshot().interruptionCount).toBe(0);
+  });
+
+  test("descarte individual revoga a URL correspondente antes de marcar descartado", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100);
+    h.runtime.processSegment("segment-0001");
+    const url = h.runtime.snapshot().queue.items["segment-0001"].previewUrl;
+    expect(url).toBeTruthy();
+    h.runtime.discardOne("segment-0001");
+    expect(h.revoked).toContain(url!);
+    expect(h.runtime.snapshot().queue.items["segment-0001"].status).toBe("discarded");
+  });
+
+  test("descarte total revoga todas as previewUrls processadas", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    h.emitData(100);
+    h.emitData(100);
+    h.emitData(100);
+    h.emitData(100);
+    h.runtime.processSegment("segment-0001");
+    h.runtime.processSegment("segment-0002");
+    const urls = h.urls.slice();
+    h.runtime.discardAll();
+    for (const u of urls) expect(h.revoked).toContain(u);
+  });
+
+  test("segmentos gerados após descarte via evento tardio do gravador antigo são ignorados", async () => {
+    const h = makeHarness({ segmentDurationMs: 2000, overlapMs: 0, timesliceMs: 1000 });
+    await permitAndReady(h);
+    h.runtime.start();
+    const oldRecorder = h.latestRecorder();
+    h.runtime.discardAll();
+    oldRecorder._emit("dataavailable", { data: fakeBlob(500) });
+    oldRecorder._emit("stop", {});
+    expect(h.runtime.snapshot().segments.length).toBe(0);
+    expect(h.runtime.snapshot().context.state).toBe("idle");
+  });
+});
