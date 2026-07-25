@@ -401,7 +401,14 @@ export class AudioRuntime {
           }
           this.queue = q;
           this.nextSequence = finalized.nextSequence;
+        } else {
+          this.nextSequence = finalized.nextSequence;
         }
+      }
+      if (this.silentFinalize) {
+        // Finalização silenciosa (troca de microfone/recuperação): não muda o estado.
+        this.notify();
+        return;
       }
       this.dispatch({ type: "stopped" });
     };
