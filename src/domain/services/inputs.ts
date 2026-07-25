@@ -372,7 +372,7 @@ export type CreateCommunicationInput = Readonly<{
   caseId: CaseId;
   appointmentId: AppointmentId;
   kind: CommunicationKind;
-  channel: CommunicationChannel;
+  channel?: CommunicationChannel;
   outcome: CommunicationOutcome;
   direction: CommunicationDirection;
   subject?: string;
