@@ -53,7 +53,6 @@ export function beginProcessing(
   const item = state.items[segmentId];
   if (!item) return state;
   if (item.status !== "queued" && item.status !== "retrying") return state;
-  if (item.status === "processing") return state;
   return {
     ...state,
     items: {
