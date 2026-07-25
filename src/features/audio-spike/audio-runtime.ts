@@ -575,38 +575,21 @@ export class AudioRuntime {
    */
   async tryRecover(): Promise<void> {
     if (this.ctx.state !== "recovering") return;
-    // Encerra e finaliza segmento parcial (se houver) sem destruir a fila.
+    // Encerra o gravador antigo de forma assíncrona: mantém os listeners até
+    // o último `dataavailable` e o evento `stop` chegarem. Só então libera o
+    // gravador antigo e abre um novo stream.
     this.intentionalStop = true;
+    this.silentFinalize = true;
     try {
-      if (this.recorder && this.recorder.state !== "inactive") {
-        try {
-          this.recorder.stop();
-        } catch {
-          /* noop */
-        }
-      }
+      await this.awaitRecorderStop();
     } finally {
-      // Detach listeners of previous recorder so late events not affect the new session.
+      this.silentFinalize = false;
       this.detachRecorderListeners();
       this.recorder = null;
     }
-    const seg = this.segmenter;
-    if (seg && !seg.finalized) {
-      const finalized = finalizeSegmenter(seg);
-      if (finalized.segments.length > seg.segments.length) {
-        const additions = finalized.segments.slice(seg.segments.length);
-        this.segments = [...this.segments, ...additions];
-        let q = this.queue;
-        for (const s of additions) if (!q.items[s.id]) q = enqueueSegment(q, s);
-        this.queue = q;
-        this.nextSequence = finalized.nextSequence;
-      } else {
-        this.nextSequence = finalized.nextSequence;
-      }
-      this.segmenter = finalized;
-    }
     this.detachTrackEnded();
     this.stopStreamOnly();
+
 
     try {
       const stream = await this.deps.getUserMedia({
