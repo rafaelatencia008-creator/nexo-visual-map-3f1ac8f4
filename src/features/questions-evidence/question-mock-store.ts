@@ -185,7 +185,6 @@ function buildSeed(): ExpertQuestion[] {
     sequence: 5, origin: "juizo", priority: "critica", status: "nao_analisado", caseId: "pro-02", expertiseId: "prc-02",
     text: "Os valores cobrados a título de tarifas bancárias estão de acordo com a Resolução Bacen aplicável ao contrato?",
     objective: "Verificar conformidade regulatória de tarifas.",
-    priority: "critica",
     createdAt: iso(2026, 5, 10), updatedAt: iso(2026, 5, 10),
     dueAt: iso(2026, 6, 30), // vencido em relação a SEED_REFERENCE_ISO
   });
