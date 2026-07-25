@@ -40,10 +40,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { Communication, CommunicationOutcome } from "@/domain/core/communication";
+import type { Communication } from "@/domain/core/communication";
 import {
   COMMUNICATION_CHANNELS,
   isCommunicationKind,
+  isCommunicationOutcome,
   kindRequiresChannel,
 } from "@/domain/core/communication";
 import type { AppointmentId, CaseId } from "@/domain/core/ids";
@@ -55,6 +56,7 @@ import {
   createCommunicationFormForAction,
   EMPTY_COMMUNICATION_FORM,
   getAllowedOutcomesForAction,
+  getFirstCommunicationErrorField,
   type CommunicationFormField,
   type CommunicationFormState,
   type CommunicationQuickAction,
@@ -108,7 +110,15 @@ export function AgendaCommunicationDialog(
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const savingRef = React.useRef(false);
   const activeAction = React.useRef<CommunicationQuickAction | null>(null);
-  const firstFieldRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Refs por campo (para foco no primeiro campo inválido).
+  const channelTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const outcomeTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const occurredAtRef = React.useRef<HTMLInputElement | null>(null);
+  const summaryRef = React.useRef<HTMLInputElement | null>(null);
+  const notesRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const recipientRef = React.useRef<HTMLInputElement | null>(null);
+  const generalAlertRef = React.useRef<HTMLDivElement | null>(null);
 
   // Reset ao abrir com uma nova ação.
   React.useEffect(() => {
@@ -136,7 +146,7 @@ export function AgendaCommunicationDialog(
     );
   }, [state, action]);
 
-  const allowedOutcomes = React.useMemo<readonly string[]>(
+  const allowedOutcomes = React.useMemo(
     () => (action ? getAllowedOutcomesForAction(action) : []),
     [action],
   );
@@ -144,6 +154,32 @@ export function AgendaCommunicationDialog(
   const kindObj = state.kind;
   const channelRequired =
     isCommunicationKind(kindObj) && kindRequiresChannel(kindObj);
+
+  const outcomeSelectDisabled = allowedOutcomes.length <= 1;
+
+  const focusField = React.useCallback(
+    (field: CommunicationFormField | null) => {
+      if (field === null) return;
+      const map: Readonly<Record<CommunicationFormField, HTMLElement | null>> = {
+        kind: null,
+        direction: null,
+        outcome: outcomeSelectDisabled ? null : outcomeTriggerRef.current,
+        channel: channelTriggerRef.current,
+        occurredAt: occurredAtRef.current,
+        summary: summaryRef.current,
+        notes: notesRef.current,
+        recipientLabel: recipientRef.current,
+      };
+      const el = map[field];
+      if (el && typeof el.focus === "function") {
+        el.focus();
+        return;
+      }
+      const fallback = generalAlertRef.current;
+      if (fallback && typeof fallback.focus === "function") fallback.focus();
+    },
+    [outcomeSelectDisabled],
+  );
 
   const closeSafely = React.useCallback(() => {
     setState(EMPTY_COMMUNICATION_FORM);
@@ -188,10 +224,8 @@ export function AgendaCommunicationDialog(
     const built = buildCommunicationCreateInput(caseId, appointmentId, state);
     if (!built.ok) {
       setErrors(built.errors);
-      const firstField = Object.keys(built.errors)[0];
-      if (firstField === "summary" && firstFieldRef.current) {
-        firstFieldRef.current.focus();
-      }
+      const firstField = getFirstCommunicationErrorField(built.errors);
+      requestAnimationFrame(() => focusField(firstField));
       return;
     }
     savingRef.current = true;
@@ -213,6 +247,10 @@ export function AgendaCommunicationDialog(
                 ? "Não foi possível validar os dados informados."
                 : "Não foi possível salvar o registro.";
         setGeneralError(msg);
+        requestAnimationFrame(() => {
+          const el = generalAlertRef.current;
+          if (el && typeof el.focus === "function") el.focus();
+        });
         return;
       }
       toast.success("Registro salvo");
@@ -224,11 +262,9 @@ export function AgendaCommunicationDialog(
       savingRef.current = false;
       setSaving(false);
     }
-  }, [action, caseId, appointmentId, state, environment, context, onSaved, closeSafely]);
+  }, [action, caseId, appointmentId, state, environment, context, onSaved, closeSafely, focusField]);
 
   const showRescheduleNotice = action === "reschedule_request";
-
-  const outcomeSelectDisabled = allowedOutcomes.length <= 1;
 
   return (
     <>
@@ -261,6 +297,8 @@ export function AgendaCommunicationDialog(
             {generalError && (
               <div
                 role="alert"
+                ref={generalAlertRef}
+                tabIndex={-1}
                 className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4" aria-hidden="true" />
@@ -305,6 +343,7 @@ export function AgendaCommunicationDialog(
               >
                 <SelectTrigger
                   id="comm-channel"
+                  ref={channelTriggerRef}
                   aria-invalid={errors.channel ? "true" : "false"}
                   aria-describedby={errors.channel ? "comm-channel-err" : undefined}
                 >
@@ -337,10 +376,9 @@ export function AgendaCommunicationDialog(
                   id="comm-outcome"
                   className="rounded-md border bg-muted/30 px-3 py-2 text-sm"
                 >
-                  {(() => {
-                    const o = state.outcome as CommunicationOutcome;
-                    return getCommunicationOutcomeLabel(o);
-                  })()}
+                  {isCommunicationOutcome(state.outcome)
+                    ? getCommunicationOutcomeLabel(state.outcome)
+                    : "—"}
                 </div>
               ) : (
                 <Select
@@ -350,6 +388,7 @@ export function AgendaCommunicationDialog(
                 >
                   <SelectTrigger
                     id="comm-outcome"
+                    ref={outcomeTriggerRef}
                     aria-invalid={errors.outcome ? "true" : "false"}
                     aria-describedby={errors.outcome ? "comm-outcome-err" : undefined}
                   >
@@ -358,7 +397,7 @@ export function AgendaCommunicationDialog(
                   <SelectContent>
                     {allowedOutcomes.map((o) => (
                       <SelectItem key={o} value={o}>
-                        {getCommunicationOutcomeLabel(o as CommunicationOutcome)}
+                        {getCommunicationOutcomeLabel(o)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -382,6 +421,7 @@ export function AgendaCommunicationDialog(
               </Label>
               <Input
                 id="comm-occurred-at"
+                ref={occurredAtRef}
                 type="datetime-local"
                 value={state.occurredAtLocal}
                 onChange={(e) => patch({ occurredAtLocal: e.target.value })}
@@ -410,7 +450,7 @@ export function AgendaCommunicationDialog(
               </Label>
               <Input
                 id="comm-summary"
-                ref={firstFieldRef}
+                ref={summaryRef}
                 value={state.summary}
                 onChange={(e) => patch({ summary: e.target.value })}
                 disabled={saving}
@@ -435,6 +475,7 @@ export function AgendaCommunicationDialog(
               <Label htmlFor="comm-notes">Observações</Label>
               <Textarea
                 id="comm-notes"
+                ref={notesRef}
                 value={state.notes}
                 onChange={(e) => patch({ notes: e.target.value })}
                 disabled={saving}
@@ -462,6 +503,7 @@ export function AgendaCommunicationDialog(
               </Label>
               <Input
                 id="comm-recipient"
+                ref={recipientRef}
                 value={state.recipientLabel}
                 onChange={(e) => patch({ recipientLabel: e.target.value })}
                 disabled={saving}

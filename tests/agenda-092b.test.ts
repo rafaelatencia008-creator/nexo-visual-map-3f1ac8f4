@@ -1181,3 +1181,319 @@ describe("LV-09.2B2 · integração e escopo", () => {
     expect(src.includes("/app/comunicacoes")).toBe(false);
   });
 });
+
+// ---- LV-09.2B2 · correções finais internas ------------------------------
+
+import {
+  getFirstCommunicationErrorField,
+  type CommunicationFormField,
+} from "@/features/agenda/communication-form";
+import {
+  loadCommunicationHistoryPages,
+  mapServiceErrorToHistory,
+} from "@/features/agenda/AgendaCommunicationsSection";
+import type { Communication } from "@/domain/core/communication";
+import type { EntityMetadata } from "@/domain/core/common";
+import type { PageResult } from "@/domain/services/pagination";
+import type { ServiceResult } from "@/domain/services/result";
+import type { MockDomainSnapshot } from "@/domain/mocks/types";
+import {
+  SEED_CASE_ALFA_1_ID,
+} from "@/domain/mocks/seed";
+
+function makeComm(idSuffix: string, occurredAt: string): Communication {
+  const iso = occurredAt as IsoDateTime;
+  const meta: EntityMetadata = {
+    createdAt: iso,
+    updatedAt: iso,
+    version: 1,
+  };
+  return {
+    id: buildDomainId("communication", idSuffix),
+    organizationId: SEED_ORG_ALFA_ID,
+    caseId: SEED_CASE_ALFA_2_ID,
+    appointmentId: AP_A2_2,
+    kind: "note",
+    outcome: "informed",
+    direction: "internal",
+    subject: `subj-${idSuffix}`,
+    occurredAt: iso,
+    authorMembershipId: SEED_MEM_ALFA_OWNER_ID,
+    metadata: meta,
+  };
+}
+
+function pageOk(
+  items: readonly Communication[],
+  nextCursor?: string,
+): ServiceResult<PageResult<Communication>> {
+  const pr: PageResult<Communication> = nextCursor
+    ? { items, nextCursor }
+    : { items };
+  return { ok: true, data: pr };
+}
+
+describe("LV-09.2B2 · foco por ordem canônica", () => {
+  it("(105) getFirstCommunicationErrorField segue kind→direction→outcome→channel→occurredAt→summary→notes→recipientLabel", () => {
+    const order: readonly CommunicationFormField[] = [
+      "kind",
+      "direction",
+      "outcome",
+      "channel",
+      "occurredAt",
+      "summary",
+      "notes",
+      "recipientLabel",
+    ];
+    for (let i = 0; i < order.length; i += 1) {
+      const errs: Partial<Record<CommunicationFormField, string>> = {};
+      for (let j = i; j < order.length; j += 1) errs[order[j]] = "erro";
+      expect(getFirstCommunicationErrorField(errs)).toBe(order[i]);
+    }
+  });
+
+  it("(106) getFirstCommunicationErrorField retorna null quando não há erros", () => {
+    expect(getFirstCommunicationErrorField({})).toBeNull();
+  });
+
+  it("(107) getFirstCommunicationErrorField ignora chaves ausentes e escolhe a primeira presente", () => {
+    expect(
+      getFirstCommunicationErrorField({ summary: "x", channel: "y" }),
+    ).toBe("channel");
+    expect(getFirstCommunicationErrorField({ recipientLabel: "z" })).toBe(
+      "recipientLabel",
+    );
+    expect(getFirstCommunicationErrorField({ notes: "n" })).toBe("notes");
+  });
+});
+
+describe("LV-09.2B2 · loader paginado (comportamental puro)", () => {
+  it("(108) carrega uma única página quando não há nextCursor", async () => {
+    const items = [makeComm("l1", "2026-02-01T10:00:00.000Z")];
+    const fetchPage = async () => pageOk(items);
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") {
+      expect(r.items.length).toBe(1);
+      expect(r.items[0]!.id).toBe(items[0]!.id);
+    }
+  });
+
+  it("(109) concatena múltiplas páginas preservando a ordem", async () => {
+    const p1 = [makeComm("p1a", "2026-02-01T10:00:00.000Z")];
+    const p2 = [makeComm("p2a", "2026-02-01T09:00:00.000Z")];
+    const p3 = [makeComm("p3a", "2026-02-01T08:00:00.000Z")];
+    const fetchPage = async (cursor: string | undefined) => {
+      if (cursor === undefined) return pageOk(p1, "c1");
+      if (cursor === "c1") return pageOk(p2, "c2");
+      return pageOk(p3);
+    };
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") {
+      expect(r.items.map((c) => c.id)).toEqual([
+        p1[0]!.id,
+        p2[0]!.id,
+        p3[0]!.id,
+      ]);
+    }
+  });
+
+  it("(110) detecta cursor repetido e retorna cursor_repeat sem itens", async () => {
+    const p1 = [makeComm("cr1", "2026-02-01T10:00:00.000Z")];
+    const fetchPage = async (cursor: string | undefined) => {
+      if (cursor === undefined) return pageOk(p1, "same");
+      return pageOk([makeComm("cr2", "2026-02-01T09:00:00.000Z")], "same");
+    };
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("cursor_repeat");
+  });
+
+  it("(111) respeita teto de páginas e retorna page_limit", async () => {
+    let n = 0;
+    const fetchPage = async () => {
+      n += 1;
+      return pageOk(
+        [makeComm(`pl${n}`, "2026-02-01T10:00:00.000Z")],
+        `cur${n}`,
+      );
+    };
+    const r = await loadCommunicationHistoryPages(fetchPage, { maxPages: 3 });
+    expect(r.kind).toBe("page_limit");
+    expect(n).toBe(3);
+  });
+
+  it("(112) propaga forbidden do serviço", async () => {
+    const fetchPage = async (): Promise<
+      ServiceResult<PageResult<Communication>>
+    > => ({ ok: false, error: { code: "forbidden", message: "no" } });
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("forbidden");
+  });
+
+  it("(113) propaga offline do serviço", async () => {
+    const fetchPage = async (): Promise<
+      ServiceResult<PageResult<Communication>>
+    > => ({ ok: false, error: { code: "offline", message: "no" } });
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("offline");
+  });
+
+  it("(114) demais erros de serviço são mapeados para error", async () => {
+    const fetchPage = async (): Promise<
+      ServiceResult<PageResult<Communication>>
+    > => ({ ok: false, error: { code: "internal_error", message: "x" } });
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("error");
+    expect(mapServiceErrorToHistory("validation_error").kind).toBe("error");
+  });
+
+  it("(115) exceções lançadas pelo serviço tornam-se error", async () => {
+    const fetchPage = async () => {
+      throw new Error("boom");
+    };
+    const r = await loadCommunicationHistoryPages(fetchPage);
+    expect(r.kind).toBe("error");
+  });
+});
+
+describe("LV-09.2B2 · validateMockDomainSeed com adulterações relacionais", () => {
+  function baseSnapshot(): MockDomainSnapshot {
+    const env = createMockDomainEnvironment();
+    return env.snapshot();
+  }
+
+  function tamperCommunications(
+    mapper: (c: Communication, snap: MockDomainSnapshot) => Communication,
+  ) {
+    const base = baseSnapshot();
+    const first = base.communications[0]!;
+    const mutated = mapper(first, base);
+    const comms = [mutated, ...base.communications.slice(1)];
+    return { snap: { ...base, communications: comms }, id: mutated.id };
+  }
+
+  it("(116) detecta id de comunicação duplicado", () => {
+    const base = baseSnapshot();
+    const first = base.communications[0]!;
+    const dupSnap: MockDomainSnapshot = {
+      ...base,
+      communications: [first, first],
+    };
+    const issues = validateMockDomainSeed(dupSnap);
+    expect(
+      issues.some(
+        (i) =>
+          i.entity === "communication" &&
+          i.id === first.id &&
+          i.reason === "duplicate_id",
+      ),
+    ).toBe(true);
+  });
+
+  it("(117) detecta organizationId inexistente", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      organizationId: buildDomainId("organization", "ghost"),
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(issues).toContainEqual({
+      entity: "communication",
+      id,
+      reason: "org_not_found",
+    });
+  });
+
+  it("(118) detecta case inexistente", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      caseId: buildDomainId("case", "ghost"),
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(issues).toContainEqual({
+      entity: "communication",
+      id,
+      reason: "case_not_found",
+    });
+  });
+
+  it("(119) detecta appointment inexistente", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      appointmentId: buildDomainId("appointment", "ghost"),
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(issues).toContainEqual({
+      entity: "communication",
+      id,
+      reason: "appointment_not_found",
+    });
+  });
+
+  it("(120) detecta appointment de outro caso (appointment_case_mismatch)", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      caseId: SEED_CASE_ALFA_1_ID,
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(
+      issues.some(
+        (i) =>
+          i.entity === "communication" &&
+          i.id === id &&
+          i.reason === "appointment_case_mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("(121) detecta divergência de organização com o processo (case_org_mismatch)", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      organizationId: SEED_ORG_BETA_ID,
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(
+      issues.some(
+        (i) =>
+          i.entity === "communication" &&
+          i.id === id &&
+          i.reason === "case_org_mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("(122) detecta membership de autoria inexistente", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      authorMembershipId: buildDomainId("membership", "ghost"),
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(issues).toContainEqual({
+      entity: "communication",
+      id,
+      reason: "author_membership_not_found",
+    });
+  });
+
+  it("(123) detecta membership de autoria de outra organização (author_membership_org_mismatch)", () => {
+    const { snap, id } = tamperCommunications((c) => ({
+      ...c,
+      authorMembershipId: SEED_MEM_BETA_OWNER_ID,
+    }));
+    const issues = validateMockDomainSeed(snap);
+    expect(
+      issues.some(
+        (i) =>
+          i.entity === "communication" &&
+          i.id === id &&
+          i.reason === "author_membership_org_mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("(124) seed oficial não produz nenhum issue relacional", () => {
+    const issues = validateMockDomainSeed(baseSnapshot());
+    expect(issues).toEqual([]);
+  });
+});
+

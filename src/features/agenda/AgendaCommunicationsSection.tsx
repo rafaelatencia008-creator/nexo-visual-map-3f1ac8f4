@@ -9,6 +9,7 @@
  *  - Percorre todas as páginas até `nextCursor` ausente, com teto de
  *    `COMMUNICATION_HISTORY_MAX_PAGES` e detecção de cursor repetido.
  *  - Rejeita respostas obsoletas via token monotônico.
+ *  - Invalida requisições em voo ao desativar a seção ou desmontar.
  *  - Nenhuma alteração automática do compromisso é feita a partir daqui.
  */
 
@@ -25,11 +26,18 @@ import {
 import { Button } from "@/components/ui/button";
 
 import type { Communication } from "@/domain/core/communication";
-import { isCommunicationChannel, isCommunicationDirection, isCommunicationKind, isCommunicationOutcome } from "@/domain/core/communication";
+import {
+  isCommunicationChannel,
+  isCommunicationDirection,
+  isCommunicationKind,
+  isCommunicationOutcome,
+} from "@/domain/core/communication";
 import type { AppointmentId, CaseId } from "@/domain/core/ids";
 import type { MockDomainEnvironment } from "@/domain/mocks";
 import type { ServiceContext } from "@/domain/services/context";
+import type { PageResult } from "@/domain/services/pagination";
 import { PAGE_LIMIT_MAX } from "@/domain/services/pagination";
+import type { ServiceResult } from "@/domain/services/result";
 
 import { AgendaCommunicationDialog } from "./AgendaCommunicationDialog";
 import type { CommunicationQuickAction } from "./communication-form";
@@ -85,6 +93,43 @@ export function mapServiceErrorToHistory(code: string): HistoryLoadResult {
   return { kind: "error" };
 }
 
+export type CommunicationPageFetch = (
+  cursor: string | undefined,
+) => Promise<ServiceResult<PageResult<Communication>>>;
+
+/**
+ * Percorre todas as páginas do histórico até esgotar `nextCursor`,
+ * respeitando um teto seguro (`maxPages`) e detectando cursor repetido.
+ * Não depende de React — é diretamente testável de forma comportamental.
+ */
+export async function loadCommunicationHistoryPages(
+  fetchPage: CommunicationPageFetch,
+  opts: { readonly maxPages?: number } = {},
+): Promise<HistoryLoadResult> {
+  const maxPages = opts.maxPages ?? COMMUNICATION_HISTORY_MAX_PAGES;
+  const acc: Communication[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined = undefined;
+  for (let page = 0; page < maxPages; page += 1) {
+    let r: ServiceResult<PageResult<Communication>>;
+    try {
+      r = await fetchPage(cursor);
+    } catch {
+      return { kind: "error" };
+    }
+    if (!r.ok) {
+      return mapServiceErrorToHistory(r.error.code);
+    }
+    for (const it of r.data.items) acc.push(it);
+    const next = r.data.nextCursor;
+    if (!next) return { kind: "ready", items: acc };
+    if (seenCursors.has(next)) return { kind: "cursor_repeat" };
+    seenCursors.add(next);
+    cursor = next;
+  }
+  return { kind: "page_limit" };
+}
+
 // Ações fixas (ordem estável).
 type ActionIcon = typeof PhoneOff;
 const ACTIONS: readonly {
@@ -106,10 +151,14 @@ export function AgendaCommunicationsSection(
   const { active, environment, context, caseId, appointmentId } = props;
 
   const [perm, setPerm] = React.useState<PermState>("checking");
+  const [permissionAttempt, setPermissionAttempt] = React.useState(0);
   const [history, setHistory] = React.useState<HistoryState>({ kind: "idle" });
   const [dialogAction, setDialogAction] =
     React.useState<CommunicationQuickAction | null>(null);
-  const [savedAnnouncement, setSavedAnnouncement] = React.useState("");
+  const [savedAnnouncement, setSavedAnnouncement] = React.useState<{
+    id: number;
+    text: string;
+  }>({ id: 0, text: "" });
 
   const triggerRefs = React.useRef<
     Record<CommunicationQuickAction, HTMLButtonElement | null>
@@ -122,33 +171,49 @@ export function AgendaCommunicationsSection(
   });
   const currentTriggerRef = React.useRef<HTMLElement | null>(null);
 
-  // Token monotônico para descartar respostas obsoletas.
+  // Tokens monotônicos para descartar respostas obsoletas.
   const historyReqIdRef = React.useRef(0);
   const permReqIdRef = React.useRef(0);
   const mountedRef = React.useRef(true);
+
+  // Invalida tudo ao desmontar.
   React.useEffect(
     () => () => {
       mountedRef.current = false;
+      historyReqIdRef.current += 1;
+      permReqIdRef.current += 1;
     },
     [],
   );
 
   const selectionKey = `${caseId}|${appointmentId}`;
 
-  // Permissão de criação.
+  // Ao desativar a seção, invalida ciclos em voo e limpa estado transitório.
+  React.useEffect(() => {
+    if (active) return;
+    historyReqIdRef.current += 1;
+    permReqIdRef.current += 1;
+    setHistory({ kind: "idle" });
+    setDialogAction(null);
+    setSavedAnnouncement((prev) => ({ id: prev.id + 1, text: "" }));
+  }, [active]);
+
+  // Avaliação unificada de permissão (efeito único; retry via contador).
   React.useEffect(() => {
     if (!active) return;
     const reqId = ++permReqIdRef.current;
     setPerm("checking");
     let cancelled = false;
+    const capturedCase = caseId;
     (async () => {
       try {
         const r = await environment.services.permissions.evaluate(context, {
           action: "communication.create",
-          caseId,
+          caseId: capturedCase,
         });
         if (cancelled || !mountedRef.current) return;
         if (permReqIdRef.current !== reqId) return;
+        if (capturedCase !== caseId) return;
         if (!r.ok) {
           setPerm("error");
           return;
@@ -163,65 +228,37 @@ export function AgendaCommunicationsSection(
     return () => {
       cancelled = true;
     };
-  }, [active, environment, context, caseId, selectionKey]);
+  }, [active, environment, context, caseId, permissionAttempt]);
 
   const loadHistory = React.useCallback(async (): Promise<void> => {
     if (!active) return;
     const reqId = ++historyReqIdRef.current;
+    const capturedCase = caseId;
+    const capturedAppt = appointmentId;
     setHistory({ kind: "loading" });
-    const acc: Communication[] = [];
-    let cursor: string | null | undefined = undefined;
-    const seenCursors = new Set<string>();
-    for (let page = 0; page < COMMUNICATION_HISTORY_MAX_PAGES + 1; page += 1) {
-      if (page === COMMUNICATION_HISTORY_MAX_PAGES) {
-        if (historyReqIdRef.current !== reqId) return;
-        setHistory({ kind: "page_limit" });
-        return;
-      }
-      let r;
-      try {
-        r = await environment.services.communications.listByAppointment(
-          context,
-          caseId,
-          appointmentId,
-          {
-            page: {
-              limit: PAGE_LIMIT_MAX,
-              ...(cursor ? { cursor } : {}),
-            },
+    const result = await loadCommunicationHistoryPages((cursor) =>
+      environment.services.communications.listByAppointment(
+        context,
+        capturedCase,
+        capturedAppt,
+        {
+          page: {
+            limit: PAGE_LIMIT_MAX,
+            ...(cursor ? { cursor } : {}),
           },
-        );
-      } catch {
-        if (historyReqIdRef.current !== reqId) return;
-        setHistory({ kind: "error" });
-        return;
-      }
-      if (!mountedRef.current) return;
-      if (historyReqIdRef.current !== reqId) return;
-      if (!r.ok) {
-        setHistory(mapServiceErrorToHistory(r.error.code));
-        return;
-      }
-      for (const it of r.data.items) acc.push(it);
-      const next = r.data.nextCursor;
-      if (!next) break;
-      if (seenCursors.has(next)) {
-        setHistory({ kind: "cursor_repeat" });
-        return;
-      }
-      seenCursors.add(next);
-      cursor = next;
-    }
+        },
+      ),
+    );
+    if (!mountedRef.current) return;
+    if (!active) return;
     if (historyReqIdRef.current !== reqId) return;
-    setHistory({ kind: "ready", items: acc });
+    if (capturedCase !== caseId || capturedAppt !== appointmentId) return;
+    setHistory(result);
   }, [active, environment, context, caseId, appointmentId]);
 
   // Recarga por mudança de seleção/ativação.
   React.useEffect(() => {
-    if (!active) {
-      setHistory({ kind: "idle" });
-      return;
-    }
+    if (!active) return;
     void loadHistory();
   }, [active, selectionKey, loadHistory]);
 
@@ -234,11 +271,20 @@ export function AgendaCommunicationsSection(
     if (!next) setDialogAction(null);
   }, []);
 
+  const announceSaved = React.useCallback(() => {
+    // Limpa e re-emite o texto para garantir novo anúncio por leitores de tela.
+    setSavedAnnouncement((prev) => ({ id: prev.id + 1, text: "" }));
+    requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
+      setSavedAnnouncement((prev) => ({ id: prev.id + 1, text: "Registro salvo" }));
+    });
+  }, []);
+
   const handleSaved = React.useCallback(() => {
-    setSavedAnnouncement("Registro salvo");
+    announceSaved();
     // Nova carga completa após criação, invalidando respostas em voo.
     void loadHistory();
-  }, [loadHistory]);
+  }, [announceSaved, loadHistory]);
 
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   // Sincroniza returnFocusRef com currentTriggerRef ao mudar diálogo.
@@ -313,28 +359,7 @@ export function AgendaCommunicationsSection(
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => {
-              // Redispara a avaliação.
-              permReqIdRef.current += 1;
-              setPerm("checking");
-              void environment.services.permissions
-                .evaluate(context, {
-                  action: "communication.create",
-                  caseId,
-                })
-                .then((r) => {
-                  if (!mountedRef.current) return;
-                  if (!r.ok) {
-                    setPerm("error");
-                    return;
-                  }
-                  setPerm(r.data.allowed ? "allowed" : "denied");
-                })
-                .catch(() => {
-                  if (!mountedRef.current) return;
-                  setPerm("error");
-                });
-            }}
+            onClick={() => setPermissionAttempt((v) => v + 1)}
           >
             Tentar novamente
           </Button>
@@ -342,8 +367,12 @@ export function AgendaCommunicationsSection(
       )}
 
       {/* Histórico */}
-      <div aria-live="polite" className="sr-only">
-        {savedAnnouncement}
+      <div
+        aria-live="polite"
+        className="sr-only"
+        key={savedAnnouncement.id}
+      >
+        {savedAnnouncement.text}
       </div>
 
       <HistoryView state={history} onRetry={() => void loadHistory()} />
