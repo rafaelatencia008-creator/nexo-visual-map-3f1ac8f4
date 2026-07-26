@@ -261,6 +261,7 @@ const SEEDS: readonly TemplateSeed[] = [
     description:
       "Modelo propositalmente incompleto — usado como base para novos modelos criados no editor.",
     specialty: "geral",
+    status: "rascunho",
     sections: [],
     variables: [],
   },
