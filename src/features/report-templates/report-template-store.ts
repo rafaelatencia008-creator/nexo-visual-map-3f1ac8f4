@@ -253,6 +253,7 @@ export function createTemplate(input: CreateTemplateInput): ReportTemplate {
   };
   internalTemplates = [...internalTemplates, next];
   commit();
+  logHistory(id, "template_created", `Modelo criado: ${name}.`, { name });
   return getTemplate(id)!;
 }
 
