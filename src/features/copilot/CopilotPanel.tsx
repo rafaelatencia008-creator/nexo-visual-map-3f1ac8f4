@@ -67,7 +67,7 @@ import {
   searchPrompts,
   type PromptCategory,
 } from "./copilot-prompt-library";
-import type { CopilotProposedAction, CopilotThread } from "./copilot-types";
+import type { CopilotProposedAction, CopilotReference, CopilotThread } from "./copilot-types";
 import { toast } from "sonner";
 
 const THINKING_DELAY_MS = 450;
@@ -86,16 +86,18 @@ export function CopilotPanel() {
   const [processing, setProcessing] = React.useState<null | { messageId: string; cancel: () => void }>(null);
   const [confirmAction, setConfirmAction] = React.useState<
     | null
-    | { threadId: string; messageId: string; action: CopilotProposedAction; ackHighRisk: boolean }
+    | {
+        threadId: string;
+        messageId: string;
+        action: CopilotProposedAction;
+        references: readonly CopilotReference[];
+        targetLabel?: string;
+        ackHighRisk: boolean;
+      }
   >(null);
   const [auditOpen, setAuditOpen] = React.useState(false);
 
-  const suggestions = suggestionsForContext({
-    text: "",
-    context: routeContext,
-    availableSources: [],
-    threadHistory: [],
-  } as never as Parameters<typeof suggestionsForContext>[0]);
+  const suggestions = suggestionsForContext(routeContext);
 
   // Ensure a thread exists whenever panel opens
   React.useEffect(() => {
@@ -192,10 +194,25 @@ export function CopilotPanel() {
     send(input);
   };
 
-  const openConfirm = (threadId: string, messageId: string, action: CopilotProposedAction) => {
+  const openConfirm = (
+    threadId: string,
+    messageId: string,
+    action: CopilotProposedAction,
+    references: readonly CopilotReference[],
+  ) => {
     updateActionStatus(threadId, messageId, action.id, "awaiting_confirmation");
     logAudit(threadId, "confirmation_opened", action.label, { messageId, actionId: action.id });
-    setConfirmAction({ threadId, messageId, action, ackHighRisk: false });
+    const targetRef = references.find(
+      (r) => r.sourceType === action.targetType && r.sourceId === action.targetId,
+    );
+    setConfirmAction({
+      threadId,
+      messageId,
+      action,
+      references,
+      targetLabel: targetRef?.label,
+      ackHighRisk: false,
+    });
   };
 
   const confirmApply = () => {
