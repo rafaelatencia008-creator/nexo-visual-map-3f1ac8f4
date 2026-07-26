@@ -474,7 +474,20 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
         <TabsContent value="previa" className="mt-4">
           <ReportPreview document={doc} />
         </TabsContent>
+
+        <TabsContent value="fechamento" className="mt-4">
+          <ReportClosurePanel document={doc} />
+        </TabsContent>
+
+        <TabsContent value="versoes" className="mt-4">
+          <ReportVersionsPanel reportId={doc.id} />
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-4">
+          <ReportHistoryPanel reportId={doc.id} />
+        </TabsContent>
       </Tabs>
+
 
       {sourceDialog && (
         <ReportSourceLinkDialog
