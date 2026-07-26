@@ -199,9 +199,10 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "sugerir_perguntas_entrevista" || intent === "preparar_roteiro_entrevista") {
-    const selEntrevista =
-      selected && selected.sourceType === "entrevista" ? selected : undefined;
     const ent = pickByType(sources, "entrevista", 4);
+    const selEntrevista =
+      (selected && selected.sourceType === "entrevista" ? selected : undefined) ??
+      (ent.length === 1 ? ent[0] : undefined);
     const refs = (selEntrevista ? [selEntrevista] : ent).map(refFromSource);
     const suffix =
       selEntrevista
@@ -246,9 +247,10 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "preparar_checklist_diligencia") {
-    const selDil =
-      selected && selected.sourceType === "diligencia" ? selected : undefined;
     const dil = pickByType(sources, "diligencia", 3);
+    const selDil =
+      (selected && selected.sourceType === "diligencia" ? selected : undefined) ??
+      (dil.length === 1 ? dil[0] : undefined);
     const refs = (selDil ? [selDil] : dil).map(refFromSource);
     const suffix =
       selDil
@@ -378,7 +380,10 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "rascunhar_resposta_quesito") {
-    const target = selected && selected.sourceType === "quesito" ? selected : undefined;
+    const questionCandidates = pickByType(sources, "quesito", 6);
+    const target =
+      (selected && selected.sourceType === "quesito" ? selected : undefined) ??
+      (questionCandidates.length === 1 ? questionCandidates[0] : undefined);
     if (!target) {
       const cands = pickByType(sources, "quesito", 6);
       return {
@@ -530,7 +535,7 @@ export function suggestionsForContext(
     case "documentos":
       return [
         "Resuma os arquivos disponíveis.",
-        "Localize documentos sem classificação.",
+        "Localizar documentos sem classificação.",
         "Quais documentos têm prazo próximo?",
       ];
     case "entrevistas":
