@@ -524,6 +524,7 @@ export function updateBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_updated", "Bloco atualizado.", { sectionId, blockId });
   return getTemplate(templateId)!.sections[sIdx]!.blocks[bIdx]!;
 }
 
