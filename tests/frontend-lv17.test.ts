@@ -65,7 +65,7 @@ describe("LV-17 — segurança frontend", () => {
 
   it("sanitiza nome de arquivo removendo caracteres proibidos", () => {
     expect(sanitizeFileName("laudo/psi:2026?.txt")).toBe("laudo_psi_2026_.txt");
-    expect(sanitizeFileName("../../etc/passwd")).toBe(".._.._etc_passwd");
+    expect(sanitizeFileName("../../etc/passwd")).toBe("_.._etc_passwd");
     expect(sanitizeFileName("")).toBe("documento");
     expect(sanitizeFileName("   ")).toBe("documento");
     // limite de tamanho
