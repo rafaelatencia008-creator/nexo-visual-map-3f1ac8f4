@@ -432,7 +432,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
       };
       templates = [...templates, t];
       commitTemplates();
-      appendHistory(t.id, "template_created", `Modelo criado: ${t.name}.");
+      appendHistory(t.id, "template_created", `Modelo criado: ${t.name}.`);
       return deepFreeze(deepClone(t));
     },
 
@@ -547,7 +547,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
       const next: ReportTemplate = { ...t, sections: reordered, updatedAt: nextClock() };
       replaceTemplate(idx, next);
       commitTemplates();
-      appendHistory(templateId, "section_added", `Seção adicionada: ${section.title}.");
+      appendHistory(templateId, "section_added", `Seção adicionada: ${section.title}.`);
       return deepFreeze(deepClone(section));
     },
 
@@ -735,7 +735,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
         throw new ReportTemplateError("empty_variable_key", "Chave da variável é obrigatória.");
       }
       if (t.variables.some((v) => v.key === key)) {
-        throw new ReportTemplateError("duplicate_variable_key", `Chave '${key}' já existe.");
+        throw new ReportTemplateError("duplicate_variable_key", `Chave '${key}' já existe.`);
       }
       const variable: ReportTemplateVariable = {
         id: nextVariableId(),
@@ -752,7 +752,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
       };
       replaceTemplate(idx, next);
       commitTemplates();
-      appendHistory(templateId, "variable_added", `Variável adicionada: ${key}.");
+      appendHistory(templateId, "variable_added", `Variável adicionada: ${key}.`);
       return deepFreeze(deepClone(variable));
     },
 
@@ -795,7 +795,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
       };
       replaceTemplate(idx, next);
       commitTemplates();
-      appendHistory(templateId, "variable_removed", `Variável removida: ${key}.");
+      appendHistory(templateId, "variable_removed", `Variável removida: ${key}.`);
     },
 
     isVariableInUse: (templateId, variableId) => {
@@ -902,7 +902,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
         throw new ReportTemplateError("version_reason_required", "Motivo é obrigatório.");
       }
       const ver = createVersion(t, trimmed, changeSummary ?? "");
-      appendHistory(templateId, "version_created", `Versão ${ver.versionNumber} criada manualmente.");
+      appendHistory(templateId, "version_created", `Versão ${ver.versionNumber} criada manualmente.`);
       return ver;
     },
 
