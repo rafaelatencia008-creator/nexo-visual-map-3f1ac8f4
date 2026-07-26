@@ -196,7 +196,22 @@ export type ReportTemplateErrorCode =
   | "invalid_variable_reference"
   | "validation_failed"
   | "operation_not_allowed"
-  | "history_append_failed";
+  | "history_append_failed"
+  // LV-18.3 — import/export
+  | "import_json_invalid"
+  | "import_format_invalid"
+  | "import_schema_version_unsupported"
+  | "import_payload_too_large"
+  | "import_limit_exceeded"
+  | "import_template_invalid"
+  | "import_dangerous_key"
+  | "import_duplicate_id"
+  | "import_duplicate_variable_key"
+  | "import_invalid_variable_reference"
+  | "import_conflict"
+  | "import_empty"
+  | "export_failed"
+  | "serialization_failed";
 
 export class ReportTemplateError extends Error {
   readonly code: ReportTemplateErrorCode;
