@@ -295,7 +295,7 @@ function seedToTemplate(seed: TemplateSeed): ReportTemplate {
     name: seed.name,
     description: seed.description,
     specialty: seed.specialty,
-    status: "publicado",
+    status: seed.status ?? "publicado",
     createdAt: FIXED_CREATED,
     updatedAt: FIXED_UPDATED,
     createdBy: MOCK_USER,
