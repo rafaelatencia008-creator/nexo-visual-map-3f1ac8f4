@@ -405,6 +405,7 @@ export function updateSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_updated", `Seção atualizada: ${nextTitle}.`, { sectionId });
   return getTemplate(templateId)!.sections[sIdx]!;
 }
 
