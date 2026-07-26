@@ -172,6 +172,22 @@ export type ReportSection = {
   readonly blocks: readonly ReportBlock[];
 };
 
+/**
+ * LV-18.5 — Metadata imutável do modelo que originou um laudo.
+ * Definido aqui (não em `report-template-application-types.ts`) para
+ * evitar dependência cíclica com este módulo de tipos.
+ */
+export type ReportTemplateOrigin = {
+  readonly templateId: string;
+  readonly templateVersionId: string;
+  readonly templateVersionNumber: number;
+  readonly templateName: string;
+  readonly templateSpecialty: string;
+  readonly appliedAt: string;
+  readonly appliedBy: string;
+  readonly fingerprint: string;
+};
+
 export type ReportDocument = {
   readonly id: string;
   readonly title: string;
@@ -181,6 +197,8 @@ export type ReportDocument = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly sections: readonly ReportSection[];
+  /** LV-18.5 — presente somente quando o laudo foi criado a partir de modelo. */
+  readonly templateOrigin?: ReportTemplateOrigin;
 };
 
 export type ReportListSummary = {
