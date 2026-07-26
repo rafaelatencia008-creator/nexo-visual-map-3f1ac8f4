@@ -1,5 +1,5 @@
 /**
- * LV-18.3 — Importação atômica de modelos de laudo.
+ * LV-18.3 / LV-18.6 — Importação atômica de modelos de laudo.
  *
  * A importação:
  *  - roda sempre sobre um envelope já parseado e sanitizado;
@@ -7,10 +7,11 @@
  *  - é atômica por padrão (falha em qualquer modelo cancela tudo);
  *  - insere todos com uma única emissão da store principal;
  *  - registra um único evento agregado no histórico append-only;
- *  - força status final `rascunho`.
+ *  - força status final `rascunho`;
+ *  - recebe o repositório por injeção (LV-18.6), sem importar stores diretamente.
  */
 
-import { appendTemplateHistoryEvent } from "./report-template-history-store";
+import { reportTemplateRepository } from "./report-template-composition";
 import {
   parseReportTemplateImport,
   type ParsedImportResult,
@@ -20,16 +21,7 @@ import {
   type ExportedReportTemplate,
   type ReportTemplateExportEnvelope,
 } from "./report-template-serialization";
-import {
-  bulkInsertImportedTemplates,
-  generateImportedBlockId,
-  generateImportedSectionId,
-  generateImportedTemplateId,
-  generateImportedVariableId,
-  getExistingReportTemplateIds,
-} from "./report-template-store";
-
-
+import type { ReportTemplateRepository } from "./report-template-repository";
 import {
   ReportTemplateError,
   type ReportTemplate,
