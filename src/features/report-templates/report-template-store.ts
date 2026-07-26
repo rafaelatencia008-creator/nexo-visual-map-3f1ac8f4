@@ -755,39 +755,130 @@ export function generateImportedVariableId(): ReportTemplateVariableId {
 }
 
 /**
+ * LV-18.3 · Índice global (imutável) de todos os IDs existentes na store,
+ * segregado por tipo. Usado tanto no preview quanto na importação efetiva e
+ * na defesa em profundidade do bulk insert. Manter a mesma fonte da verdade
+ * evita divergência entre preview e execução.
+ */
+export interface ExistingReportTemplateIds {
+  readonly templates: ReadonlySet<string>;
+  readonly sections: ReadonlySet<string>;
+  readonly blocks: ReadonlySet<string>;
+  readonly variables: ReadonlySet<string>;
+}
+
+export function getExistingReportTemplateIds(): ExistingReportTemplateIds {
+  const templates = new Set<string>();
+  const sections = new Set<string>();
+  const blocks = new Set<string>();
+  const variables = new Set<string>();
+  for (const t of internalTemplates) {
+    templates.add(t.id);
+    for (const v of t.variables) variables.add(v.id);
+    for (const s of t.sections) {
+      sections.add(s.id);
+      for (const b of s.blocks) blocks.add(b.id);
+    }
+  }
+  return Object.freeze({
+    templates: templates as ReadonlySet<string>,
+    sections: sections as ReadonlySet<string>,
+    blocks: blocks as ReadonlySet<string>,
+    variables: variables as ReadonlySet<string>,
+  });
+}
+
+/**
  * Insere atomicamente um conjunto de modelos previamente validados
  * (originados de importação). Emite uma única notificação. Se qualquer
- * ID colidir com o estado atual, nada é inserido.
+ * ID (modelo, seção, bloco ou variável) colidir com o estado atual ou
+ * dentro do próprio lote, nada é inserido — a store permanece intacta
+ * e nenhum listener é chamado.
  */
 export function bulkInsertImportedTemplates(
   templates: readonly ReportTemplate[],
 ): readonly ReportTemplate[] {
   if (templates.length === 0) return [];
-  const existingIds = new Set(internalTemplates.map((t) => t.id));
-  const seen = new Set<string>();
+  const existing = getExistingReportTemplateIds();
+  const batchTpl = new Set<string>();
+  const batchSec = new Set<string>();
+  const batchBlk = new Set<string>();
+  const batchVar = new Set<string>();
   for (const t of templates) {
-    if (existingIds.has(t.id)) {
+    if (existing.templates.has(t.id)) {
       throw new ReportTemplateError(
         "import_conflict",
         `ID de modelo já existe: ${t.id}`,
-        { templateId: t.id },
+        { kind: "template", id: t.id },
       );
     }
-    if (seen.has(t.id)) {
+    if (batchTpl.has(t.id)) {
       throw new ReportTemplateError(
         "import_duplicate_id",
         `ID de modelo duplicado no lote: ${t.id}`,
-        { templateId: t.id },
+        { kind: "template", id: t.id },
       );
     }
-    seen.add(t.id);
+    batchTpl.add(t.id);
+    for (const v of t.variables) {
+      if (existing.variables.has(v.id)) {
+        throw new ReportTemplateError(
+          "import_conflict",
+          `ID de variável já existe: ${v.id}`,
+          { kind: "variable", id: v.id, templateId: t.id },
+        );
+      }
+      if (batchVar.has(v.id)) {
+        throw new ReportTemplateError(
+          "import_duplicate_id",
+          `ID de variável duplicado no lote: ${v.id}`,
+          { kind: "variable", id: v.id, templateId: t.id },
+        );
+      }
+      batchVar.add(v.id);
+    }
     validateUniqueSectionIds(t.sections);
+    for (const s of t.sections) {
+      if (existing.sections.has(s.id)) {
+        throw new ReportTemplateError(
+          "import_conflict",
+          `ID de seção já existe: ${s.id}`,
+          { kind: "section", id: s.id, templateId: t.id },
+        );
+      }
+      if (batchSec.has(s.id)) {
+        throw new ReportTemplateError(
+          "import_duplicate_id",
+          `ID de seção duplicado no lote: ${s.id}`,
+          { kind: "section", id: s.id, templateId: t.id },
+        );
+      }
+      batchSec.add(s.id);
+      for (const b of s.blocks) {
+        if (existing.blocks.has(b.id)) {
+          throw new ReportTemplateError(
+            "import_conflict",
+            `ID de bloco já existe: ${b.id}`,
+            { kind: "block", id: b.id, templateId: t.id, sectionId: s.id },
+          );
+        }
+        if (batchBlk.has(b.id)) {
+          throw new ReportTemplateError(
+            "import_duplicate_id",
+            `ID de bloco duplicado no lote: ${b.id}`,
+            { kind: "block", id: b.id, templateId: t.id, sectionId: s.id },
+          );
+        }
+        batchBlk.add(b.id);
+      }
+    }
   }
   const clones = templates.map((t) => deepClone(t));
   internalTemplates = [...internalTemplates, ...clones];
   commit();
   return clones.map((t) => getTemplate(t.id)!);
 }
+
 
 // ---------- LV-18.2 · Ciclo de vida e histórico ----------
 
