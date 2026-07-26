@@ -453,3 +453,76 @@ describe("LV-15 — histórico e auditoria", () => {
     expect(listReportHistory().length).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// LV-15 (correção) — bloqueio de aprovação direta via setSectionStatus
+// ---------------------------------------------------------------------------
+
+describe("LV-15 (correção) — proteção contra aprovação direta", () => {
+  it('setSectionStatus com "aprovada" lança e não altera o status', () => {
+    const doc = seed();
+    const sec = doc.sections[0];
+    // preenche e revisa para provar que a rejeição é da API, não da validação
+    fillAndReviewSection(doc.id, sec.id);
+    expect(() => setSectionStatus(doc.id, sec.id, "aprovada")).toThrow();
+    const after = getReport(doc.id)!;
+    const secAfter = after.sections.find((s) => s.id === sec.id)!;
+    expect(secAfter.status).not.toBe("aprovada");
+  });
+
+  it("seção vazia continua sem poder ser aprovada por approveSection", () => {
+    const doc = seed();
+    // usa uma seção do modelo cujos blocos serão esvaziados
+    const sec = doc.sections[0];
+    for (const b of sec.blocks) {
+      updateBlockContent(doc.id, sec.id, b.id, "");
+    }
+    const res = approveSection(doc.id, sec.id);
+    expect(res.ok).toBe(false);
+  });
+
+  it("seção com bloco não revisado continua sem poder ser aprovada", () => {
+    const doc = seed();
+    const sec = doc.sections[0];
+    for (const b of sec.blocks) {
+      updateBlockContent(doc.id, sec.id, b.id, "conteúdo válido");
+    }
+    // nenhum bloco revisado
+    const res = approveSection(doc.id, sec.id);
+    expect(res.ok).toBe(false);
+  });
+
+  it("approveSection é o único caminho que aplica 'aprovada'", () => {
+    const doc = seed();
+    const sec = doc.sections[0];
+    fillAndReviewSection(doc.id, sec.id);
+    const res = approveSection(doc.id, sec.id);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      const secAfter = res.document.sections.find((s) => s.id === sec.id)!;
+      expect(secAfter.status).toBe("aprovada");
+    }
+  });
+
+  it("setSectionStatus continua aceitando estados não-aprovados", () => {
+    const doc = seed();
+    const sec = doc.sections[0];
+    const next = setSectionStatus(doc.id, sec.id, "em_elaboracao");
+    const secAfter = next.sections.find((s) => s.id === sec.id)!;
+    expect(secAfter.status).toBe("em_elaboracao");
+  });
+});
+
+describe("LV-15 (correção) — seletor de status na UI", () => {
+  it("as opções comuns do seletor não incluem 'aprovada'", async () => {
+    // O ReportEditor filtra REPORT_SECTION_STATUSES removendo "aprovada".
+    // Aqui provamos, por leitura de código, que o filtro está presente no arquivo.
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(
+      "src/features/reports/ReportEditor.tsx",
+      "utf8",
+    );
+    expect(src).toContain('REPORT_SECTION_STATUSES.filter');
+    expect(src).toContain('s !== "aprovada"');
+  });
+});
