@@ -52,7 +52,7 @@ export function ReportSourceLinkDialog({
   sectionId,
   blockId,
   caseId,
-}: ReportSourceLinkDialogProps): JSX.Element {
+}: ReportSourceLinkDialogProps) {
   const [kind, setKind] = useState<ReportSourceKind>("documento");
   const candidates = useMemo(() => collectSourceCandidates(caseId), [caseId]);
   const list = candidates[kind];

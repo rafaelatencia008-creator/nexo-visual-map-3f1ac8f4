@@ -46,7 +46,7 @@ export function ReportCreateDialog({
   open,
   onOpenChange,
   onCreated,
-}: ReportCreateDialogProps): JSX.Element {
+}: ReportCreateDialogProps) {
   const cases = caseOptions();
   const [title, setTitle] = useState("");
   const [templateId, setTemplateId] =

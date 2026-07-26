@@ -28,7 +28,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export function ReportsPage(): JSX.Element {
+export function ReportsPage() {
   const reports = useReports();
   const [openCreate, setOpenCreate] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);

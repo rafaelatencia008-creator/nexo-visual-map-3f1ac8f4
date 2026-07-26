@@ -66,7 +66,7 @@ function useReport(id: string) {
   );
 }
 
-export function ReportEditor({ reportId, onBack }: ReportEditorProps): JSX.Element {
+export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
   const doc = useReport(reportId);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [sourceDialog, setSourceDialog] = useState<{
@@ -365,7 +365,7 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps): JSX.Eleme
   );
 }
 
-function SectionStatusDot({ status }: { status: ReportSectionStatus }): JSX.Element {
+function SectionStatusDot({ status }: { status: ReportSectionStatus }) {
   const map: Record<ReportSectionStatus, string> = {
     nao_iniciada: "bg-muted-foreground/40",
     em_elaboracao: "bg-amber-500",
