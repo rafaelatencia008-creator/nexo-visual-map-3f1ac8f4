@@ -16,13 +16,13 @@
 import { resetReportStore } from "@/features/reports/report-mock-store";
 import { resetInterviewStore } from "@/features/interviews/interview-mock-store";
 import { resetCopilotStore } from "@/features/copilot/copilot-mock-store";
-import { resetReportTemplateStore } from "@/features/report-templates/report-template-store";
+import { reportTemplateRepository } from "@/features/report-templates/report-template-composition";
 import { logDemo } from "./logger";
 
 export function resetDemoData(): void {
   resetReportStore();
   resetInterviewStore();
   resetCopilotStore();
-  resetReportTemplateStore();
+  reportTemplateRepository.reset();
   logDemo("reset", "Estado demonstrativo restaurado");
 }

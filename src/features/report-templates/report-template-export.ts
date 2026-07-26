@@ -1,13 +1,13 @@
 /**
- * LV-18.3 — Exportação de modelos de laudo.
+ * LV-18.3 / LV-18.6 — Exportação de modelos de laudo.
  *
  * Nenhuma alteração de store, nenhuma nova versão criada, nenhuma emissão
- * de listener da store principal. A exportação lê o snapshot atual, monta
- * um envelope determinístico e (opcionalmente) registra um evento de
+ * de listener da store principal. A exportação lê via repositório injetado,
+ * monta um envelope determinístico e (opcionalmente) registra um evento de
  * histórico informativo com metadata sanitizada.
  */
 
-import { appendTemplateHistoryEvent } from "./report-template-history-store";
+import { reportTemplateRepository } from "./report-template-composition";
 import {
   canonicalStringify,
   REPORT_TEMPLATE_EXPORT_FORMAT,
@@ -18,10 +18,7 @@ import {
   type ExportedReportTemplateVariable,
   type ReportTemplateExportEnvelope,
 } from "./report-template-serialization";
-import {
-  getSnapshot,
-  getTemplate,
-} from "./report-template-store";
+import type { ReportTemplateRepository } from "./report-template-repository";
 import {
   ReportTemplateError,
   type ReportTemplate,
@@ -120,8 +117,9 @@ function buildEnvelope(
 export function exportReportTemplate(
   templateId: ReportTemplateId,
   options?: ExportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateExportEnvelope {
-  const t = getTemplate(templateId);
+  const t = repository.getById(templateId);
   if (!t) {
     throw new ReportTemplateError(
       "template_not_found",
@@ -131,7 +129,7 @@ export function exportReportTemplate(
   }
   const env = buildEnvelope([t], options);
   if (options?.recordHistory !== false) {
-    appendTemplateHistoryEvent({
+    repository.appendHistoryEvent({
       templateId,
       action: "template_exported",
       description: `Modelo exportado (schema v${REPORT_TEMPLATE_SCHEMA_VERSION}).`,
@@ -154,8 +152,9 @@ export function exportReportTemplate(
 export function exportReportTemplates(
   templateIds?: readonly ReportTemplateId[],
   options?: ExportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateExportEnvelope {
-  const snapshot = getSnapshot();
+  const snapshot = repository.getSnapshot();
   let list: ReportTemplate[];
   if (templateIds === undefined) {
     list = [...snapshot.templates];
@@ -178,7 +177,7 @@ export function exportReportTemplates(
   }
   const env = buildEnvelope(list, options);
   if (options?.recordHistory !== false && list.length > 0) {
-    appendTemplateHistoryEvent({
+    repository.appendHistoryEvent({
       templateId: list[0]!.id,
       action: "template_exported",
       description: `Exportação em lote (${list.length} modelo(s)).`,
@@ -198,11 +197,12 @@ export function exportReportTemplates(
 export function serializeReportTemplate(
   templateId: ReportTemplateId,
   options?: ExportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): string {
   const env = exportReportTemplate(templateId, {
     ...options,
     recordHistory: options?.recordHistory ?? false,
-  });
+  }, repository);
   try {
     return canonicalStringify(env);
   } catch (e) {
@@ -218,11 +218,12 @@ export function serializeReportTemplate(
 export function serializeReportTemplates(
   templateIds?: readonly ReportTemplateId[],
   options?: ExportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): string {
   const env = exportReportTemplates(templateIds, {
     ...options,
     recordHistory: options?.recordHistory ?? false,
-  });
+  }, repository);
   try {
     return canonicalStringify(env);
   } catch (e) {

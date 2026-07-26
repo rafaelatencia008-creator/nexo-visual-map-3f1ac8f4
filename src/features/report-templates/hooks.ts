@@ -1,33 +1,39 @@
 /**
- * LV-18.4 — Hooks de assinatura das stores de modelos de laudo.
+ * LV-18.4 / LV-18.6 — Hooks de assinatura das stores de modelos de laudo.
  * Uso exclusivo de `useSyncExternalStore` para evitar cópias mutáveis
- * do estado dentro dos componentes.
+ * do estado dentro dos componentes. Os hooks leem via repositório
+ * padrão, desacoplando a UI das stores concretas.
  */
 import { useSyncExternalStore } from "react";
-import { getSnapshot, subscribe } from "./report-template-store";
-import {
-  getTemplateHistorySnapshot,
-  subscribeTemplateHistory,
-} from "./report-template-history-store";
-import {
-  getTemplateVersionsSnapshot,
-  subscribeTemplateVersions,
-} from "./report-template-version-store";
+import { reportTemplateRepository } from "./report-template-composition";
+import type { ReportTemplateRepository } from "./report-template-repository";
 
-export function useReportTemplatesSnapshot() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-export function useReportTemplatesHistorySnapshot() {
+export function useReportTemplatesSnapshot(
+  repository: ReportTemplateRepository = reportTemplateRepository,
+) {
   return useSyncExternalStore(
-    subscribeTemplateHistory,
-    getTemplateHistorySnapshot,
-    getTemplateHistorySnapshot,
+    (cb) => repository.subscribe(cb),
+    () => repository.getSnapshot(),
+    () => repository.getSnapshot(),
   );
 }
-export function useReportTemplatesVersionsSnapshot() {
+
+export function useReportTemplatesHistorySnapshot(
+  repository: ReportTemplateRepository = reportTemplateRepository,
+) {
   return useSyncExternalStore(
-    subscribeTemplateVersions,
-    getTemplateVersionsSnapshot,
-    getTemplateVersionsSnapshot,
+    (cb) => repository.subscribeHistory(cb),
+    () => repository.getHistorySnapshot(),
+    () => repository.getHistorySnapshot(),
+  );
+}
+
+export function useReportTemplatesVersionsSnapshot(
+  repository: ReportTemplateRepository = reportTemplateRepository,
+) {
+  return useSyncExternalStore(
+    (cb) => repository.subscribeVersions(cb),
+    () => repository.getVersionSnapshot(),
+    () => repository.getVersionSnapshot(),
   );
 }

@@ -1,5 +1,5 @@
 /**
- * LV-18.3 — Importação atômica de modelos de laudo.
+ * LV-18.3 / LV-18.6 — Importação atômica de modelos de laudo.
  *
  * A importação:
  *  - roda sempre sobre um envelope já parseado e sanitizado;
@@ -7,10 +7,11 @@
  *  - é atômica por padrão (falha em qualquer modelo cancela tudo);
  *  - insere todos com uma única emissão da store principal;
  *  - registra um único evento agregado no histórico append-only;
- *  - força status final `rascunho`.
+ *  - força status final `rascunho`;
+ *  - recebe o repositório por injeção (LV-18.6), sem importar stores diretamente.
  */
 
-import { appendTemplateHistoryEvent } from "./report-template-history-store";
+import { reportTemplateRepository } from "./report-template-composition";
 import {
   parseReportTemplateImport,
   type ParsedImportResult,
@@ -20,16 +21,7 @@ import {
   type ExportedReportTemplate,
   type ReportTemplateExportEnvelope,
 } from "./report-template-serialization";
-import {
-  bulkInsertImportedTemplates,
-  generateImportedBlockId,
-  generateImportedSectionId,
-  generateImportedTemplateId,
-  generateImportedVariableId,
-  getExistingReportTemplateIds,
-} from "./report-template-store";
-
-
+import type { ReportTemplateRepository } from "./report-template-repository";
 import {
   ReportTemplateError,
   type ReportTemplate,
@@ -67,7 +59,6 @@ export interface ImportConflict {
   readonly reason: string;
   readonly templateSourceId?: string;
 }
-
 
 export interface ImportIdMapping {
   readonly kind: "template" | "section" | "block" | "variable";
@@ -126,15 +117,18 @@ function truncate(s: string, n = 80): string {
   return s.length > n ? s.slice(0, n) : s;
 }
 
-function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
-  const existing = getExistingReportTemplateIds();
+function detectConflicts(
+  env: ReportTemplateExportEnvelope,
+  repository: ReportTemplateRepository,
+): ImportConflict[] {
+  const existing = repository.getExistingIds();
   const out: ImportConflict[] = [];
   const batchTpl = new Set<string>();
   const batchSec = new Set<string>();
   const batchBlk = new Set<string>();
   const batchVar = new Set<string>();
   for (const t of env.templates) {
-    if (existing.templates.has(t.sourceId)) {
+    if (existing.templateIds.has(t.sourceId)) {
       out.push({
         sourceId: t.sourceId,
         kind: "template",
@@ -152,7 +146,7 @@ function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
     batchTpl.add(t.sourceId);
 
     for (const v of t.variables) {
-      if (existing.variables.has(v.sourceId)) {
+      if (existing.variableIds.has(v.sourceId)) {
         out.push({
           sourceId: v.sourceId,
           kind: "variable",
@@ -171,7 +165,7 @@ function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
     }
 
     for (const s of t.sections) {
-      if (existing.sections.has(s.sourceId)) {
+      if (existing.sectionIds.has(s.sourceId)) {
         out.push({
           sourceId: s.sourceId,
           kind: "section",
@@ -188,7 +182,7 @@ function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
       }
       batchSec.add(s.sourceId);
       for (const b of s.blocks) {
-        if (existing.blocks.has(b.sourceId)) {
+        if (existing.blockIds.has(b.sourceId)) {
           out.push({
             sourceId: b.sourceId,
             kind: "block",
@@ -210,7 +204,6 @@ function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
   return out;
 }
 
-
 function countRegeneratedIds(env: ReportTemplateExportEnvelope): number {
   let n = 0;
   for (const t of env.templates) {
@@ -228,12 +221,13 @@ function countRegeneratedIds(env: ReportTemplateExportEnvelope): number {
 
 export function previewReportTemplateImport(
   json: string,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ImportPreview {
   let parsed: ParsedImportResult;
   try {
     parsed = parseReportTemplateImport(json);
   } catch (e) {
-    if (e instanceof ReportTemplateError) recordFailure(e);
+    if (e instanceof ReportTemplateError) recordFailure(e, repository);
     throw e;
   }
   const env = parsed.envelope;
@@ -242,10 +236,10 @@ export function previewReportTemplateImport(
       "import_empty",
       "Envelope não contém nenhum modelo.",
     );
-    recordFailure(err);
+    recordFailure(err, repository);
     throw err;
   }
-  const conflicts = detectConflicts(env);
+  const conflicts = detectConflicts(env, repository);
   const warnings: ImportWarning[] = [];
   for (const t of env.templates) {
     if (t.status !== "rascunho") {
@@ -265,7 +259,7 @@ export function previewReportTemplateImport(
     recommendedStrategy: conflicts.length > 0 ? "regenerate_ids" : "regenerate_ids",
     idsToRegenerate: countRegeneratedIds(env),
   });
-  appendTemplateHistoryEvent({
+  repository.appendHistoryEvent({
     templateId: "rtpl-import" as ReportTemplateId,
     action: "template_import_previewed",
     description: `Preview de importação (${preview.templateCount} modelo(s)).`,
@@ -286,10 +280,11 @@ function buildImportedTemplate(
   clockIso: string,
   actor: string,
   mappings: ImportIdMapping[],
+  repository: ReportTemplateRepository,
 ): ReportTemplate {
   const regenerate = strategy !== "reject";
   const newTplId = regenerate
-    ? generateImportedTemplateId()
+    ? repository.generateImportedTemplateId()
     : (t.sourceId as ReportTemplateId);
   mappings.push({
     kind: "template",
@@ -301,7 +296,7 @@ function buildImportedTemplate(
 
   const variables: ReportTemplateVariable[] = t.variables.map((v) => {
     const newId = regenerate
-      ? generateImportedVariableId()
+      ? repository.generateImportedVariableId()
       : (v.sourceId as ReportTemplateVariableId);
     mappings.push({
       kind: "variable",
@@ -322,7 +317,7 @@ function buildImportedTemplate(
 
   const sections: ReportTemplateSection[] = t.sections.map((s, sIdx) => {
     const newSecId = regenerate
-      ? generateImportedSectionId()
+      ? repository.generateImportedSectionId()
       : (s.sourceId as ReportTemplateSectionId);
     mappings.push({
       kind: "section",
@@ -333,7 +328,7 @@ function buildImportedTemplate(
     });
     const blocks: ReportTemplateBlock[] = s.blocks.map((b, bIdx) => {
       const newBlockId = regenerate
-        ? generateImportedBlockId()
+        ? repository.generateImportedBlockId()
         : (b.sourceId as ReportTemplateBlockId);
       mappings.push({
         kind: "block",
@@ -382,6 +377,7 @@ function buildImportedTemplate(
 function runImport(
   env: ReportTemplateExportEnvelope,
   options: ImportOptions | undefined,
+  repository: ReportTemplateRepository,
 ): ReportTemplateImportReport {
   const strategy = options?.strategy ?? "regenerate_ids";
   const clockIso = options?.clockIso ?? FIXED_ISO;
@@ -399,7 +395,7 @@ function runImport(
   // do próprio pacote — aborta antes de qualquer mutação e ANTES de consumir
   // qualquer ID novo, preservando os contadores.
   if (strategy === "reject") {
-    const conflicts = detectConflicts(env);
+    const conflicts = detectConflicts(env, repository);
     if (conflicts.length > 0) {
       const first = conflicts[0]!;
       throw new ReportTemplateError(
@@ -428,11 +424,11 @@ function runImport(
   }
 
   const prepared = env.templates.map((t) =>
-    buildImportedTemplate(t, strategy, clockIso, actor, mappings),
+    buildImportedTemplate(t, strategy, clockIso, actor, mappings, repository),
   );
 
   // Inserção atômica — se falhar, nada foi tocado; error propaga para o chamador.
-  const inserted = bulkInsertImportedTemplates(prepared);
+  const inserted = repository.bulkInsertImported(prepared);
 
   const importedTemplates: ImportedTemplateSummary[] = inserted.map((t) => ({
     sourceId:
@@ -457,7 +453,7 @@ function runImport(
     idMappings: mappings,
   });
 
-  appendTemplateHistoryEvent({
+  repository.appendHistoryEvent({
     templateId: inserted[0]!.id,
     action: "template_imported",
     description: `Importação concluída (${inserted.length} modelo(s), estratégia ${strategy}).`,
@@ -475,36 +471,39 @@ function runImport(
 export function importReportTemplate(
   json: string,
   options?: ImportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateImportReport {
-  const parsed = safeParse(json, options);
+  const parsed = safeParse(json, options, repository);
   if (parsed.envelope.templates.length !== 1) {
     const err = new ReportTemplateError(
       "import_template_invalid",
       `Esperado exatamente 1 modelo, veio ${parsed.envelope.templates.length}.`,
     );
-    recordFailure(err);
+    recordFailure(err, repository);
     throw err;
   }
-  return runReport(parsed.envelope, options);
+  return runReport(parsed.envelope, options, repository);
 }
 
 /** Importa um pacote (1..N modelos) de forma atômica. */
 export function importReportTemplates(
   json: string,
   options?: ImportOptions,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateImportReport {
-  const parsed = safeParse(json, options);
-  return runReport(parsed.envelope, options);
+  const parsed = safeParse(json, options, repository);
+  return runReport(parsed.envelope, options, repository);
 }
 
 function safeParse(
   json: string,
   _options: ImportOptions | undefined,
+  repository: ReportTemplateRepository,
 ): ParsedImportResult {
   try {
     return parseReportTemplateImport(json);
   } catch (e) {
-    if (e instanceof ReportTemplateError) recordFailure(e);
+    if (e instanceof ReportTemplateError) recordFailure(e, repository);
     throw e;
   }
 }
@@ -512,18 +511,22 @@ function safeParse(
 function runReport(
   env: ReportTemplateExportEnvelope,
   options: ImportOptions | undefined,
+  repository: ReportTemplateRepository,
 ): ReportTemplateImportReport {
   try {
-    return runImport(env, options);
+    return runImport(env, options, repository);
   } catch (e) {
-    if (e instanceof ReportTemplateError) recordFailure(e);
+    if (e instanceof ReportTemplateError) recordFailure(e, repository);
     throw e;
   }
 }
 
-function recordFailure(e: ReportTemplateError): void {
+function recordFailure(
+  e: ReportTemplateError,
+  repository: ReportTemplateRepository,
+): void {
   try {
-    appendTemplateHistoryEvent({
+    repository.appendHistoryEvent({
       templateId: "rtpl-import" as ReportTemplateId,
       action:
         e.code === "import_conflict" ||
