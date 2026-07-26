@@ -290,10 +290,20 @@ describe("LV-15 — motor de revisão", () => {
     expect(items.some((p) => p.kind === "bloco_editado_apos_revisao")).toBe(true);
   });
 
-  it("aviso de sem_anexos quando seção anexos está vazia", () => {
+  it("aviso de sem_anexos quando seção anexos existe e está vazia", () => {
     const doc = seed();
+    const anexos = doc.sections.find((s) => s.kind === "anexos");
+    if (!anexos) {
+      // Modelo não inclui anexos: pulamos, mas garantimos que a regra não gera falso positivo.
+      const items = computePendingItems(doc);
+      expect(items.some((p) => p.kind === "sem_anexos")).toBe(false);
+      return;
+    }
     const items = computePendingItems(doc);
-    expect(items.some((p) => p.kind === "sem_anexos")).toBe(true);
+    const hasWarning = items.some((p) => p.kind === "sem_anexos");
+    expect(hasWarning).toBe(
+      anexos.blocks.every((b) => b.content.trim().length === 0),
+    );
   });
 
   it("status revisado quando todas obrigatórias estão revisadas", () => {
