@@ -394,17 +394,24 @@ function runImport(
     );
   }
 
-  // Estratégia reject: se qualquer sourceId conflita, aborta antes de mutar.
+  // Estratégia reject: qualquer colisão (modelo, seção, bloco ou variável)
+  // com IDs já existentes na store — ou duplicidade cruzada entre modelos
+  // do próprio pacote — aborta antes de qualquer mutação e ANTES de consumir
+  // qualquer ID novo, preservando os contadores.
   if (strategy === "reject") {
-    const existing = new Set(getSnapshot().templates.map((t) => t.id));
-    for (const t of env.templates) {
-      if (existing.has(t.sourceId as ReportTemplateId)) {
-        throw new ReportTemplateError(
-          "import_conflict",
-          `Conflito de ID rejeitado: ${t.sourceId}`,
-          { sourceId: t.sourceId },
-        );
-      }
+    const conflicts = detectConflicts(env);
+    if (conflicts.length > 0) {
+      const first = conflicts[0]!;
+      throw new ReportTemplateError(
+        "import_conflict",
+        `Conflito de ID rejeitado (${first.kind}): ${first.sourceId}`,
+        {
+          kind: first.kind,
+          sourceId: first.sourceId,
+          templateSourceId: first.templateSourceId,
+          count: conflicts.length,
+        },
+      );
     }
   }
 
