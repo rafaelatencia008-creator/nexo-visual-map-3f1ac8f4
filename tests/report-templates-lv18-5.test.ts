@@ -485,3 +485,167 @@ describe("LV-18.5 · Regressão de fluxo em branco", () => {
     expect(created!.description).not.toContain("<script>");
   });
 });
+
+// ==================== Bloqueador: versão não publicada ====================
+
+import { createManualTemplateVersion, getSnapshot as getTemplateStoreSnapshot } from "@/features/report-templates/report-template-store";
+import { getTemplateVersionsSnapshot } from "@/features/report-templates/report-template-version-store";
+import { friendlyReportTemplateError } from "@/features/report-templates/report-template-error-labels";
+import { REPORT_TEMPLATE_APPLICATION_ERROR_LABEL } from "@/features/reports/report-template-application-types";
+
+describe("LV-18.5 · Bloqueador: rejeita versão não publicada", () => {
+  function draftVersionAndPublish() {
+    const t = makeStandardTemplate();
+    // Cria versão manualmente com o modelo em rascunho -> statusAtCreation = "rascunho"
+    const draftVer = createManualTemplateVersion(t.id, "snapshot rascunho");
+    expect(draftVer.statusAtCreation).toBe("rascunho");
+    // Agora publica -> gera versão nova statusAtCreation = "publicado"
+    publishTemplate(t.id, "publicar");
+    const versions = listTemplateVersions(t.id);
+    const publishedVer = versions.find((v) => v.statusAtCreation === "publicado")!;
+    expect(publishedVer).toBeDefined();
+    return { templateId: t.id, draftVer, publishedVer };
+  }
+
+  it("[1] preview com versionId de rascunho é rejeitado", () => {
+    const { templateId, draftVer } = draftVersionAndPublish();
+    let caught: ReportTemplateApplicationError | null = null;
+    try {
+      previewReportTemplateApplication({
+        templateId,
+        templateVersionId: draftVer.id,
+        variableValues: { nome_paciente: "Ana" },
+      });
+    } catch (e) {
+      caught = e as ReportTemplateApplicationError;
+    }
+    expect(caught).toBeInstanceOf(ReportTemplateApplicationError);
+    expect(caught!.code).toBe("report_template_version_not_published");
+  });
+
+  it("[2] criação com versionId de rascunho é rejeitada", () => {
+    const { templateId, draftVer } = draftVersionAndPublish();
+    let caught: ReportTemplateApplicationError | null = null;
+    try {
+      createReportFromTemplate({
+        templateId,
+        templateVersionId: draftVer.id,
+        title: "L",
+        caseId: "per-1",
+        caseLabel: "P1",
+        variableValues: { nome_paciente: "Ana" },
+      });
+    } catch (e) {
+      caught = e as ReportTemplateApplicationError;
+    }
+    expect(caught).toBeInstanceOf(ReportTemplateApplicationError);
+    expect(caught!.code).toBe("report_template_version_not_published");
+  });
+
+  it("[3] versão inexistente mantém erro version_not_found", () => {
+    const t = publishAndReturn(makeStandardTemplate().id);
+    let caught: ReportTemplateApplicationError | null = null;
+    try {
+      createReportFromTemplate({
+        templateId: t.id,
+        templateVersionId: "rtver-999999",
+        title: "L",
+        caseId: "per-1",
+        caseLabel: "P1",
+        variableValues: { nome_paciente: "Ana" },
+      });
+    } catch (e) {
+      caught = e as ReportTemplateApplicationError;
+    }
+    expect(caught?.code).toBe("report_template_version_not_found");
+  });
+
+  it("[4] versão publicada explícita continua funcionando", () => {
+    const { templateId, publishedVer } = draftVersionAndPublish();
+    const res = createReportFromTemplate({
+      templateId,
+      templateVersionId: publishedVer.id,
+      title: "L",
+      caseId: "per-1",
+      caseLabel: "P1",
+      variableValues: { nome_paciente: "Ana" },
+    });
+    expect(res.origin.templateVersionId).toBe(publishedVer.id);
+    expect(res.report.templateOrigin?.templateVersionNumber).toBe(publishedVer.versionNumber);
+  });
+
+  it("[5] falha com versão de rascunho não cria laudo, não muta stores, não chama listener, não consome IDs", () => {
+    const { templateId, draftVer } = draftVersionAndPublish();
+    const reportsBefore = listReports();
+    const reportsSnapBefore = reportsBefore.length;
+    const templatesSnapBefore = getTemplateStoreSnapshot();
+    const versionsSnapBefore = getTemplateVersionsSnapshot();
+
+    let listenerCalls = 0;
+    const unsub = subscribeReports(() => {
+      listenerCalls += 1;
+    });
+
+    let threw = false;
+    try {
+      createReportFromTemplate({
+        templateId,
+        templateVersionId: draftVer.id,
+        title: "Título rejeitado",
+        caseId: "per-1",
+        caseLabel: "P1",
+        variableValues: { nome_paciente: "Ana" },
+      });
+    } catch {
+      threw = true;
+    }
+    unsub();
+
+    expect(threw).toBe(true);
+    expect(listReports().length).toBe(reportsSnapBefore);
+    expect(getTemplateStoreSnapshot()).toBe(templatesSnapBefore);
+    expect(getTemplateVersionsSnapshot()).toBe(versionsSnapBefore);
+    expect(listenerCalls).toBe(0);
+
+    // Nenhum histórico de sucesso criado para um laudo inexistente
+    const created = listReports().find((r) => r.title === "Título rejeitado");
+    expect(created).toBeUndefined();
+
+    // Contador de IDs preservado: próxima criação legítima deve gerar
+    // IDs esperados sem "buracos" atribuíveis à falha.
+    const res = createReportFromTemplate({
+      templateId,
+      title: "OK",
+      caseId: "per-1",
+      caseLabel: "P1",
+      variableValues: { nome_paciente: "Ana" },
+    });
+    expect(res.report.id).toBeDefined();
+  });
+
+  it("[6] mensagem PT-BR segura e amigável", () => {
+    const { templateId, draftVer } = draftVersionAndPublish();
+    let caught: ReportTemplateApplicationError | null = null;
+    try {
+      previewReportTemplateApplication({
+        templateId,
+        templateVersionId: draftVer.id,
+        variableValues: { nome_paciente: "Ana" },
+      });
+    } catch (e) {
+      caught = e as ReportTemplateApplicationError;
+    }
+    const label =
+      REPORT_TEMPLATE_APPLICATION_ERROR_LABEL[caught!.code as ReportTemplateApplicationErrorCode];
+    expect(label).toBe(
+      "A versão selecionada não é uma versão publicada do modelo.",
+    );
+    // Sem vazamento de detalhes técnicos
+    expect(label).not.toContain("stack");
+    expect(label).not.toContain("{");
+    expect(label).not.toContain("undefined");
+    // Utilitário genérico também não expõe interno
+    const friendly = friendlyReportTemplateError(caught);
+    expect(typeof friendly).toBe("string");
+  });
+});

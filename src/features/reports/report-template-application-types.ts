@@ -92,6 +92,8 @@ export type ReportTemplateApplicationErrorCode =
   | "report_template_not_found"
   | "report_template_not_published"
   | "report_template_version_not_found"
+  | "report_template_version_not_published"
+  | "report_template_version_mismatch"
   | "report_template_changed"
   | "report_template_invalid"
   | "report_template_incompatible"
@@ -128,6 +130,10 @@ export const REPORT_TEMPLATE_APPLICATION_ERROR_LABEL: Readonly<
   report_template_not_found: "Modelo não encontrado.",
   report_template_not_published: "Este modelo não está publicado.",
   report_template_version_not_found: "Versão do modelo não encontrada.",
+  report_template_version_not_published:
+    "A versão selecionada não é uma versão publicada do modelo.",
+  report_template_version_mismatch:
+    "A versão informada não pertence ao modelo selecionado.",
   report_template_changed:
     "O modelo foi alterado desde a pré-visualização. Refaça o preview.",
   report_template_invalid: "O modelo possui erros estruturais e não pode ser aplicado.",
