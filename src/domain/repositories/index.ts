@@ -18,9 +18,9 @@ import {
   listReportVersions,
   subscribeReports,
   subscribeReportVersions,
+  type CreateReportInput,
 } from "@/features/reports/report-mock-store";
 import type {
-  CreateReportInput,
   ReportDocument,
   ReportListSummary,
   ReportVersion,
