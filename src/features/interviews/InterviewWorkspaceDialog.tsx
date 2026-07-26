@@ -59,6 +59,7 @@ import {
   validateInterviewCompletion,
 } from "./interview-mock-store";
 import { useAudioRecorder } from "@/features/audio-spike/useAudioRecorder";
+import { useRegisterCopilotEntity } from "@/features/copilot/copilot-context";
 
 export type InterviewWorkspaceDialogProps = {
   interviewId: string | null;
@@ -98,6 +99,24 @@ export function InterviewWorkspaceDialog({
   const rec = useInterviewSnapshot(interviewId);
   const rec_ = rec; // narrow
   const template = rec ? getTemplate(rec.templateId) : undefined;
+
+  useRegisterCopilotEntity(
+    open && rec_
+      ? {
+          entityType: "entrevista",
+          entityId: rec_.id,
+          entityLabel: rec_.title,
+          route: "/app/entrevistas",
+          moduleKey: "entrevistas",
+          metadata: {
+            caseId: rec_.caseId,
+            expertiseId: rec_.expertiseId,
+            status: rec_.status,
+            updatedAt: rec_.updatedAt,
+          },
+        }
+      : null,
+  );
 
   const rec2 = useAudioRecorder({});
   const audio = rec2;

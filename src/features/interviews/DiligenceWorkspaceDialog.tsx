@@ -58,6 +58,7 @@ import {
 } from "./interview-mock-store";
 import { isValidCoordinate } from "./interview-filters";
 import { MediaMockPanel } from "./MediaMockPanel";
+import { useRegisterCopilotEntity } from "@/features/copilot/copilot-context";
 
 export type DiligenceWorkspaceDialogProps = {
   diligenceId: string | null;
@@ -98,6 +99,24 @@ export function DiligenceWorkspaceDialog({
   onCompleted,
 }: DiligenceWorkspaceDialogProps) {
   const rec = useDiligenceSnapshot(diligenceId);
+
+  useRegisterCopilotEntity(
+    open && rec
+      ? {
+          entityType: "diligencia",
+          entityId: rec.id,
+          entityLabel: rec.title,
+          route: "/app/entrevistas",
+          moduleKey: "entrevistas",
+          metadata: {
+            caseId: rec.caseId,
+            expertiseId: rec.expertiseId,
+            status: rec.status,
+            updatedAt: rec.updatedAt,
+          },
+        }
+      : null,
+  );
 
   const [newChecklist, setNewChecklist] = useState("");
   const [newPending, setNewPending] = useState("");
