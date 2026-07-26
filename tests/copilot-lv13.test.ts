@@ -769,3 +769,85 @@ describe("segurança", () => {
     expect(classifyIntent("altere sem confirmação", CTX_INIT)).toBe("recusar_acao");
   });
 });
+
+// ============ 11. Complementos ============
+describe("complementos", () => {
+  it("rascunho gera fingerprint na proposta", () => {
+    const src: CopilotSourceRecord = {
+      sourceType: "quesito",
+      id: "q-1",
+      label: "Q",
+      searchableText: "",
+      updatedAt: "2026-08-01",
+      metadata: { status: "aberto" },
+    };
+    const out = runCopilot({
+      text: "rascunho",
+      context: CTX_QUESITOS,
+      availableSources: [src],
+      threadHistory: [],
+    });
+    expect(out.proposedActions[0].sourceFingerprint).toBe(computeFingerprint(src));
+  });
+  it("resposta sempre tem intent definido", () => {
+    const out = runCopilot({
+      text: "xyz",
+      context: CTX_INIT,
+      availableSources: [],
+      threadHistory: [],
+    });
+    expect(out.intent).toBeTruthy();
+  });
+  it("ajuda_sistema responde texto explicativo", () => {
+    const out = runCopilot({
+      text: "ajuda",
+      context: CTX_INIT,
+      availableSources: [],
+      threadHistory: [],
+    });
+    expect(out.responseText.length).toBeGreaterThan(20);
+  });
+  it("referências não duplicam id", () => {
+    const s = fakeSources();
+    const out = runCopilot({
+      text: "resuma o contexto",
+      context: CTX_INIT,
+      availableSources: [...s, ...s],
+      threadHistory: [],
+    });
+    const ids = out.references.map((r) => `${r.sourceType}:${r.sourceId}`);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("classifica com string vazia como desconhecido", () => {
+    expect(classifyIntent("", CTX_INIT)).toBe("desconhecido");
+  });
+  it("classifica com espaços como desconhecido", () => {
+    expect(classifyIntent("   ", CTX_INIT)).toBe("desconhecido");
+  });
+  it("createThread com título padrão", () => {
+    const t = createThread();
+    expect(t.title.length).toBeGreaterThan(0);
+  });
+  it("threads são ordenadas por atualização mais recente primeiro", () => {
+    const a = createThread("A");
+    const b = createThread("B");
+    appendMessage(a.id, makeUserMessage("m"));
+    const list = listThreads();
+    expect(list[0].id).toBe(a.id);
+    expect(list[1].id).toBe(b.id);
+  });
+  it("makeUserMessage grava texto exato", () => {
+    const m = makeUserMessage("Olá copiloto");
+    expect(m.text).toBe("Olá copiloto");
+  });
+  it("makeAssistantMessage permite status pending", () => {
+    const m = makeAssistantMessage({ text: "", status: "pending" });
+    expect(m.status).toBe("pending");
+  });
+  it("UNKNOWN_INTENT_MESSAGE é constante", () => {
+    expect(UNKNOWN_INTENT_MESSAGE.length).toBeGreaterThan(10);
+  });
+  it("banner de simulação nunca é vazio", () => {
+    expect(SIMULATION_BANNER.trim().length).toBeGreaterThan(0);
+  });
+});
