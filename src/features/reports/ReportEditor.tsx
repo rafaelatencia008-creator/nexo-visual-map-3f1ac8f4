@@ -346,14 +346,18 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                           <Input
                             value={b.title}
                             onChange={(e) =>
-                              updateBlockTitle(
-                                doc.id,
-                                activeSection.id,
-                                b.id,
-                                e.target.value,
-                              )
+                              guarded((val: string) =>
+                                updateBlockTitle(
+                                  doc.id,
+                                  activeSection.id,
+                                  b.id,
+                                  val,
+                                ),
+                              )(e.target.value)
                             }
                             aria-label="Título do bloco"
+                            disabled={frozen}
+                            readOnly={frozen}
                             className="max-w-md font-medium"
                           />
                           <div className="flex flex-wrap items-center gap-1">
@@ -366,28 +370,40 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                                 Edição manual
                               </Badge>
                             )}
-                            <Badge
-                              variant={b.reviewed ? "default" : "outline"}
-                              className="cursor-pointer"
-                              onClick={() =>
+                            <button
+                              type="button"
+                              disabled={frozen}
+                              aria-disabled={frozen}
+                              aria-label={
+                                b.reviewed
+                                  ? "Retirar revisão do bloco"
+                                  : "Marcar bloco como revisado"
+                              }
+                              aria-pressed={b.reviewed}
+                              onClick={guarded(() =>
                                 markBlockReviewed(
                                   doc.id,
                                   activeSection.id,
                                   b.id,
                                   !b.reviewed,
-                                )
-                              }
-                            >
-                              {b.reviewed ? (
-                                <>
-                                  <CheckCircle2 className="mr-1 h-3 w-3" /> Revisado
-                                </>
-                              ) : (
-                                <>
-                                  <Circle className="mr-1 h-3 w-3" /> Sem revisão
-                                </>
+                                ),
                               )}
-                            </Badge>
+                              className="disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Badge
+                                variant={b.reviewed ? "default" : "outline"}
+                              >
+                                {b.reviewed ? (
+                                  <>
+                                    <CheckCircle2 className="mr-1 h-3 w-3" /> Revisado
+                                  </>
+                                ) : (
+                                  <>
+                                    <Circle className="mr-1 h-3 w-3" /> Sem revisão
+                                  </>
+                                )}
+                              </Badge>
+                            </button>
                           </div>
                         </div>
                       </CardHeader>
@@ -395,14 +411,18 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                         <Textarea
                           value={b.content}
                           onChange={(e) =>
-                            updateBlockContent(
-                              doc.id,
-                              activeSection.id,
-                              b.id,
-                              e.target.value,
-                            )
+                            guarded((val: string) =>
+                              updateBlockContent(
+                                doc.id,
+                                activeSection.id,
+                                b.id,
+                                val,
+                              ),
+                            )(e.target.value)
                           }
                           aria-label="Conteúdo do bloco"
+                          disabled={frozen}
+                          readOnly={frozen}
                           className="min-h-[120px]"
                         />
 
@@ -411,10 +431,11 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              disabled={idx === 0}
-                              onClick={() =>
-                                moveBlock(doc.id, activeSection.id, b.id, "up")
-                              }
+                              disabled={idx === 0 || frozen}
+                              aria-disabled={idx === 0 || frozen}
+                              onClick={guarded(() =>
+                                moveBlock(doc.id, activeSection.id, b.id, "up"),
+                              )}
                               aria-label="Mover bloco para cima"
                             >
                               <ArrowUp className="h-4 w-4" />
@@ -422,10 +443,15 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              disabled={idx === activeSection.blocks.length - 1}
-                              onClick={() =>
-                                moveBlock(doc.id, activeSection.id, b.id, "down")
+                              disabled={
+                                idx === activeSection.blocks.length - 1 || frozen
                               }
+                              aria-disabled={
+                                idx === activeSection.blocks.length - 1 || frozen
+                              }
+                              onClick={guarded(() =>
+                                moveBlock(doc.id, activeSection.id, b.id, "down"),
+                              )}
                               aria-label="Mover bloco para baixo"
                             >
                               <ArrowDown className="h-4 w-4" />
@@ -433,9 +459,11 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                duplicateBlock(doc.id, activeSection.id, b.id)
-                              }
+                              disabled={frozen}
+                              aria-disabled={frozen}
+                              onClick={guarded(() =>
+                                duplicateBlock(doc.id, activeSection.id, b.id),
+                              )}
                             >
                               <Copy className="mr-1 h-4 w-4" />
                               Duplicar
@@ -445,12 +473,18 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() =>
+                              disabled={frozen}
+                              aria-disabled={frozen}
+                              onClick={() => {
+                                if (frozen) {
+                                  notifyFrozen();
+                                  return;
+                                }
                                 setSourceDialog({
                                   sectionId: activeSection.id,
                                   blockId: b.id,
-                                })
-                              }
+                                });
+                              }}
                             >
                               <Link2 className="mr-1 h-4 w-4" />
                               Vincular fonte
@@ -458,9 +492,11 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                removeBlock(doc.id, activeSection.id, b.id)
-                              }
+                              disabled={frozen}
+                              aria-disabled={frozen}
+                              onClick={guarded(() =>
+                                removeBlock(doc.id, activeSection.id, b.id),
+                              )}
                             >
                               <Trash2 className="mr-1 h-4 w-4" />
                               Remover
@@ -476,22 +512,31 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                             <ul className="flex flex-wrap gap-1.5">
                               {b.sources.map((s) => (
                                 <li key={s.id}>
-                                  <Badge
-                                    variant="secondary"
-                                    className="cursor-pointer"
-                                    title="Clique para remover"
-                                    onClick={() =>
+                                  <button
+                                    type="button"
+                                    disabled={frozen}
+                                    aria-disabled={frozen}
+                                    aria-label={`Desvincular fonte ${s.label}`}
+                                    title={
+                                      frozen
+                                        ? "Documento congelado."
+                                        : "Clique para remover"
+                                    }
+                                    onClick={guarded(() =>
                                       unlinkSourceFromBlock(
                                         doc.id,
                                         activeSection.id,
                                         b.id,
                                         s.id,
-                                      )
-                                    }
+                                      ),
+                                    )}
+                                    className="disabled:cursor-not-allowed disabled:opacity-60"
                                   >
-                                    <BookMarked className="mr-1 h-3 w-3" />
-                                    {REPORT_SOURCE_KIND_LABEL[s.kind]}: {s.label}
-                                  </Badge>
+                                    <Badge variant="secondary">
+                                      <BookMarked className="mr-1 h-3 w-3" />
+                                      {REPORT_SOURCE_KIND_LABEL[s.kind]}: {s.label}
+                                    </Badge>
+                                  </button>
                                 </li>
                               ))}
                             </ul>
