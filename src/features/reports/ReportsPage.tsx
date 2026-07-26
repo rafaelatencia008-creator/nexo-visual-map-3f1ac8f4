@@ -8,17 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { REPORT_TEMPLATE_LABEL } from "./report-types";
-import { listReports, subscribeReports } from "./report-mock-store";
+import { getReportsSnapshot, subscribeReports } from "./report-mock-store";
 import { ReportCreateDialog } from "./ReportCreateDialog";
 import { ReportEditor } from "./ReportEditor";
 
 function useReports() {
   return useSyncExternalStore(
     subscribeReports,
-    () => listReports(),
-    () => listReports(),
+    getReportsSnapshot,
+    getReportsSnapshot,
   );
 }
+
 
 function formatDate(iso: string): string {
   try {

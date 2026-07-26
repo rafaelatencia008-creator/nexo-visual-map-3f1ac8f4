@@ -68,18 +68,34 @@ const state: {
   listeners: Set<Listener>;
   history: ReportHistoryEvent[];
   historyListeners: Set<Listener>;
+  reportsSnapshot: readonly ReportListSummary[] | null;
+  historySnapshot: readonly ReportHistoryEvent[] | null;
+  version: number;
 } = {
   documents: new Map(),
   order: [],
   listeners: new Set(),
   history: [],
   historyListeners: new Set(),
+  reportsSnapshot: null,
+  historySnapshot: null,
+  version: 0,
 };
 
+function invalidateReportsSnapshot(): void {
+  state.reportsSnapshot = null;
+  state.version += 1;
+}
+function invalidateHistorySnapshot(): void {
+  state.historySnapshot = null;
+}
+
 function notify(): void {
+  invalidateReportsSnapshot();
   for (const l of state.listeners) l();
 }
 function notifyHistory(): void {
+  invalidateHistorySnapshot();
   for (const l of state.historyListeners) l();
 }
 
@@ -97,9 +113,17 @@ export function resetReportStore(): void {
   state.documents.clear();
   state.order = [];
   state.history = [];
+  state.reportsSnapshot = null;
+  state.historySnapshot = null;
+  state.version += 1;
   notify();
   notifyHistory();
 }
+
+export function getReportsVersion(): number {
+  return state.version;
+}
+
 
 // ---------- Histórico (append-only) ----------
 
@@ -123,12 +147,20 @@ function pushHistory(
   return ev;
 }
 
+export function getReportHistorySnapshot(): readonly ReportHistoryEvent[] {
+  if (state.historySnapshot === null) {
+    state.historySnapshot = Object.freeze(state.history.slice());
+  }
+  return state.historySnapshot;
+}
+
 export function listReportHistory(
   reportId?: string,
 ): readonly ReportHistoryEvent[] {
-  const all = state.history.slice();
+  const all = getReportHistorySnapshot();
   return reportId ? all.filter((e) => e.reportId === reportId) : all;
 }
+
 
 // ---------- Construção a partir do modelo ----------
 
@@ -187,23 +219,33 @@ export function createReport(input: CreateReportInput): ReportDocument {
   return doc;
 }
 
-export function listReports(): readonly ReportListSummary[] {
-  return state.order.map((id) => {
-    const d = state.documents.get(id)!;
-    const total = d.sections.length;
-    const done = d.sections.filter(
-      (s) => s.status === "revisada" || s.status === "aprovada",
-    ).length;
-    return {
-      id: d.id,
-      title: d.title,
-      templateId: d.templateId,
-      caseLabel: d.caseLabel,
-      updatedAt: d.updatedAt,
-      reviewProgress: total === 0 ? 0 : done / total,
-    };
-  });
+export function getReportsSnapshot(): readonly ReportListSummary[] {
+  if (state.reportsSnapshot === null) {
+    state.reportsSnapshot = Object.freeze(
+      state.order.map((id) => {
+        const d = state.documents.get(id)!;
+        const total = d.sections.length;
+        const done = d.sections.filter(
+          (s) => s.status === "revisada" || s.status === "aprovada",
+        ).length;
+        return Object.freeze({
+          id: d.id,
+          title: d.title,
+          templateId: d.templateId,
+          caseLabel: d.caseLabel,
+          updatedAt: d.updatedAt,
+          reviewProgress: total === 0 ? 0 : done / total,
+        });
+      }),
+    );
+  }
+  return state.reportsSnapshot;
 }
+
+export function listReports(): readonly ReportListSummary[] {
+  return getReportsSnapshot();
+}
+
 
 export function getReport(id: string): ReportDocument | undefined {
   return state.documents.get(id);
