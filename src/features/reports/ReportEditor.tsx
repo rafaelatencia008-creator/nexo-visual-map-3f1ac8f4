@@ -114,6 +114,11 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
     return doc.sections[0];
   }, [doc, activeSectionId]);
 
+  // Fecha o diálogo de vínculo de fontes se o documento for congelado.
+  useEffect(() => {
+    if (frozen && sourceDialog) setSourceDialog(null);
+  }, [frozen, sourceDialog]);
+
   if (!doc) {
     return (
       <div className="p-6">
@@ -127,10 +132,6 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
     );
   }
 
-  // Fecha o diálogo de vínculo de fontes se o documento for congelado.
-  useEffect(() => {
-    if (frozen && sourceDialog) setSourceDialog(null);
-  }, [frozen, sourceDialog]);
 
   function notifyFrozen(): void {
     toast.info("Documento congelado. Reabra o documento para editar.");
