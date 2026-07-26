@@ -26,7 +26,8 @@ import {
   type ReportSourceKind,
 } from "./report-types";
 import { collectSourceCandidates } from "./report-source-adapters";
-import { linkSourceToBlock } from "./report-mock-store";
+import { isReportFrozen, linkSourceToBlock } from "./report-mock-store";
+import { toast } from "sonner";
 
 export type ReportSourceLinkDialogProps = {
   open: boolean;
@@ -56,13 +57,24 @@ export function ReportSourceLinkDialog({
   const [kind, setKind] = useState<ReportSourceKind>("documento");
   const candidates = useMemo(() => collectSourceCandidates(caseId), [caseId]);
   const list = candidates[kind];
+  const frozen = isReportFrozen(reportId);
 
   function handleLink(refId: string, label: string): void {
-    linkSourceToBlock(reportId, sectionId, blockId, {
-      kind,
-      refId,
-      label,
-    });
+    if (frozen) {
+      toast.info("Documento congelado. Reabra para vincular fontes.");
+      onOpenChange(false);
+      return;
+    }
+    try {
+      linkSourceToBlock(reportId, sectionId, blockId, {
+        kind,
+        refId,
+        label,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha ao vincular fonte.";
+      toast.error(msg);
+    }
   }
 
   return (
