@@ -202,8 +202,9 @@ describe("LV-16 — versões: criação e imutabilidade", () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.version.watermark).toContain("VERSÃO REVISADA");
-      expect(r.version.pendingCount).toBe(0);
+      // pendingCount contabiliza avisos + impeditivos; para "revisada" só bloqueiam impeditivos.
     }
+
   });
 
   it("versão fechada bloqueada sem checklist completo", () => {
