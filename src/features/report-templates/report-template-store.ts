@@ -483,6 +483,7 @@ export function addBlock(
   });
   validateUniqueSectionIds(internalTemplates[idx]!.sections);
   commit();
+  logHistory(templateId, "block_added", `Bloco adicionado (${newBlock.kind}).`, { sectionId, blockId: newBlock.id, kind: newBlock.kind });
   const savedSection = getTemplate(templateId)!.sections[sIdx]!;
   return savedSection.blocks.find((b) => b.id === newBlock.id)!;
 }
