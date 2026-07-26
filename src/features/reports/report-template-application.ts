@@ -83,7 +83,7 @@ function locatePublishedVersion(
   repository: ReportTemplateRepository,
   versionId?: string,
 ) {
-  const versions = repository.listTemplateVersions(templateId);
+  const versions = repository.listVersions(templateId);
   if (versionId) {
     const v = versions.find((x) => x.id === versionId);
     if (!v) {
