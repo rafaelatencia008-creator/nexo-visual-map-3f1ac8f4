@@ -244,6 +244,19 @@ export function CopilotPanel() {
     setConfirmAction(null);
   };
 
+  const handleOpenSource = (threadId: string, messageId: string, ref: CopilotReference) => {
+    if (!ref.route || !ref.route.startsWith("/app")) {
+      toast.error("Fonte sem rota interna válida.");
+      return;
+    }
+    logAudit(threadId, "source_opened", `${ref.label}`, { messageId });
+    setOpen(false);
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", ref.route);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
