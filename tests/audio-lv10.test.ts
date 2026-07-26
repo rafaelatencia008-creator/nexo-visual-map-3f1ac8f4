@@ -748,17 +748,20 @@ describe("LV-10 integração de rota /app/entrevistas", () => {
     expect(audioRoutes).toEqual(["app.entrevistas.tsx"]);
   });
 
-  test("entrada Entrevistas continua com construction:true no nav", () => {
+  test("entrada Entrevistas está ativa (sem construction) após LV-11", () => {
     const src = readSrc("src/lib/app-nav.ts");
     const idx = src.indexOf("/app/entrevistas");
     expect(idx).toBeGreaterThan(-1);
     const slice = src.slice(idx, idx + 200);
-    expect(slice).toContain("construction: true");
+    expect(slice).not.toContain("construction: true");
   });
 
-  test("CONSTRUCTION_MODULES mantém entrada /app/entrevistas", () => {
+  test("CONSTRUCTION_MODULES não contém mais /app/entrevistas", () => {
     const src = readSrc("src/lib/app-nav.ts");
-    expect(src).toContain('"/app/entrevistas"');
+    const cmIdx = src.indexOf("CONSTRUCTION_MODULES");
+    expect(cmIdx).toBeGreaterThan(-1);
+    const cmSlice = src.slice(cmIdx, cmIdx + 400);
+    expect(cmSlice).not.toContain('"/app/entrevistas"');
   });
 });
 
