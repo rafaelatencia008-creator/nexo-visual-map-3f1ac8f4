@@ -193,6 +193,7 @@ describe("LV-18.2 · Versões imutáveis", () => {
   });
 
   it("mudanças posteriores não afetam versões antigas", () => {
+    returnTemplateToDraft(PSICO);
     const v = createManualTemplateVersion(PSICO, "snap");
     const before = v.snapshot.name;
     addSection(PSICO, { title: "Nova mudança" });
@@ -234,6 +235,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("detecta seção adicionada", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     addSection(PSICO, { title: "Nova" });
     const after = getTemplate(PSICO)!;
@@ -243,6 +245,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("detecta renomeação distinta de reordenação", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     const s0 = before.sections[0]!;
     updateSection(PSICO, s0.id, { title: "Título Novo" });
@@ -261,6 +264,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("ordenação determinística", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     addSection(PSICO, { title: "AA" });
     addSection(PSICO, { title: "BB" });
@@ -281,6 +285,7 @@ describe("LV-18.2 · Histórico append-only", () => {
   });
 
   it("operação estrutural registra evento", () => {
+    returnTemplateToDraft(PSICO);
     const s = addSection(PSICO, { title: "X" });
     const evs = listTemplateHistory(PSICO);
     expect(evs.some((e) => e.action === "section_added")).toBe(true);
@@ -288,6 +293,7 @@ describe("LV-18.2 · Histórico append-only", () => {
   });
 
   it("no-op não gera evento", () => {
+    returnTemplateToDraft(PSICO);
     const before = listTemplateHistory(PSICO).length;
     // updateSection com mesmos valores é no-op
     const s0 = getTemplate(PSICO)!.sections[0]!;
