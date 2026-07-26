@@ -102,7 +102,7 @@ function makeStandardTemplate(opts?: {
 
 function publishAndReturn(templateId: string) {
   const template = getTemplate(templateId as never)!;
-  publishTemplate(template.id, { reason: "Publicação para teste LV-18.5" });
+  publishTemplate(template.id, "publicar");
   return getTemplate(template.id)!;
 }
 
@@ -119,7 +119,7 @@ describe("LV-18.5 · Seleção de modelos", () => {
   it("lista somente modelos publicados", () => {
     const draft = makeStandardTemplate();
     const publ = makeStandardTemplate();
-    publishTemplate(publ.id, { reason: "publicar" });
+    publishTemplate(publ.id, "publicar");
     const applicable = listApplicableTemplates();
     expect(applicable.some((t) => t.id === publ.id)).toBe(true);
     expect(applicable.some((t) => t.id === draft.id)).toBe(false);
@@ -127,8 +127,8 @@ describe("LV-18.5 · Seleção de modelos", () => {
 
   it("modelo arquivado não é selecionável", () => {
     const t = makeStandardTemplate();
-    publishTemplate(t.id, { reason: "publicar" });
-    archiveTemplate(t.id, { reason: "arquivar" });
+    publishTemplate(t.id, "publicar");
+    archiveTemplate(t.id);
     const applicable = listApplicableTemplates();
     expect(applicable.some((x) => x.id === t.id)).toBe(false);
   });
@@ -400,10 +400,10 @@ describe("LV-18.5 · Independência entre modelo e laudo", () => {
     const snapshotContent = res.report.sections[0].blocks[0].content;
 
     // Retorna para rascunho e edita
-    returnTemplateToDraft(t.id, { reason: "editar" });
+    returnTemplateToDraft(t.id);
     const stored = getReport(res.report.id);
     // Nova versão publicada não deve mudar o laudo já criado
-    publishTemplate(t.id, { reason: "republicar" });
+    publishTemplate(t.id, "publicar");
     expect(stored?.sections[0].blocks[0].content).toBe(snapshotContent);
   });
 
@@ -416,7 +416,7 @@ describe("LV-18.5 · Independência entre modelo e laudo", () => {
       caseLabel: "P1",
       variableValues: { nome_paciente: "Ana" },
     });
-    archiveTemplate(t.id, { reason: "arquivar" });
+    archiveTemplate(t.id);
     const stored = getReport(res.report.id);
     expect(stored?.templateOrigin?.templateName).toBeDefined();
     expect(stored?.sections[0].blocks[0].content).toBe("Paciente: Ana");
