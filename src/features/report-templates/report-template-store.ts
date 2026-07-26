@@ -678,17 +678,20 @@ export function removeVariable(
   const vIdx = t.variables.findIndex((v) => v.id === variableId);
   if (vIdx === -1) throw new ReportTemplateError("variable_not_found", "Variável não encontrada.");
   if (!options?.force && isVariableInUse(templateId, variableId)) {
+    logHistory(templateId, "template_operation_blocked", "Remoção de variável bloqueada — em uso.", { variableId }, "blocked");
     throw new ReportTemplateError(
       "variable_in_use",
       "Variável está referenciada por blocos — use force=true para remover mesmo assim.",
     );
   }
+  const removedKey = t.variables[vIdx]!.key;
   replaceInternal(idx, {
     ...t,
     variables: t.variables.filter((_, i) => i !== vIdx),
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "variable_removed", `Variável removida: ${removedKey}.`, { variableId, key: removedKey });
 }
 
 // ---------- Reset ----------
