@@ -37,7 +37,7 @@ export interface ReadRepository<TSummary, TFull, TId extends string = string> {
 
 export interface ReportRepository
   extends ReadRepository<ReportListSummary, ReportDocument> {
-  create(input: { title: string; templateId: string; caseId?: string }): ReportDocument;
+  create(input: CreateReportInput): ReportDocument;
   isFrozen(reportId: string): boolean;
 }
 
