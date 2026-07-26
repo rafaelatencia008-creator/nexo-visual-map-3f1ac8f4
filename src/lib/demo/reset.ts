@@ -23,6 +23,6 @@ export function resetDemoData(): void {
   resetReportStore();
   resetInterviewStore();
   resetCopilotStore();
-  resetReportTemplateStore();
+  reportTemplateRepository.reset();
   logDemo("reset", "Estado demonstrativo restaurado");
 }
