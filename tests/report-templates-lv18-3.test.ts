@@ -394,12 +394,19 @@ describe("LV-18.3 · Preview", () => {
     expect(a.idsToRegenerate).toBe(b.idsToRegenerate);
   });
 
-  it("detecta conflito com IDs existentes", () => {
+  it("detecta conflito com IDs existentes (todas as espécies)", () => {
     const s = serializeReportTemplate(PSICO);
     const preview = previewReportTemplateImport(s);
-    expect(preview.conflicts.length).toBe(1);
-    expect(preview.conflicts[0]!.sourceId).toBe(PSICO);
+    // Como PSICO já existe: 1 template + 3 seções + 3 blocos + 2 variáveis = 9.
+    expect(preview.conflicts.length).toBeGreaterThanOrEqual(4);
+    const kinds = new Set(preview.conflicts.map((c) => c.kind));
+    expect(kinds.has("template")).toBe(true);
+    expect(kinds.has("section")).toBe(true);
+    expect(kinds.has("block")).toBe(true);
+    expect(kinds.has("variable")).toBe(true);
+    expect(preview.conflicts.some((c) => c.sourceId === PSICO)).toBe(true);
   });
+
 
   it("conta corretamente IDs a regenerar", () => {
     const s = serializeReportTemplate(PSICO);
