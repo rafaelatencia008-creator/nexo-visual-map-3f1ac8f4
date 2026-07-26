@@ -415,11 +415,37 @@ export function CopilotPanel() {
             <AlertDialogTitle>Confirmar ação proposta</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p><strong className="text-foreground">Ação:</strong> {confirmAction?.action.label}</p>
-                <p><strong className="text-foreground">Registro afetado:</strong> {confirmAction?.action.targetType} · {confirmAction?.action.targetId}</p>
+                <p><strong className="text-foreground">Ação proposta:</strong> {confirmAction?.action.label}</p>
+                <p>
+                  <strong className="text-foreground">Registro afetado:</strong>{" "}
+                  {confirmAction?.action.targetType}
+                  {confirmAction?.targetLabel ? ` · ${confirmAction.targetLabel}` : ""}
+                </p>
+                {confirmAction?.action.targetId && (
+                  <p className="text-xs">ID: {confirmAction.action.targetId}</p>
+                )}
                 <p><strong className="text-foreground">Alterações previstas:</strong> {confirmAction?.action.description}</p>
+                <p><strong className="text-foreground">Motivo da sugestão:</strong> {confirmAction?.action.reason ?? "Derivada da pergunta do usuário e das fontes citadas."}</p>
                 <p><strong className="text-foreground">Risco:</strong> {confirmAction?.action.risk}</p>
-                <p className="text-xs italic">Fontes utilizadas foram exibidas na mensagem original.</p>
+                {confirmAction && confirmAction.references.length > 0 ? (
+                  <div className="rounded border bg-muted/40 p-2">
+                    <p className="text-xs font-semibold text-foreground">Fontes utilizadas</p>
+                    <ul className="mt-1 space-y-1">
+                      {confirmAction.references.map((r) => (
+                        <li key={r.id} className="text-xs">
+                          <span className="font-medium">{SOURCE_TYPE_LABEL[r.sourceType]}:</span>{" "}
+                          {r.label}
+                          {r.excerpt && (
+                            <span className="block italic text-muted-foreground">"{r.excerpt.slice(0, 160)}"</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs italic">Nenhuma fonte adicional foi utilizada nesta sugestão.</p>
+                )}
+                <p className="text-xs italic">Limitações: rascunho demonstrativo. Revise antes de aplicar.</p>
                 {confirmAction?.action.risk === "high" && (
                   <label className="flex items-center gap-2 rounded border p-2 mt-2">
                     <Checkbox
