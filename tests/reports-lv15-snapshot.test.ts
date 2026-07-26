@@ -60,7 +60,7 @@ describe("LV-15 — snapshot estável da store de laudos", () => {
     const v0 = getReportsVersion();
     createReport({
       title: "X",
-      templateId: "parecer_tecnico",
+      templateId: "parecer_psicologico",
       caseId: "c",
       caseLabel: "C",
     });
@@ -70,7 +70,7 @@ describe("LV-15 — snapshot estável da store de laudos", () => {
   it("getReportHistorySnapshot é estável entre chamadas sem mutação", () => {
     createReport({
       title: "Y",
-      templateId: "parecer_tecnico",
+      templateId: "parecer_psicologico",
       caseId: "c",
       caseLabel: "C",
     });
