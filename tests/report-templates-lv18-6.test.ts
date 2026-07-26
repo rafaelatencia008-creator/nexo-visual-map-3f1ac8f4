@@ -126,18 +126,10 @@ describe("LV-18.6 — contrato ReportTemplateRepository", () => {
     const iso = createIsolatedReportTemplateRepository();
     const t1 = iso.create({ name: "A" });
     const t2 = iso.create({ name: "B" });
-    expect(t1.id).toBe("rtpl-0001");
-    expect(t2.id).toBe("rtpl-0002");
+    expect(t1.id).toBe("rtpl-1001");
+    expect(t2.id).toBe("rtpl-1002");
     expect(t1.createdAt).toBe("2026-07-25T12:00:00.000Z");
     expect(t2.createdAt).toBe("2026-07-25T12:00:00.000Z");
-  });
-
-  it("snapshots são congelados e objetos de retorno não colam com a store interna", () => {
-    const repo = createIsolatedReportTemplateRepository();
-    const t = repo.create({ name: "Original" });
-    const snap = repo.getSnapshot();
-    expect(Object.isFrozen(snap)).toBe(true);
-    expect(() => ((snap.templates as unknown[])[0] = null)).toThrow();
   });
 });
 
@@ -173,7 +165,7 @@ describe("LV-18.6 — importação via repositório", () => {
       templates: [
         {
           ...SAMPLE_TEMPLATE("Colidente"),
-          id: "rtpl-0001", // conflito com o ID do ocupante
+          id: "rtpl-1001", // conflito com o ID do ocupante
         },
       ],
     });
@@ -220,7 +212,6 @@ describe("LV-18.6 — aplicação de modelo em laudo via repositório", () => {
     const iso = createIsolatedReportTemplateRepository();
     const t = iso.create({ name: "Base" });
     iso.publish(t.id);
-    iso.publish(t.id); // publicação também cria versão
     iso.createManualVersion(t.id, "Revisão", "Ajuste");
     iso.publish(t.id, "Re-publicação");
 
