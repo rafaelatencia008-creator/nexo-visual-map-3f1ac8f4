@@ -15,11 +15,16 @@
 
 import { getTemplate } from "./report-templates";
 import {
+  REPORT_CHECKLIST_LABEL,
+  REPORT_CHECKLIST_ORDER,
   REPORT_SECTION_LABEL,
   REPORT_SECTION_STATUS_LABEL,
   REPORT_TEMPLATE_LABEL,
+  REPORT_VERSION_TYPE_LABEL,
   type ReportBlock,
   type ReportBlockOrigin,
+  type ReportChecklist,
+  type ReportChecklistItemId,
   type ReportDocument,
   type ReportHistoryEvent,
   type ReportHistoryEventKind,
@@ -30,13 +35,25 @@ import {
   type ReportSourceKind,
   type ReportSourceRef,
   type ReportTemplateId,
+  type ReportVersion,
+  type ReportVersionListItem,
+  type ReportVersionType,
 } from "./report-types";
+import {
+  compareVersions as compareVersionsPure,
+  deepFreezeDocument,
+  emptyChecklist,
+  checklistProgress,
+  toggleChecklist,
+  watermarkFor,
+} from "./report-versions";
+import { computePendingItems, computeGeneralStatus } from "./report-review";
 
 // ---------- IDs / clock ----------
 
 let idCounter = 9000;
 export function makeReportId(
-  prefix: "rep" | "sec" | "blk" | "src" | "hst",
+  prefix: "rep" | "sec" | "blk" | "src" | "hst" | "ver",
 ): string {
   idCounter += 1;
   return `${prefix}-${idCounter}`;
@@ -44,6 +61,7 @@ export function makeReportId(
 export function resetReportIdCounter(seed = 9000): void {
   idCounter = seed;
 }
+
 
 let clockIso = "2026-07-25T12:00:00.000Z";
 export function reportNow(): string {
