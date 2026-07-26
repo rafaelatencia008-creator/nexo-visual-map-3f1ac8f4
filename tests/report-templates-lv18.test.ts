@@ -29,6 +29,7 @@ import {
   removeSection,
   removeVariable,
   resetReportTemplateStore,
+  returnTemplateToDraft,
   subscribe,
   updateBlock,
   updateSection,
@@ -138,6 +139,7 @@ describe("LV-18.1 · Snapshot referencialmente estável", () => {
   });
 
   it("no-op (atualização com mesmos valores) mantém a mesma referência", () => {
+    returnTemplateToDraft(PSICO);
     const cur = getTemplate(PSICO)!;
     const s1 = getSnapshot();
     updateTemplateMetadata(PSICO, { name: cur.name, description: cur.description });
@@ -186,6 +188,7 @@ describe("LV-18.1 · Assinaturas", () => {
   });
 
   it("listener NÃO recebe em no-op", () => {
+    returnTemplateToDraft(PSICO);
     const cur = getTemplate(PSICO)!;
     let n = 0;
     const un = subscribe(() => n++);
@@ -482,6 +485,7 @@ describe("LV-18.1 · Variáveis", () => {
   });
 
   it("bloqueia remoção quando variável está referenciada em bloco", () => {
+    returnTemplateToDraft(PSICO);
     const orig = getTemplate(PSICO)!;
     const v = orig.variables.find((x) => x.key === "cliente_nome")!;
     expect(isVariableInUse(PSICO, v.id)).toBe(true);
@@ -489,6 +493,7 @@ describe("LV-18.1 · Variáveis", () => {
   });
 
   it("permite remoção forçada", () => {
+    returnTemplateToDraft(PSICO);
     const orig = getTemplate(PSICO)!;
     const v = orig.variables.find((x) => x.key === "cliente_nome")!;
     removeVariable(PSICO, v.id, { force: true });

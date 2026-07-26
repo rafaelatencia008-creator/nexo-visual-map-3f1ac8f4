@@ -189,12 +189,37 @@ function requireInternal(id: ReportTemplateId): { idx: number; t: ReportTemplate
   return { idx, t: internalTemplates[idx]! };
 }
 
-function requireMutable(id: ReportTemplateId): { idx: number; t: ReportTemplate } {
+function requireMutable(
+  id: ReportTemplateId,
+  operation: string,
+): { idx: number; t: ReportTemplate } {
   const found = requireInternal(id);
   if (found.t.status === "arquivado") {
+    logHistory(
+      id,
+      "template_operation_blocked",
+      `Operação bloqueada: modelo arquivado (${operation}).`,
+      { operation, status: found.t.status },
+      "blocked",
+    );
     throw new ReportTemplateError(
       "template_archived",
       `Modelo ${id} está arquivado e não pode ser editado.`,
+      { operation },
+    );
+  }
+  if (found.t.status === "publicado") {
+    logHistory(
+      id,
+      "template_operation_blocked",
+      `Operação bloqueada: modelo publicado (${operation}).`,
+      { operation, status: found.t.status },
+      "blocked",
+    );
+    throw new ReportTemplateError(
+      "template_published",
+      `Modelo ${id} está publicado — retorne para rascunho antes de editar.`,
+      { operation },
     );
   }
   return found;
@@ -261,7 +286,7 @@ export function updateTemplateMetadata(
   id: ReportTemplateId,
   input: UpdateTemplateMetadataInput,
 ): ReportTemplate {
-  const { idx, t } = requireMutable(id);
+  const { idx, t } = requireMutable(id, "update_metadata");
   const nextName = input.name !== undefined ? input.name.trim() : t.name;
   if (nextName.length === 0) {
     throw new ReportTemplateError("empty_name", "Nome não pode ficar vazio.");
@@ -346,7 +371,7 @@ export function addSection(
   templateId: ReportTemplateId,
   input: AddSectionInput,
 ): ReportTemplateSection {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "add_section");
   const title = (input.title ?? "").trim();
   if (title.length === 0) {
     throw new ReportTemplateError("empty_name", "Título da seção é obrigatório.");
@@ -381,7 +406,7 @@ export function updateSection(
   sectionId: ReportTemplateSectionId,
   input: UpdateSectionInput,
 ): ReportTemplateSection {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "update_section");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   const cur = t.sections[sIdx]!;
@@ -413,7 +438,7 @@ export function removeSection(
   templateId: ReportTemplateId,
   sectionId: ReportTemplateSectionId,
 ): void {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "remove_section");
   const filtered = t.sections.filter((s) => s.id !== sectionId);
   if (filtered.length === t.sections.length) {
     throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
@@ -432,7 +457,7 @@ export function moveSection(
   sectionId: ReportTemplateSectionId,
   direction: "up" | "down",
 ): void {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "move_section");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   const target = direction === "up" ? sIdx - 1 : sIdx + 1;
@@ -456,7 +481,7 @@ export function addBlock(
   sectionId: ReportTemplateSectionId,
   input: AddBlockInput,
 ): ReportTemplateBlock {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "add_block");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   if (input.position !== undefined && input.position < 0) {
@@ -494,7 +519,7 @@ export function updateBlock(
   blockId: ReportTemplateBlockId,
   input: UpdateBlockInput,
 ): ReportTemplateBlock {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "update_block");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   const section = t.sections[sIdx]!;
@@ -533,7 +558,7 @@ export function removeBlock(
   sectionId: ReportTemplateSectionId,
   blockId: ReportTemplateBlockId,
 ): void {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "remove_block");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   const section = t.sections[sIdx]!;
@@ -557,7 +582,7 @@ export function moveBlock(
   blockId: ReportTemplateBlockId,
   direction: "up" | "down",
 ): void {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "move_block");
   const sIdx = t.sections.findIndex((s) => s.id === sectionId);
   if (sIdx === -1) throw new ReportTemplateError("section_not_found", "Seção não encontrada.");
   const section = t.sections[sIdx]!;
@@ -590,7 +615,7 @@ export function addVariable(
   templateId: ReportTemplateId,
   input: AddVariableInput,
 ): ReportTemplateVariable {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "add_variable");
   const key = normalizeKey(input.key ?? "");
   if (key.length === 0) {
     throw new ReportTemplateError("empty_variable_key", "Chave da variável é obrigatória.");
@@ -630,7 +655,7 @@ export function updateVariable(
   variableId: ReportTemplateVariableId,
   input: UpdateVariableInput,
 ): ReportTemplateVariable {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "update_variable");
   const vIdx = t.variables.findIndex((v) => v.id === variableId);
   if (vIdx === -1) throw new ReportTemplateError("variable_not_found", "Variável não encontrada.");
   const cur = t.variables[vIdx]!;
@@ -674,7 +699,7 @@ export function removeVariable(
   variableId: ReportTemplateVariableId,
   options?: { readonly force?: boolean },
 ): void {
-  const { idx, t } = requireMutable(templateId);
+  const { idx, t } = requireMutable(templateId, "remove_variable");
   const vIdx = t.variables.findIndex((v) => v.id === variableId);
   if (vIdx === -1) throw new ReportTemplateError("variable_not_found", "Variável não encontrada.");
   if (!options?.force && isVariableInUse(templateId, variableId)) {

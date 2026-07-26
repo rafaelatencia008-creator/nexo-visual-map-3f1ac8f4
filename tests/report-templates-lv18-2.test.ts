@@ -193,6 +193,7 @@ describe("LV-18.2 · Versões imutáveis", () => {
   });
 
   it("mudanças posteriores não afetam versões antigas", () => {
+    returnTemplateToDraft(PSICO);
     const v = createManualTemplateVersion(PSICO, "snap");
     const before = v.snapshot.name;
     addSection(PSICO, { title: "Nova mudança" });
@@ -234,6 +235,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("detecta seção adicionada", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     addSection(PSICO, { title: "Nova" });
     const after = getTemplate(PSICO)!;
@@ -243,6 +245,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("detecta renomeação distinta de reordenação", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     const s0 = before.sections[0]!;
     updateSection(PSICO, s0.id, { title: "Título Novo" });
@@ -261,6 +264,7 @@ describe("LV-18.2 · Comparação de versões", () => {
   });
 
   it("ordenação determinística", () => {
+    returnTemplateToDraft(PSICO);
     const before = getTemplate(PSICO)!;
     addSection(PSICO, { title: "AA" });
     addSection(PSICO, { title: "BB" });
@@ -281,6 +285,7 @@ describe("LV-18.2 · Histórico append-only", () => {
   });
 
   it("operação estrutural registra evento", () => {
+    returnTemplateToDraft(PSICO);
     const s = addSection(PSICO, { title: "X" });
     const evs = listTemplateHistory(PSICO);
     expect(evs.some((e) => e.action === "section_added")).toBe(true);
@@ -288,6 +293,7 @@ describe("LV-18.2 · Histórico append-only", () => {
   });
 
   it("no-op não gera evento", () => {
+    returnTemplateToDraft(PSICO);
     const before = listTemplateHistory(PSICO).length;
     // updateSection com mesmos valores é no-op
     const s0 = getTemplate(PSICO)!.sections[0]!;
@@ -373,5 +379,210 @@ describe("LV-18.2 · Segurança e escopo", () => {
       expect(src).not.toMatch(/new\s+Function\s*\(/);
       expect(src).not.toMatch(/dangerouslySetInnerHTML/);
     }
+  });
+});
+
+// ============ LV-18.2 · Bloqueio de edição em modelos publicados ============
+
+import {
+  addSection as _addSection,
+  addBlock as _addBlock,
+  addVariable as _addVariable,
+  getSnapshot,
+  moveBlock,
+  moveSection,
+  removeBlock,
+  removeSection,
+  subscribe,
+  updateBlock,
+  updateTemplateMetadata,
+  updateVariable,
+} from "@/features/report-templates/report-template-use-cases";
+import type {
+  ReportTemplateBlockId,
+  ReportTemplateVariableId,
+} from "@/features/report-templates/report-template-types";
+
+function firstIdsOf(templateId = PSICO) {
+  const t = getTemplate(templateId)!;
+  const section = t.sections[0]!;
+  const block = section.blocks[0]!;
+  const variable = t.variables[0]!;
+  return {
+    sectionId: section.id,
+    blockId: block.id,
+    variableId: variable.id,
+  };
+}
+
+
+// Alternativa: uma única invocação por teste, com contagem exata de histórico=1.
+function expectBlockedOnce(
+  templateId: ReportTemplateId,
+  fn: () => void,
+): void {
+  const snapshotRef = getSnapshot();
+  const version = snapshotRef.version;
+  const versionsBefore = listTemplateVersions(templateId).length;
+  const historyBefore = listTemplateHistory(templateId).length;
+  let emissions = 0;
+  const un = subscribe(() => emissions++);
+  let thrown: unknown;
+  try {
+    fn();
+  } catch (e) {
+    thrown = e;
+  }
+  un();
+  expect(thrown).toBeInstanceOf(ReportTemplateError);
+  expect((thrown as ReportTemplateError).code).toBe("template_published");
+  expect(getSnapshot()).toBe(snapshotRef);
+  expect(getSnapshot().version).toBe(version);
+  expect(listTemplateVersions(templateId).length).toBe(versionsBefore);
+  expect(emissions).toBe(0);
+  const newEvents = listTemplateHistory(templateId).slice(historyBefore);
+  expect(newEvents).toHaveLength(1);
+  expect(newEvents[0]!.action).toBe("template_operation_blocked");
+  expect(newEvents[0]!.result).toBe("blocked");
+}
+
+describe("LV-18.2 · Edição bloqueada em modelo publicado", () => {
+  it("fixture publicada (Laudo Psicológico) não pode ser editada diretamente", () => {
+    expect(getTemplate(PSICO)!.status).toBe("publicado");
+    expectBlockedOnce(PSICO, () =>
+      updateTemplateMetadata(PSICO, { name: "HACK" }),
+    );
+    expect(getTemplate(PSICO)!.name).toBe("Laudo Psicológico");
+  });
+
+  it("updateTemplateMetadata bloqueada", () => {
+    const original = getTemplate(PSICO)!;
+    expectBlockedOnce(PSICO, () =>
+      updateTemplateMetadata(PSICO, { description: "novo" }),
+    );
+    expect(getTemplate(PSICO)!.description).toBe(original.description);
+  });
+
+  it("addSection bloqueada", () => {
+    const before = getTemplate(PSICO)!.sections.length;
+    expectBlockedOnce(PSICO, () => _addSection(PSICO, { title: "Nova" }));
+    expect(getTemplate(PSICO)!.sections).toHaveLength(before);
+  });
+
+  it("updateSection bloqueada", () => {
+    const { sectionId } = firstIdsOf();
+    const originalTitle = getTemplate(PSICO)!.sections[0]!.title;
+    expectBlockedOnce(PSICO, () =>
+      updateSection(PSICO, sectionId, { title: "HACK" }),
+    );
+    expect(getTemplate(PSICO)!.sections[0]!.title).toBe(originalTitle);
+  });
+
+  it("removeSection bloqueada", () => {
+    const { sectionId } = firstIdsOf();
+    const before = getTemplate(PSICO)!.sections.length;
+    expectBlockedOnce(PSICO, () => removeSection(PSICO, sectionId));
+    expect(getTemplate(PSICO)!.sections).toHaveLength(before);
+  });
+
+  it("moveSection bloqueada", () => {
+    const sections = getTemplate(PSICO)!.sections;
+    const target = sections[sections.length - 1]!.id;
+    const orderBefore = sections.map((s) => s.id);
+    expectBlockedOnce(PSICO, () => moveSection(PSICO, target, "up"));
+    expect(getTemplate(PSICO)!.sections.map((s) => s.id)).toEqual(orderBefore);
+  });
+
+  it("addBlock bloqueada", () => {
+    const { sectionId } = firstIdsOf();
+    const before = getTemplate(PSICO)!.sections[0]!.blocks.length;
+    expectBlockedOnce(PSICO, () =>
+      _addBlock(PSICO, sectionId, { kind: "paragrafo", content: "x" }),
+    );
+    expect(getTemplate(PSICO)!.sections[0]!.blocks).toHaveLength(before);
+  });
+
+  it("updateBlock bloqueada", () => {
+    const { sectionId, blockId } = firstIdsOf();
+    const originalContent = getTemplate(PSICO)!.sections[0]!.blocks[0]!.content;
+    expectBlockedOnce(PSICO, () =>
+      updateBlock(PSICO, sectionId, blockId, { content: "HACK" }),
+    );
+    expect(getTemplate(PSICO)!.sections[0]!.blocks[0]!.content).toBe(
+      originalContent,
+    );
+  });
+
+  it("removeBlock bloqueada", () => {
+    const { sectionId, blockId } = firstIdsOf();
+    const before = getTemplate(PSICO)!.sections[0]!.blocks.length;
+    expectBlockedOnce(PSICO, () => removeBlock(PSICO, sectionId, blockId));
+    expect(getTemplate(PSICO)!.sections[0]!.blocks).toHaveLength(before);
+  });
+
+  it("moveBlock bloqueada", () => {
+    const { sectionId } = firstIdsOf();
+    const blocks = getTemplate(PSICO)!.sections[0]!.blocks;
+    if (blocks.length < 2) return; // não aplicável
+    const targetBlock = blocks[blocks.length - 1]!.id;
+    const orderBefore = blocks.map((b) => b.id);
+    expectBlockedOnce(PSICO, () =>
+      moveBlock(PSICO, sectionId, targetBlock, "up"),
+    );
+    expect(
+      getTemplate(PSICO)!.sections[0]!.blocks.map((b) => b.id),
+    ).toEqual(orderBefore);
+  });
+
+  it("addVariable bloqueada", () => {
+    const before = getTemplate(PSICO)!.variables.length;
+    expectBlockedOnce(PSICO, () =>
+      _addVariable(PSICO, { key: "nova_key", label: "N" }),
+    );
+    expect(getTemplate(PSICO)!.variables).toHaveLength(before);
+  });
+
+  it("updateVariable bloqueada", () => {
+    const { variableId } = firstIdsOf();
+    const originalLabel = getTemplate(PSICO)!.variables[0]!.label;
+    expectBlockedOnce(PSICO, () =>
+      updateVariable(PSICO, variableId, { label: "HACK" }),
+    );
+    expect(getTemplate(PSICO)!.variables[0]!.label).toBe(originalLabel);
+  });
+
+  it("removeVariable bloqueada", () => {
+    const { variableId } = firstIdsOf();
+    const before = getTemplate(PSICO)!.variables.length;
+    expectBlockedOnce(PSICO, () =>
+      removeVariable(PSICO, variableId, { force: true }),
+    );
+    expect(getTemplate(PSICO)!.variables).toHaveLength(before);
+  });
+
+  it("modelo recém-publicado (não-fixture) também bloqueia edição", () => {
+    // Cria um modelo válido em rascunho, publica e testa
+    const t = createTemplate({ name: "Publicável" });
+    _addSection(t.id, { title: "Seção 1" });
+    const secId = getTemplate(t.id)!.sections[0]!.id;
+    _addBlock(t.id, secId, { kind: "paragrafo", content: "conteúdo" });
+    publishTemplate(t.id);
+    expect(getTemplate(t.id)!.status).toBe("publicado");
+    expectBlockedOnce(t.id, () =>
+      updateTemplateMetadata(t.id, { name: "Renomeado" }),
+    );
+    expect(getTemplate(t.id)!.name).toBe("Publicável");
+  });
+
+  it("após returnTemplateToDraft, edição volta a funcionar", () => {
+    returnTemplateToDraft(PSICO);
+    expect(getTemplate(PSICO)!.status).toBe("rascunho");
+    const hist = listTemplateHistory(PSICO);
+    expect(
+      hist.some((e) => e.action === "template_returned_to_draft"),
+    ).toBe(true);
+    // agora edição funciona
+    updateTemplateMetadata(PSICO, { name: "Laudo Psicológico Editado" });
+    expect(getTemplate(PSICO)!.name).toBe("Laudo Psicológico Editado");
   });
 });
