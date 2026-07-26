@@ -7,7 +7,7 @@
  *   memória, isolada entre instâncias, para testes de contrato e de
  *   casos de uso sem depender do singleton global.
  *
- * 100% frontend/mock. Sem persistência, backend, Supabase ou rede.
+ * 100% frontend/mock. Sem persistência, backend ou rede.
  */
 
 import {
