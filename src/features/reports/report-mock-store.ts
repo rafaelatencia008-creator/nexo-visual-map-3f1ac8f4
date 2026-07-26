@@ -219,23 +219,33 @@ export function createReport(input: CreateReportInput): ReportDocument {
   return doc;
 }
 
-export function listReports(): readonly ReportListSummary[] {
-  return state.order.map((id) => {
-    const d = state.documents.get(id)!;
-    const total = d.sections.length;
-    const done = d.sections.filter(
-      (s) => s.status === "revisada" || s.status === "aprovada",
-    ).length;
-    return {
-      id: d.id,
-      title: d.title,
-      templateId: d.templateId,
-      caseLabel: d.caseLabel,
-      updatedAt: d.updatedAt,
-      reviewProgress: total === 0 ? 0 : done / total,
-    };
-  });
+export function getReportsSnapshot(): readonly ReportListSummary[] {
+  if (state.reportsSnapshot === null) {
+    state.reportsSnapshot = Object.freeze(
+      state.order.map((id) => {
+        const d = state.documents.get(id)!;
+        const total = d.sections.length;
+        const done = d.sections.filter(
+          (s) => s.status === "revisada" || s.status === "aprovada",
+        ).length;
+        return Object.freeze({
+          id: d.id,
+          title: d.title,
+          templateId: d.templateId,
+          caseLabel: d.caseLabel,
+          updatedAt: d.updatedAt,
+          reviewProgress: total === 0 ? 0 : done / total,
+        });
+      }),
+    );
+  }
+  return state.reportsSnapshot;
 }
+
+export function listReports(): readonly ReportListSummary[] {
+  return getReportsSnapshot();
+}
+
 
 export function getReport(id: string): ReportDocument | undefined {
   return state.documents.get(id);
