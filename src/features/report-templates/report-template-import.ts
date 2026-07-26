@@ -65,7 +65,9 @@ export interface ImportConflict {
   readonly sourceId: string;
   readonly kind: "template" | "section" | "block" | "variable";
   readonly reason: string;
+  readonly templateSourceId?: string;
 }
+
 
 export interface ImportIdMapping {
   readonly kind: "template" | "section" | "block" | "variable";
