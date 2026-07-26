@@ -14,24 +14,9 @@ import type {
   ReportTemplateSpecialty,
   ReportTemplateVariableKind,
 } from "@/features/report-templates/report-template-types";
-import type { ReportSection, ReportDocument } from "./report-types";
+import type { ReportSection, ReportDocument, ReportTemplateOrigin } from "./report-types";
 
-/**
- * Metadata imutável do modelo que originou o laudo. Congela informações no
- * momento da aplicação — nenhuma alteração posterior no modelo pode
- * modificar estes campos.
- */
-export interface ReportTemplateOrigin {
-  readonly templateId: TemplateId;
-  readonly templateVersionId: string;
-  readonly templateVersionNumber: number;
-  readonly templateName: string;
-  readonly templateSpecialty: ReportTemplateSpecialty;
-  readonly appliedAt: string;
-  readonly appliedBy: string;
-  /** Identidade da versão usada — usada para detectar concorrência. */
-  readonly fingerprint: string;
-}
+export type { ReportTemplateOrigin };
 
 /** Valores das variáveis, como texto normalizado (input do formulário). */
 export type ReportTemplateVariableValues = Readonly<Record<string, string>>;
