@@ -72,6 +72,7 @@ import { DocumentViewerDialog } from "./DocumentViewerDialog";
 import { DocumentExtractionDialog } from "./DocumentExtractionDialog";
 import { DocumentCompareVersionsDialog } from "./DocumentCompareVersionsDialog";
 import { DocumentCompareDocumentsDialog } from "./DocumentCompareDocumentsDialog";
+import { useRegisterCopilotEntity } from "@/features/copilot/copilot-context";
 
 type LoadState = "loading" | "ready" | "error" | "offline" | "forbidden";
 
@@ -99,6 +100,23 @@ export function DocumentsLibraryPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [selected, setSelected] = useState<DocumentRecord | null>(null);
+
+  useRegisterCopilotEntity(
+    selected
+      ? {
+          entityType: "documento",
+          entityId: selected.id,
+          entityLabel: selected.name,
+          route: "/app/documentos",
+          moduleKey: "documentos",
+          metadata: {
+            caseId: selected.caseId,
+            status: selected.status,
+            updatedAt: selected.updatedAt,
+          },
+        }
+      : null,
+  );
   const [versionOpen, setVersionOpen] = useState(false);
   const [annotationOpen, setAnnotationOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
