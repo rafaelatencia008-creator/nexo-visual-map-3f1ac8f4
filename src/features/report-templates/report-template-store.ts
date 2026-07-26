@@ -2,7 +2,7 @@
  * LV-18.1 — Store observável em memória de Modelos de Laudo.
  *
  * Regras:
- *  - Estado somente em memória. Sem localStorage, sessionStorage, fetch, IA.
+ *  - Estado somente em memória. Sem storage persistente, sem rede, sem IA.
  *  - Snapshot referencialmente estável: `getSnapshot()` retorna a MESMA
  *    referência enquanto não houver mudança real. No-ops não emitem.
  *  - Clonagem profunda em toda entrada e saída pública — nenhuma referência
