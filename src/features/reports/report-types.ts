@@ -1,6 +1,5 @@
 /**
- * LV-14 — Modelos Documentais e Estrutura do Laudo (mock)
- *
+ * LV-14 / LV-15 — Tipos do domínio dos documentos periciais (mock).
  * Tipos puros. Nenhum React, backend, IA ou armazenamento externo.
  */
 
@@ -33,7 +32,6 @@ export const REPORT_TEMPLATE_LABEL: Readonly<Record<ReportTemplateId, string>> =
   personalizado: "Documento Personalizado",
 };
 
-/** Seções obrigatórias exigidas pela LV-14 (chaves canônicas). */
 export type ReportSectionKind =
   | "identificacao_pericia"
   | "identificacao_partes"
@@ -66,6 +64,26 @@ export const REPORT_SECTION_KINDS: readonly ReportSectionKind[] = [
   "conclusao",
   "anexos",
 ] as const;
+
+/**
+ * LV-15 — seções obrigatórias para status "Aprovado".
+ * "anexos" é opcional (não impeditivo).
+ */
+export const REPORT_MANDATORY_SECTIONS: readonly ReportSectionKind[] = [
+  "identificacao_pericia",
+  "identificacao_partes",
+  "objeto",
+  "historico",
+  "metodologia",
+  "quesitos",
+  "fundamentacao",
+  "analise",
+  "conclusao",
+] as const;
+
+export function isMandatorySection(kind: ReportSectionKind): boolean {
+  return REPORT_MANDATORY_SECTIONS.includes(kind);
+}
 
 export const REPORT_SECTION_LABEL: Readonly<Record<ReportSectionKind, string>> = {
   identificacao_pericia: "Identificação da perícia",
@@ -142,6 +160,8 @@ export type ReportBlock = {
   readonly manuallyEdited: boolean;
   readonly reviewed: boolean;
   readonly sources: readonly ReportSourceRef[];
+  /** LV-15 — data/hora mock da última alteração do bloco. */
+  readonly lastEditedAt?: string;
 };
 
 export type ReportSection = {
@@ -169,5 +189,79 @@ export type ReportListSummary = {
   readonly templateId: ReportTemplateId;
   readonly caseLabel: string;
   readonly updatedAt: string;
-  readonly reviewProgress: number; // 0..1 baseado em seções aprovadas/revisadas
+  readonly reviewProgress: number;
 };
+
+// ---------- LV-15 — status geral, pendências, histórico ----------
+
+export type ReportGeneralStatus =
+  | "rascunho"
+  | "em_revisao"
+  | "revisado"
+  | "aprovado_demonstrativo";
+
+export const REPORT_GENERAL_STATUS_LABEL: Readonly<
+  Record<ReportGeneralStatus, string>
+> = {
+  rascunho: "Rascunho",
+  em_revisao: "Em revisão",
+  revisado: "Revisado",
+  aprovado_demonstrativo: "Aprovado para exportação demonstrativa",
+};
+
+export type ReportPendingSeverity = "impeditivo" | "aviso";
+
+export type ReportPendingKind =
+  | "titulo_vazio"
+  | "sem_pericia"
+  | "secao_obrigatoria_vazia"
+  | "secao_obrigatoria_nao_revisada"
+  | "bloco_obrigatorio_vazio"
+  | "nenhuma_secao_aprovada"
+  | "bloco_sem_fonte"
+  | "secao_em_elaboracao"
+  | "bloco_editado_apos_revisao"
+  | "sem_anexos"
+  | "fonte_indisponivel";
+
+export type ReportPendingItem = {
+  readonly kind: ReportPendingKind;
+  readonly severity: ReportPendingSeverity;
+  readonly message: string;
+  readonly sectionId?: string;
+  readonly blockId?: string;
+};
+
+export type ReportHistoryEventKind =
+  | "documento_criado"
+  | "titulo_alterado"
+  | "modelo_alterado"
+  | "bloco_criado"
+  | "bloco_duplicado"
+  | "bloco_removido"
+  | "bloco_movido"
+  | "conteudo_alterado"
+  | "titulo_bloco_alterado"
+  | "fonte_vinculada"
+  | "fonte_removida"
+  | "bloco_revisado"
+  | "revisao_retirada"
+  | "status_secao_alterado"
+  | "previa_aberta"
+  | "exportacao_realizada"
+  | "exportacao_bloqueada";
+
+export type ReportHistoryEvent = {
+  readonly id: string;
+  readonly kind: ReportHistoryEventKind;
+  readonly at: string;
+  readonly description: string;
+  readonly reportId: string;
+  readonly sectionId?: string;
+  readonly blockId?: string;
+};
+
+export type ReportExportFormat = "txt" | "json" | "print";
+export type ReportExportMode = "rascunho" | "revisada";
+
+export const REPORT_WATERMARK = "DOCUMENTO DEMONSTRATIVO — SEM VALIDADE";
