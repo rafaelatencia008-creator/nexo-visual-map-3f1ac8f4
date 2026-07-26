@@ -11,7 +11,7 @@
  *   - integração mock com módulos existentes (adapters read-only)
  *   - imutabilidade e estabilidade de IDs
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 import {
   REPORT_SECTION_KINDS,
