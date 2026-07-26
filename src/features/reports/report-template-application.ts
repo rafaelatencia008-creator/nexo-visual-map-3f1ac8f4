@@ -378,11 +378,16 @@ export function createReportFromTemplate(
     );
   }
 
-  const preparedSections: PreparedSectionForApplication[] = preview.sections.map((s) => ({
-    kind: mapTemplateSectionTitleToKind(s.title, preview.sections.indexOf(s)),
-    title: s.title,
-    blocks: s.blocks.map((b) => ({ title: b.title, content: b.content })),
-  }));
+  const preparedSections: PreparedSectionForApplication[] = preview.sections.map(
+    (s, i) => ({
+      kind: mapTemplateSectionTitleToKind(s.title, i),
+      title: s.title,
+      blocks: s.blocks.map((b: { title: string; content: string }) => ({
+        title: b.title,
+        content: b.content,
+      })),
+    }),
+  );
 
   const appliedAt = new Date().toISOString();
   const origin: ReportTemplateOrigin = Object.freeze({
