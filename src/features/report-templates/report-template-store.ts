@@ -548,6 +548,7 @@ export function removeBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_removed", "Bloco removido.", { sectionId, blockId });
 }
 
 export function moveBlock(
@@ -574,6 +575,7 @@ export function moveBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_reordered", `Bloco reordenado (${direction}).`, { sectionId, blockId, direction });
 }
 
 // ---------- Variáveis ----------
