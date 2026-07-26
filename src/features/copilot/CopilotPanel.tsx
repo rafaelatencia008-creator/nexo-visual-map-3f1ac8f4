@@ -67,7 +67,7 @@ import {
   searchPrompts,
   type PromptCategory,
 } from "./copilot-prompt-library";
-import type { CopilotProposedAction, CopilotThread } from "./copilot-types";
+import type { CopilotProposedAction, CopilotReference, CopilotThread } from "./copilot-types";
 import { toast } from "sonner";
 
 const THINKING_DELAY_MS = 450;
@@ -86,16 +86,18 @@ export function CopilotPanel() {
   const [processing, setProcessing] = React.useState<null | { messageId: string; cancel: () => void }>(null);
   const [confirmAction, setConfirmAction] = React.useState<
     | null
-    | { threadId: string; messageId: string; action: CopilotProposedAction; ackHighRisk: boolean }
+    | {
+        threadId: string;
+        messageId: string;
+        action: CopilotProposedAction;
+        references: readonly CopilotReference[];
+        targetLabel?: string;
+        ackHighRisk: boolean;
+      }
   >(null);
   const [auditOpen, setAuditOpen] = React.useState(false);
 
-  const suggestions = suggestionsForContext({
-    text: "",
-    context: routeContext,
-    availableSources: [],
-    threadHistory: [],
-  } as never as Parameters<typeof suggestionsForContext>[0]);
+  const suggestions = suggestionsForContext(routeContext);
 
   // Ensure a thread exists whenever panel opens
   React.useEffect(() => {
@@ -192,10 +194,25 @@ export function CopilotPanel() {
     send(input);
   };
 
-  const openConfirm = (threadId: string, messageId: string, action: CopilotProposedAction) => {
+  const openConfirm = (
+    threadId: string,
+    messageId: string,
+    action: CopilotProposedAction,
+    references: readonly CopilotReference[],
+  ) => {
     updateActionStatus(threadId, messageId, action.id, "awaiting_confirmation");
     logAudit(threadId, "confirmation_opened", action.label, { messageId, actionId: action.id });
-    setConfirmAction({ threadId, messageId, action, ackHighRisk: false });
+    const targetRef = references.find(
+      (r) => r.sourceType === action.targetType && r.sourceId === action.targetId,
+    );
+    setConfirmAction({
+      threadId,
+      messageId,
+      action,
+      references,
+      targetLabel: targetRef?.label,
+      ackHighRisk: false,
+    });
   };
 
   const confirmApply = () => {
@@ -225,6 +242,19 @@ export function CopilotPanel() {
     updateActionStatus(threadId, messageId, action.id, "rejected");
     logAudit(threadId, "suggestion_rejected", action.label, { messageId, actionId: action.id });
     setConfirmAction(null);
+  };
+
+  const handleOpenSource = (threadId: string, messageId: string, ref: CopilotReference) => {
+    if (!ref.route || !ref.route.startsWith("/app")) {
+      toast.error("Fonte sem rota interna válida.");
+      return;
+    }
+    logAudit(threadId, "source_opened", `${ref.label}`, { messageId });
+    setOpen(false);
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", ref.route);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   };
 
   return (
@@ -291,7 +321,8 @@ export function CopilotPanel() {
                     <MessageBubble
                       key={m.id}
                       message={m}
-                      onAction={(a) => openConfirm(active.id, m.id, a)}
+                      onAction={(a) => openConfirm(active.id, m.id, a, m.references)}
+                      onOpenSource={(ref) => handleOpenSource(active.id, m.id, ref)}
                       onReject={(a) => rejectAction(active.id, m.id, a)}
                       onFeedback={(helpful, reason) =>
                         setMessageFeedback(active.id, m.id, { helpful, reason, createdAt: copilotNow() })
@@ -384,11 +415,37 @@ export function CopilotPanel() {
             <AlertDialogTitle>Confirmar ação proposta</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p><strong className="text-foreground">Ação:</strong> {confirmAction?.action.label}</p>
-                <p><strong className="text-foreground">Registro afetado:</strong> {confirmAction?.action.targetType} · {confirmAction?.action.targetId}</p>
+                <p><strong className="text-foreground">Ação proposta:</strong> {confirmAction?.action.label}</p>
+                <p>
+                  <strong className="text-foreground">Registro afetado:</strong>{" "}
+                  {confirmAction?.action.targetType}
+                  {confirmAction?.targetLabel ? ` · ${confirmAction.targetLabel}` : ""}
+                </p>
+                {confirmAction?.action.targetId && (
+                  <p className="text-xs">ID: {confirmAction.action.targetId}</p>
+                )}
                 <p><strong className="text-foreground">Alterações previstas:</strong> {confirmAction?.action.description}</p>
+                <p><strong className="text-foreground">Motivo da sugestão:</strong> {confirmAction?.action.reason ?? "Derivada da pergunta do usuário e das fontes citadas."}</p>
                 <p><strong className="text-foreground">Risco:</strong> {confirmAction?.action.risk}</p>
-                <p className="text-xs italic">Fontes utilizadas foram exibidas na mensagem original.</p>
+                {confirmAction && confirmAction.references.length > 0 ? (
+                  <div className="rounded border bg-muted/40 p-2">
+                    <p className="text-xs font-semibold text-foreground">Fontes utilizadas</p>
+                    <ul className="mt-1 space-y-1">
+                      {confirmAction.references.map((r) => (
+                        <li key={r.id} className="text-xs">
+                          <span className="font-medium">{SOURCE_TYPE_LABEL[r.sourceType]}:</span>{" "}
+                          {r.label}
+                          {r.excerpt && (
+                            <span className="block italic text-muted-foreground">"{r.excerpt.slice(0, 160)}"</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs italic">Nenhuma fonte adicional foi utilizada nesta sugestão.</p>
+                )}
+                <p className="text-xs italic">Limitações: rascunho demonstrativo. Revise antes de aplicar.</p>
                 {confirmAction?.action.risk === "high" && (
                   <label className="flex items-center gap-2 rounded border p-2 mt-2">
                     <Checkbox
@@ -476,12 +533,14 @@ function EmptyState({
 function MessageBubble({
   message,
   onAction,
+  onOpenSource,
   onReject,
   onFeedback,
   onCopy,
 }: {
   message: import("./copilot-types").CopilotMessage;
   onAction: (a: CopilotProposedAction) => void;
+  onOpenSource: (r: CopilotReference) => void;
   onReject: (a: CopilotProposedAction) => void;
   onFeedback: (helpful: boolean, reason?: string) => void;
   onCopy: () => void;
@@ -506,15 +565,41 @@ function MessageBubble({
         <div className="whitespace-pre-wrap">{message.text}</div>
 
         {!isUser && message.references.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-3 rounded border bg-muted/30 p-2">
             <p className="text-xs font-semibold text-muted-foreground">Fontes consultadas</p>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {message.references.map((r) => (
-                <Badge key={r.id} variant="outline" className="max-w-full">
-                  {SOURCE_TYPE_LABEL[r.sourceType]} · {r.label.slice(0, 60)}
-                </Badge>
-              ))}
-            </div>
+            <ul className="mt-2 space-y-2">
+              {message.references.map((r) => {
+                const canOpen = !!r.route && r.route.startsWith("/app");
+                return (
+                  <li key={r.id} className="rounded border bg-background p-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge variant="outline">{SOURCE_TYPE_LABEL[r.sourceType]}</Badge>
+                      <span className="font-medium">{r.label.slice(0, 120)}</span>
+                    </div>
+                    {r.excerpt && (
+                      <p className="mt-1 text-muted-foreground line-clamp-3">"{r.excerpt}"</p>
+                    )}
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Módulo: {SOURCE_TYPE_LABEL[r.sourceType]}
+                    </p>
+                    {canOpen ? (
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="mt-1 h-6 p-0"
+                        onClick={() => onOpenSource(r)}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" /> Abrir fonte
+                      </Button>
+                    ) : (
+                      <p className="mt-1 text-[10px] italic text-muted-foreground">
+                        Fonte disponível apenas como referência nesta etapa.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 

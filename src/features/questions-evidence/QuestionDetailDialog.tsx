@@ -54,6 +54,7 @@ import {
   updateAnswer,
 } from "./question-mock-store";
 import { EvidenceLinkDialog } from "./EvidenceLinkDialog";
+import { useRegisterCopilotEntity } from "@/features/copilot/copilot-context";
 
 export function QuestionDetailDialog({
   questionId,
@@ -81,6 +82,26 @@ export function QuestionDetailDialog({
   const [divJustification, setDivJustification] = useState(q?.divergenceJustification ?? "");
 
   const cov = useMemo(() => (q ? computeCoverage(q) : null), [q]);
+
+  useRegisterCopilotEntity(
+    q
+      ? {
+          entityType: "quesito",
+          entityId: q.id,
+          entityLabel: `Quesito ${q.sequence}`,
+          route: "/app/quesitos",
+          moduleKey: "quesitos",
+          metadata: {
+            caseId: q.caseId,
+            expertiseId: q.expertiseId,
+            sequence: q.sequence,
+            status: q.status,
+            priority: q.priority,
+            updatedAt: q.updatedAt,
+          },
+        }
+      : null,
+  );
 
   if (!q) {
     return (

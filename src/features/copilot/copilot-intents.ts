@@ -39,6 +39,7 @@ const RULES: readonly Rule[] = [
     keywords: [
       ["rascunho", "resposta"],
       ["rascunhar", "resposta"],
+      ["rascunhe", "resposta"],
       ["rascunho", "quesito"],
       ["esboco", "resposta"],
     ],
