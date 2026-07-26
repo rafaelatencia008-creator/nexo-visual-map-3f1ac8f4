@@ -189,12 +189,37 @@ function requireInternal(id: ReportTemplateId): { idx: number; t: ReportTemplate
   return { idx, t: internalTemplates[idx]! };
 }
 
-function requireMutable(id: ReportTemplateId): { idx: number; t: ReportTemplate } {
+function requireMutable(
+  id: ReportTemplateId,
+  operation: string,
+): { idx: number; t: ReportTemplate } {
   const found = requireInternal(id);
   if (found.t.status === "arquivado") {
+    logHistory(
+      id,
+      "template_operation_blocked",
+      `Operação bloqueada: modelo arquivado (${operation}).`,
+      { operation, status: found.t.status },
+      "blocked",
+    );
     throw new ReportTemplateError(
       "template_archived",
       `Modelo ${id} está arquivado e não pode ser editado.`,
+      { operation },
+    );
+  }
+  if (found.t.status === "publicado") {
+    logHistory(
+      id,
+      "template_operation_blocked",
+      `Operação bloqueada: modelo publicado (${operation}).`,
+      { operation, status: found.t.status },
+      "blocked",
+    );
+    throw new ReportTemplateError(
+      "template_published",
+      `Modelo ${id} está publicado — retorne para rascunho antes de editar.`,
+      { operation },
     );
   }
   return found;
