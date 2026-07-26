@@ -285,6 +285,86 @@ export function createReport(input: CreateReportInput): ReportDocument {
   return doc;
 }
 
+// ---------- LV-18.5 — Criação a partir de Modelo LV-18 ----------
+
+/**
+ * Seção pré-preparada pela camada de aplicação de modelos (LV-18.5).
+ * Contém títulos e conteúdos JÁ RESOLVIDOS (placeholders substituídos).
+ * A store gera IDs novos e insere o laudo em uma única operação atômica.
+ */
+export type PreparedSectionForApplication = {
+  readonly kind: ReportSectionKind;
+  readonly title: string;
+  readonly blocks: readonly {
+    readonly title: string;
+    readonly content: string;
+  }[];
+};
+
+export type CreateReportFromTemplateInput = {
+  readonly title: string;
+  readonly caseId: string;
+  readonly caseLabel: string;
+  readonly sections: readonly PreparedSectionForApplication[];
+  readonly origin: import("./report-types").ReportTemplateOrigin;
+};
+
+/**
+ * Cria um laudo a partir de estrutura pronta oriunda de Modelo LV-18.
+ *
+ * - Gera IDs próprios para laudo, seções e blocos (nunca reaproveita
+ *   os IDs do modelo).
+ * - Congela `templateOrigin` para garantir rastreabilidade imutável.
+ * - Emite UMA única atualização da store principal.
+ * - Emite UM único evento de histórico agregado (sem conteúdo integral).
+ */
+export function createReportFromTemplateApplication(
+  input: CreateReportFromTemplateInput,
+): ReportDocument {
+  const now = reportNow();
+  const sections: ReportSection[] = input.sections.map((sec) => ({
+    id: makeReportId("sec"),
+    kind: sec.kind,
+    title: sec.title,
+    status: "nao_iniciada" as ReportSectionStatus,
+    blocks: sec.blocks.map<ReportBlock>((b) => ({
+      id: makeReportId("blk"),
+      title: b.title,
+      content: b.content,
+      origin: "modelo" as ReportBlockOrigin,
+      manuallyEdited: false,
+      reviewed: false,
+      sources: [],
+      lastEditedAt: now,
+    })),
+  }));
+
+  const doc: ReportDocument = Object.freeze({
+    id: makeReportId("rep"),
+    title: input.title.trim(),
+    // Laudos criados a partir de modelos LV-18 não usam os templates LV-14
+    // internos — a estrutura já veio pronta. Marcamos como "personalizado"
+    // para preservar compatibilidade com o restante do domínio existente.
+    templateId: "personalizado" as ReportTemplateId,
+    caseId: input.caseId,
+    caseLabel: input.caseLabel,
+    createdAt: now,
+    updatedAt: now,
+    sections,
+    templateOrigin: Object.freeze({ ...input.origin }),
+  });
+
+  state.documents.set(doc.id, doc);
+  state.order.push(doc.id);
+  notify();
+  pushHistory(
+    doc.id,
+    "report_created_from_template",
+    `Documento "${doc.title}" criado a partir do modelo "${input.origin.templateName}" (versão ${input.origin.templateVersionNumber}) — ${sections.length} seções, ${sections.reduce((n, s) => n + s.blocks.length, 0)} blocos.`,
+  );
+  return doc;
+}
+
 export function getReportsSnapshot(): readonly ReportListSummary[] {
   if (state.reportsSnapshot === null) {
     state.reportsSnapshot = Object.freeze(
