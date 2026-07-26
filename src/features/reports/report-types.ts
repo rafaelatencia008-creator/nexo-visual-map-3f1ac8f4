@@ -249,7 +249,26 @@ export type ReportHistoryEventKind =
   | "status_secao_alterado"
   | "previa_aberta"
   | "exportacao_realizada"
-  | "exportacao_bloqueada";
+  | "exportacao_bloqueada"
+  // ---------- LV-16 ----------
+  | "checklist_marcado"
+  | "checklist_desmarcado"
+  | "versao_trabalho_criada"
+  | "versao_revisada_criada"
+  | "versao_revisada_bloqueada"
+  | "fechamento_iniciado"
+  | "fechamento_cancelado"
+  | "fechamento_bloqueado"
+  | "versao_fechada_criada"
+  | "documento_congelado"
+  | "reabertura_solicitada"
+  | "reabertura_bloqueada"
+  | "documento_reaberto"
+  | "comparacao_aberta"
+  | "versao_visualizada"
+  | "versao_exportada"
+  | "versao_impressa"
+  | "versao_anterior_substituida";
 
 export type ReportHistoryEvent = {
   readonly id: string;
@@ -259,9 +278,208 @@ export type ReportHistoryEvent = {
   readonly reportId: string;
   readonly sectionId?: string;
   readonly blockId?: string;
+  readonly versionId?: string;
+  readonly relatedEventId?: string;
 };
 
 export type ReportExportFormat = "txt" | "json" | "print";
 export type ReportExportMode = "rascunho" | "revisada";
 
 export const REPORT_WATERMARK = "DOCUMENTO DEMONSTRATIVO — SEM VALIDADE";
+
+// ---------- LV-16 — Versões, Checklist, Congelamento ----------
+
+export type ReportVersionType = "trabalho" | "revisada" | "fechada";
+
+export const REPORT_VERSION_TYPE_LABEL: Readonly<Record<ReportVersionType, string>> = {
+  trabalho: "Versão de trabalho",
+  revisada: "Versão revisada",
+  fechada: "Versão fechada",
+};
+
+export const REPORT_VERSION_WATERMARK: Readonly<Record<ReportVersionType, string>> = {
+  trabalho: "VERSÃO DE TRABALHO — DOCUMENTO DEMONSTRATIVO — SEM VALIDADE",
+  revisada: "VERSÃO REVISADA DEMONSTRATIVA — SEM VALIDADE",
+  fechada: "VERSÃO FECHADA DEMONSTRATIVA — SEM VALIDADE OFICIAL",
+};
+
+export type ReportVersionStatus =
+  | "rascunho"
+  | "em_revisao"
+  | "fechada"
+  | "substituida"
+  | "reaberta";
+
+export const REPORT_VERSION_STATUS_LABEL: Readonly<Record<ReportVersionStatus, string>> = {
+  rascunho: "Rascunho",
+  em_revisao: "Em revisão",
+  fechada: "Fechada",
+  substituida: "Substituída",
+  reaberta: "Reaberta",
+};
+
+export type ReportChecklistItemId =
+  | "titulo_conferido"
+  | "pericia_conferida"
+  | "modelo_conferido"
+  | "partes_conferidas"
+  | "objeto_conferido"
+  | "metodologia_conferida"
+  | "entrevistas_conferidas"
+  | "diligencias_conferidas"
+  | "documentos_conferidos"
+  | "quesitos_conferidos"
+  | "fundamentacao_conferida"
+  | "analise_conferida"
+  | "conclusao_conferida"
+  | "anexos_conferidos"
+  | "fontes_revisadas"
+  | "pendencias_resolvidas"
+  | "marca_demonstrativa"
+  | "ciencia_sem_assinatura"
+  | "ciencia_sem_protocolo"
+  | "confirmacao_responsavel";
+
+export const REPORT_CHECKLIST_ORDER: readonly ReportChecklistItemId[] = [
+  "titulo_conferido",
+  "pericia_conferida",
+  "modelo_conferido",
+  "partes_conferidas",
+  "objeto_conferido",
+  "metodologia_conferida",
+  "entrevistas_conferidas",
+  "diligencias_conferidas",
+  "documentos_conferidos",
+  "quesitos_conferidos",
+  "fundamentacao_conferida",
+  "analise_conferida",
+  "conclusao_conferida",
+  "anexos_conferidos",
+  "fontes_revisadas",
+  "pendencias_resolvidas",
+  "marca_demonstrativa",
+  "ciencia_sem_assinatura",
+  "ciencia_sem_protocolo",
+  "confirmacao_responsavel",
+] as const;
+
+export const REPORT_CHECKLIST_LABEL: Readonly<Record<ReportChecklistItemId, string>> = {
+  titulo_conferido: "Título conferido",
+  pericia_conferida: "Perícia vinculada conferida",
+  modelo_conferido: "Modelo documental conferido",
+  partes_conferidas: "Identificação das partes conferida",
+  objeto_conferido: "Objeto da perícia conferido",
+  metodologia_conferida: "Metodologia conferida",
+  entrevistas_conferidas: "Entrevistas conferidas",
+  diligencias_conferidas: "Diligências conferidas",
+  documentos_conferidos: "Documentos e evidências conferidos",
+  quesitos_conferidos: "Quesitos conferidos",
+  fundamentacao_conferida: "Fundamentação conferida",
+  analise_conferida: "Análise conferida",
+  conclusao_conferida: "Conclusão conferida",
+  anexos_conferidos: "Anexos conferidos",
+  fontes_revisadas: "Fontes vinculadas revisadas",
+  pendencias_resolvidas: "Pendências impeditivas resolvidas",
+  marca_demonstrativa: "Marca demonstrativa confirmada",
+  ciencia_sem_assinatura: "Ciência de ausência de assinatura",
+  ciencia_sem_protocolo: "Ciência de ausência de protocolo",
+  confirmacao_responsavel: "Confirmação final do responsável mock",
+};
+
+export type ReportChecklist = Readonly<Record<ReportChecklistItemId, boolean>>;
+
+export type ReportVersionSnapshot = {
+  readonly document: ReportDocument;
+  readonly checklist: ReportChecklist;
+  readonly pendings: readonly ReportPendingItem[];
+  readonly generalStatus: ReportGeneralStatus;
+};
+
+export type ReportVersion = {
+  readonly id: string;
+  readonly number: number;
+  readonly reportId: string;
+  readonly type: ReportVersionType;
+  readonly status: ReportVersionStatus;
+  readonly title: string;
+  readonly templateId: ReportTemplateId;
+  readonly caseId: string;
+  readonly caseLabel: string;
+  readonly createdAt: string;
+  readonly authorLabel: string;
+  readonly reason: string;
+  readonly pendingCount: number;
+  readonly generalStatus: ReportGeneralStatus;
+  readonly watermark: string;
+  readonly snapshot: ReportVersionSnapshot;
+  readonly demonstrative: true;
+};
+
+export type ReportVersionListItem = {
+  readonly id: string;
+  readonly number: number;
+  readonly type: ReportVersionType;
+  readonly status: ReportVersionStatus;
+  readonly createdAt: string;
+  readonly authorLabel: string;
+  readonly reason: string;
+  readonly pendingCount: number;
+  readonly generalStatus: ReportGeneralStatus;
+};
+
+// ---------- LV-16 — Diff de comparação ----------
+
+export type ReportDiffKind =
+  | "sem_alteracao"
+  | "alterado"
+  | "adicionado"
+  | "removido"
+  | "movido";
+
+export type ReportDiffValueChange<T> = {
+  readonly changed: boolean;
+  readonly before: T;
+  readonly after: T;
+};
+
+export type ReportBlockDiff = {
+  readonly kind: ReportDiffKind;
+  readonly blockIdBefore?: string;
+  readonly blockIdAfter?: string;
+  readonly titleBefore?: string;
+  readonly titleAfter?: string;
+  readonly contentBefore?: string;
+  readonly contentAfter?: string;
+  readonly indexBefore?: number;
+  readonly indexAfter?: number;
+  readonly sourcesAdded: readonly string[];
+  readonly sourcesRemoved: readonly string[];
+};
+
+export type ReportSectionDiff = {
+  readonly kind: ReportSectionKind;
+  readonly title: string;
+  readonly statusChanged: boolean;
+  readonly statusBefore?: ReportSectionStatus;
+  readonly statusAfter?: ReportSectionStatus;
+  readonly blocksBefore: number;
+  readonly blocksAfter: number;
+  readonly blocks: readonly ReportBlockDiff[];
+};
+
+export type ReportVersionDiff = {
+  readonly reportId: string;
+  readonly versionAId: string;
+  readonly versionBId: string;
+  readonly numberA: number;
+  readonly numberB: number;
+  readonly title: ReportDiffValueChange<string>;
+  readonly template: ReportDiffValueChange<ReportTemplateId>;
+  readonly generalStatus: ReportDiffValueChange<ReportGeneralStatus>;
+  readonly reason: ReportDiffValueChange<string>;
+  readonly createdAt: ReportDiffValueChange<string>;
+  readonly checklistChanged: readonly ReportChecklistItemId[];
+  readonly pendingCount: ReportDiffValueChange<number>;
+  readonly sections: readonly ReportSectionDiff[];
+};
+
