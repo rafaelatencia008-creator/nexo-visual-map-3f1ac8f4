@@ -201,8 +201,9 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
           <Select
             value={doc.templateId}
             onValueChange={(v) => handleTemplateChange(v as ReportTemplateId)}
+            disabled={frozen}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-56" aria-label="Modelo do documento" disabled={frozen}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
