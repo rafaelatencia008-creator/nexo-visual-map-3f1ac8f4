@@ -494,12 +494,14 @@ function EmptyState({
 function MessageBubble({
   message,
   onAction,
+  onOpenSource,
   onReject,
   onFeedback,
   onCopy,
 }: {
   message: import("./copilot-types").CopilotMessage;
   onAction: (a: CopilotProposedAction) => void;
+  onOpenSource: (r: CopilotReference) => void;
   onReject: (a: CopilotProposedAction) => void;
   onFeedback: (helpful: boolean, reason?: string) => void;
   onCopy: () => void;
@@ -524,15 +526,41 @@ function MessageBubble({
         <div className="whitespace-pre-wrap">{message.text}</div>
 
         {!isUser && message.references.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-3 rounded border bg-muted/30 p-2">
             <p className="text-xs font-semibold text-muted-foreground">Fontes consultadas</p>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {message.references.map((r) => (
-                <Badge key={r.id} variant="outline" className="max-w-full">
-                  {SOURCE_TYPE_LABEL[r.sourceType]} · {r.label.slice(0, 60)}
-                </Badge>
-              ))}
-            </div>
+            <ul className="mt-2 space-y-2">
+              {message.references.map((r) => {
+                const canOpen = !!r.route && r.route.startsWith("/app");
+                return (
+                  <li key={r.id} className="rounded border bg-background p-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge variant="outline">{SOURCE_TYPE_LABEL[r.sourceType]}</Badge>
+                      <span className="font-medium">{r.label.slice(0, 120)}</span>
+                    </div>
+                    {r.excerpt && (
+                      <p className="mt-1 text-muted-foreground line-clamp-3">"{r.excerpt}"</p>
+                    )}
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Módulo: {SOURCE_TYPE_LABEL[r.sourceType]}
+                    </p>
+                    {canOpen ? (
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="mt-1 h-6 p-0"
+                        onClick={() => onOpenSource(r)}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" /> Abrir fonte
+                      </Button>
+                    ) : (
+                      <p className="mt-1 text-[10px] italic text-muted-foreground">
+                        Fonte disponível apenas como referência nesta etapa.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 
