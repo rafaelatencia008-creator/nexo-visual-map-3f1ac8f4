@@ -424,6 +424,7 @@ export function removeSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_removed", "Seção removida.", { sectionId });
 }
 
 export function moveSection(
