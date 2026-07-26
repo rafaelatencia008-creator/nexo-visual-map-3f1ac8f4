@@ -394,12 +394,19 @@ describe("LV-18.3 · Preview", () => {
     expect(a.idsToRegenerate).toBe(b.idsToRegenerate);
   });
 
-  it("detecta conflito com IDs existentes", () => {
+  it("detecta conflito com IDs existentes (todas as espécies)", () => {
     const s = serializeReportTemplate(PSICO);
     const preview = previewReportTemplateImport(s);
-    expect(preview.conflicts.length).toBe(1);
-    expect(preview.conflicts[0]!.sourceId).toBe(PSICO);
+    // Como PSICO já existe: 1 template + 3 seções + 3 blocos + 2 variáveis = 9.
+    expect(preview.conflicts.length).toBeGreaterThanOrEqual(4);
+    const kinds = new Set(preview.conflicts.map((c) => c.kind));
+    expect(kinds.has("template")).toBe(true);
+    expect(kinds.has("section")).toBe(true);
+    expect(kinds.has("block")).toBe(true);
+    expect(kinds.has("variable")).toBe(true);
+    expect(preview.conflicts.some((c) => c.sourceId === PSICO)).toBe(true);
   });
+
 
   it("conta corretamente IDs a regenerar", () => {
     const s = serializeReportTemplate(PSICO);
@@ -641,5 +648,341 @@ describe("LV-18.3 · Segurança estática", () => {
         expect(re.test(content)).toBe(false);
       }
     }
+  });
+});
+
+// ================ LV-18.3 · Correção — reject cross-kind ================
+
+describe("LV-18.3 · Reject cross-kind (correção auditoria)", () => {
+  /** Cria envelope com sourceId de modelo novo, mas injeta um ID interno do PSICO. */
+  function buildPayloadInjecting(
+    inject: (env: {
+      templates: {
+        sourceId: string;
+        sections: { sourceId: string; blocks: { sourceId: string }[] }[];
+        variables: { sourceId: string }[];
+      }[];
+    }) => void,
+  ): string {
+    // Base: uso do próprio PSICO com sourceId de modelo alterado para não colidir no template.
+    const raw = JSON.parse(serializeReportTemplate(PSICO)) as {
+      templates: {
+        sourceId: string;
+        sections: { sourceId: string; blocks: { sourceId: string }[] }[];
+        variables: { sourceId: string }[];
+      }[];
+    };
+    raw.templates[0]!.sourceId = "rtpl-novo-9001";
+    // Reescreve todos IDs internos para "novos" fictícios que não colidem.
+    raw.templates[0]!.sections.forEach((s, i) => {
+      s.sourceId = `rsec-novo-${9000 + i}`;
+      s.blocks.forEach((b, j) => {
+        b.sourceId = `rblk-novo-${9000 + i * 10 + j}`;
+      });
+    });
+    raw.templates[0]!.variables.forEach((v, i) => {
+      v.sourceId = `rvar-novo-${9000 + i}`;
+    });
+    inject(raw);
+    return JSON.stringify(raw);
+  }
+
+  it("[1] reject aborta em ID de modelo conflitante", () => {
+    const s = serializeReportTemplate(PSICO);
+    const before = getSnapshot();
+    let calls = 0;
+    const unsub = subscribe(() => calls++);
+    try {
+      importReportTemplate(s, { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+    }
+    unsub();
+    expect(getSnapshot()).toBe(before);
+    expect(calls).toBe(0);
+  });
+
+  it("[2] reject aborta em ID de seção conflitante com modelo existente", () => {
+    const psico = getTemplate(PSICO)!;
+    const collidingSecId = psico.sections[0]!.id;
+    const payload = buildPayloadInjecting((env) => {
+      env.templates[0]!.sections[0]!.sourceId = collidingSecId;
+    });
+    const before = getSnapshot();
+    try {
+      importReportTemplate(payload, { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("section");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  it("[3] reject aborta em ID de bloco conflitante com modelo existente", () => {
+    const psico = getTemplate(PSICO)!;
+    const collidingBlkId = psico.sections[0]!.blocks[0]!.id;
+    const payload = buildPayloadInjecting((env) => {
+      env.templates[0]!.sections[0]!.blocks[0]!.sourceId = collidingBlkId;
+    });
+    const before = getSnapshot();
+    try {
+      importReportTemplate(payload, { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("block");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  it("[4] reject aborta em ID de variável conflitante com modelo existente", () => {
+    const psico = getTemplate(PSICO)!;
+    const collidingVarId = psico.variables[0]!.id;
+    const payload = buildPayloadInjecting((env) => {
+      env.templates[0]!.variables[0]!.sourceId = collidingVarId;
+    });
+    const before = getSnapshot();
+    try {
+      importReportTemplate(payload, { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("variable");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  /**
+   * Constrói um pacote de dois modelos independentes (base ENG e PSICO
+   * renomeados) para introduzir colisões cross-template dentro do lote.
+   */
+  function buildTwoTemplatePayload(): {
+    raw: {
+      templates: {
+        sourceId: string;
+        sections: { sourceId: string; blocks: { sourceId: string }[] }[];
+        variables: { sourceId: string }[];
+      }[];
+    };
+    serialize: () => string;
+  } {
+    const raw = JSON.parse(serializeReportTemplates([ENG, PSICO])) as {
+      templates: {
+        sourceId: string;
+        sections: { sourceId: string; blocks: { sourceId: string }[] }[];
+        variables: { sourceId: string }[];
+      }[];
+    };
+    // Reescreve IDs para não colidirem com a store atual.
+    raw.templates.forEach((t, tIdx) => {
+      t.sourceId = `rtpl-novo-${8000 + tIdx}`;
+      t.sections.forEach((s, sIdx) => {
+        s.sourceId = `rsec-novo-${8000 + tIdx * 100 + sIdx}`;
+        s.blocks.forEach((b, bIdx) => {
+          b.sourceId = `rblk-novo-${8000 + tIdx * 1000 + sIdx * 10 + bIdx}`;
+        });
+      });
+      t.variables.forEach((v, vIdx) => {
+        v.sourceId = `rvar-novo-${8000 + tIdx * 100 + vIdx}`;
+      });
+    });
+    return { raw, serialize: () => JSON.stringify(raw) };
+  }
+
+  it("[5] reject aborta em colisão de seções entre dois modelos do pacote", () => {
+    const { raw, serialize } = buildTwoTemplatePayload();
+    raw.templates[1]!.sections[0]!.sourceId =
+      raw.templates[0]!.sections[0]!.sourceId;
+    const before = getSnapshot();
+    try {
+      importReportTemplates(serialize(), { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("section");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  it("[6] reject aborta em colisão de blocos entre dois modelos do pacote", () => {
+    const { raw, serialize } = buildTwoTemplatePayload();
+    raw.templates[1]!.sections[0]!.blocks[0]!.sourceId =
+      raw.templates[0]!.sections[0]!.blocks[0]!.sourceId;
+    const before = getSnapshot();
+    try {
+      importReportTemplates(serialize(), { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("block");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  it("[7] reject aborta em colisão de variáveis entre dois modelos do pacote", () => {
+    const { raw, serialize } = buildTwoTemplatePayload();
+    raw.templates[1]!.variables[0]!.sourceId =
+      raw.templates[0]!.variables[0]!.sourceId;
+    const before = getSnapshot();
+    try {
+      importReportTemplates(serialize(), { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect((e as ReportTemplateError).context?.kind).toBe("variable");
+    }
+    expect(getSnapshot()).toBe(before);
+  });
+
+  it("[8] preview identifica cada kind independentemente", () => {
+    const psico = getTemplate(PSICO)!;
+    const payload = buildPayloadInjecting((env) => {
+      env.templates[0]!.sections[0]!.sourceId = psico.sections[0]!.id;
+      env.templates[0]!.sections[1]!.blocks[0]!.sourceId =
+        psico.sections[0]!.blocks[0]!.id;
+      env.templates[0]!.variables[0]!.sourceId = psico.variables[0]!.id;
+    });
+    const preview = previewReportTemplateImport(payload);
+    const kinds = new Set(preview.conflicts.map((c) => c.kind));
+    expect(kinds.has("section")).toBe(true);
+    expect(kinds.has("block")).toBe(true);
+    expect(kinds.has("variable")).toBe(true);
+    // Motivo e templateSourceId presentes.
+    for (const c of preview.conflicts) {
+      expect(c.reason.length).toBeGreaterThan(0);
+      expect(typeof c.templateSourceId).toBe("string");
+    }
+  });
+
+  it("[9-13] atomicidade: snapshot, versão, listener, contadores preservados", () => {
+    const psico = getTemplate(PSICO)!;
+    const payload = buildPayloadInjecting((env) => {
+      env.templates[0]!.sections[0]!.sourceId = psico.sections[0]!.id;
+    });
+    const beforeSnap = getSnapshot();
+    const beforeVersion = beforeSnap.version;
+    const beforeCount = beforeSnap.templates.length;
+    let calls = 0;
+    const unsub = subscribe(() => calls++);
+    try {
+      importReportTemplate(payload, { strategy: "reject" });
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+    }
+    unsub();
+    // Mesma referência do snapshot.
+    expect(getSnapshot()).toBe(beforeSnap);
+    // Versão principal inalterada.
+    expect(getSnapshot().version).toBe(beforeVersion);
+    // Listener principal não chamado.
+    expect(calls).toBe(0);
+    // Nenhum modelo inserido.
+    expect(getSnapshot().templates.length).toBe(beforeCount);
+  });
+
+  it("[14] regenerate_ids aceita mesmo pacote conflitante e gera IDs novos", () => {
+    const s = serializeReportTemplate(PSICO);
+    const before = getSnapshot().templates.length;
+    const report = importReportTemplate(s, { strategy: "regenerate_ids" });
+    expect(report.success).toBe(true);
+    expect(getSnapshot().templates.length).toBe(before + 1);
+    expect(report.importedTemplates[0]!.newId).not.toBe(PSICO);
+  });
+
+  it("[15] duplicate aceita mesmo pacote conflitante e gera IDs novos", () => {
+    const s = serializeReportTemplate(PSICO);
+    const before = getSnapshot().templates.length;
+    const report = importReportTemplate(s, { strategy: "duplicate" });
+    expect(report.success).toBe(true);
+    expect(getSnapshot().templates.length).toBe(before + 1);
+    expect(report.importedTemplates[0]!.newId).not.toBe(PSICO);
+    expect(getTemplate(report.importedTemplates[0]!.newId)!.name).toContain(
+      "(importado)",
+    );
+  });
+
+  it("defesa em profundidade: bulkInsertImportedTemplates rejeita IDs internos colidentes", async () => {
+    const { bulkInsertImportedTemplates } = await import(
+      "@/features/report-templates/report-template-store"
+    );
+    const psico = getTemplate(PSICO)!;
+    const clone = JSON.parse(JSON.stringify(psico)) as ReportTemplate;
+    // Novo ID de modelo, mas mantém IDs internos → conflito de seção.
+    (clone as { id: string }).id = "rtpl-fake-1";
+    try {
+      bulkInsertImportedTemplates([clone]);
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as ReportTemplateError).code).toBe("import_conflict");
+      expect(["section", "block", "variable"]).toContain(
+        (e as ReportTemplateError).context?.kind as string,
+      );
+    }
+    // Store inalterada.
+    expect(getSnapshot().templates.some((t) => t.id === "rtpl-fake-1")).toBe(
+      false,
+    );
+  });
+});
+
+// ================ LV-18.3 · Atomicidade de contadores ================
+
+describe("LV-18.3 · Contadores atômicos", () => {
+  it("importação falha por conflito não consome contadores de ID", () => {
+    const psico1 = getTemplate(PSICO)!;
+    // Constrói payload cujo section colide com o PSICO existente.
+    const raw = JSON.parse(serializeReportTemplate(PSICO)) as {
+      templates: {
+        sourceId: string;
+        sections: { sourceId: string; blocks: { sourceId: string }[] }[];
+        variables: { sourceId: string }[];
+      }[];
+    };
+    raw.templates[0]!.sourceId = "rtpl-novo-7001";
+    raw.templates[0]!.sections.forEach((s, i) => {
+      s.sourceId = `rsec-novo-${7000 + i}`;
+      s.blocks.forEach((b, j) => {
+        b.sourceId = `rblk-novo-${7000 + i * 10 + j}`;
+      });
+    });
+    raw.templates[0]!.variables.forEach((v, i) => {
+      v.sourceId = `rvar-novo-${7000 + i}`;
+    });
+    // Injeta colisão em variável.
+    raw.templates[0]!.variables[0]!.sourceId = psico1.variables[0]!.id;
+    const badPayload = JSON.stringify(raw);
+
+    // 1. Provoca falha em reject.
+    try {
+      importReportTemplate(badPayload, { strategy: "reject" });
+    } catch {
+      /* esperado */
+    }
+    // 2. Executa importação válida (regenerate_ids) após a falha.
+    const okPayload = serializeReportTemplate(PSICO);
+    const afterFail = importReportTemplate(okPayload, {
+      strategy: "regenerate_ids",
+    });
+
+    // 3. Compara com IDs obtidos após reset limpo + importação válida.
+    resetReportTemplateStore();
+    const clean = importReportTemplate(okPayload, {
+      strategy: "regenerate_ids",
+    });
+
+    // 4. IDs devem coincidir.
+    expect(afterFail.importedTemplates[0]!.newId).toBe(
+      clean.importedTemplates[0]!.newId,
+    );
+    const afterMappings = afterFail.idMappings
+      .map((m) => `${m.kind}:${m.newId}`)
+      .sort();
+    const cleanMappings = clean.idMappings
+      .map((m) => `${m.kind}:${m.newId}`)
+      .sort();
+    expect(afterMappings).toEqual(cleanMappings);
   });
 });
