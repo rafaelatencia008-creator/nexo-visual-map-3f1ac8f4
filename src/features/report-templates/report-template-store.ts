@@ -446,6 +446,7 @@ export function moveSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_reordered", `Seção reordenada (${direction}).`, { sectionId, direction });
 }
 
 // ---------- Blocos ----------
