@@ -92,6 +92,8 @@ export type ReportTemplateApplicationErrorCode =
   | "report_template_not_found"
   | "report_template_not_published"
   | "report_template_version_not_found"
+  | "report_template_version_not_published"
+  | "report_template_version_mismatch"
   | "report_template_changed"
   | "report_template_invalid"
   | "report_template_incompatible"
