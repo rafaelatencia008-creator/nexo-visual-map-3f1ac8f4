@@ -147,12 +147,20 @@ function pushHistory(
   return ev;
 }
 
+export function getReportHistorySnapshot(): readonly ReportHistoryEvent[] {
+  if (state.historySnapshot === null) {
+    state.historySnapshot = Object.freeze(state.history.slice());
+  }
+  return state.historySnapshot;
+}
+
 export function listReportHistory(
   reportId?: string,
 ): readonly ReportHistoryEvent[] {
-  const all = state.history.slice();
+  const all = getReportHistorySnapshot();
   return reportId ? all.filter((e) => e.reportId === reportId) : all;
 }
+
 
 // ---------- Construção a partir do modelo ----------
 
