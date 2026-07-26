@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { REPORT_TEMPLATE_LABEL } from "./report-types";
-import { getReportsSnapshot, subscribeReports } from "./report-mock-store";
-import { ReportCreateDialog } from "./ReportCreateDialog";
+import { getReport, getReportsSnapshot, subscribeReports } from "./report-mock-store";
+import { ReportCreationDialog } from "./ReportCreationDialog";
 import { ReportEditor } from "./ReportEditor";
+import { ReportTemplateOriginBadge } from "./ReportTemplateOriginBadge";
 
 function useReports() {
   return useSyncExternalStore(
@@ -69,33 +70,40 @@ export function ReportsPage() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {reports.map((r) => (
-            <Card
-              key={r.id}
-              className="cursor-pointer transition-colors hover:border-primary/60"
-              onClick={() => setActiveId(r.id)}
-            >
-              <CardContent className="space-y-2 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-medium leading-tight">{r.title}</h3>
-                  <Badge variant="outline">
-                    {REPORT_TEMPLATE_LABEL[r.templateId]}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{r.caseLabel}</p>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Atualizado {formatDate(r.updatedAt)}</span>
-                  <span>
-                    Revisão {(r.reviewProgress * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {reports.map((r) => {
+            const doc = getReport(r.id);
+            const origin = doc?.templateOrigin;
+            return (
+              <Card
+                key={r.id}
+                className="cursor-pointer transition-colors hover:border-primary/60"
+                onClick={() => setActiveId(r.id)}
+              >
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-medium leading-tight">{r.title}</h3>
+                    <Badge variant="outline">
+                      {REPORT_TEMPLATE_LABEL[r.templateId]}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{r.caseLabel}</p>
+                  {origin && (
+                    <div className="pt-1">
+                      <ReportTemplateOriginBadge origin={origin} compact />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Atualizado {formatDate(r.updatedAt)}</span>
+                    <span>Revisão {(r.reviewProgress * 100).toFixed(0)}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      <ReportCreateDialog
+      <ReportCreationDialog
         open={openCreate}
         onOpenChange={setOpenCreate}
         onCreated={(id) => setActiveId(id)}
