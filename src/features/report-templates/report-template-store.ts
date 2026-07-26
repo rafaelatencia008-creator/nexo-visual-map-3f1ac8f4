@@ -280,6 +280,7 @@ export function updateTemplateMetadata(
   };
   replaceInternal(idx, next);
   commit();
+  logHistory(id, "template_metadata_updated", "Metadados atualizados.");
   return getTemplate(id)!;
 }
 
@@ -317,6 +318,7 @@ export function duplicateTemplate(id: ReportTemplateId): ReportTemplate {
   };
   internalTemplates = [...internalTemplates, dup];
   commit();
+  logHistory(newId, "template_duplicated", `Modelo duplicado a partir de ${t.id}.`, { sourceId: t.id });
   return getTemplate(newId)!;
 }
 
@@ -325,6 +327,7 @@ export function archiveTemplate(id: ReportTemplateId): ReportTemplate {
   if (t.status === "arquivado") return getTemplate(id)!;
   replaceInternal(idx, { ...t, status: "arquivado", updatedAt: now() });
   commit();
+  logHistory(id, "template_archived", "Modelo arquivado.");
   return getTemplate(id)!;
 }
 
@@ -333,6 +336,7 @@ export function reactivateTemplate(id: ReportTemplateId): ReportTemplate {
   if (t.status !== "arquivado") return getTemplate(id)!;
   replaceInternal(idx, { ...t, status: "rascunho", updatedAt: now() });
   commit();
+  logHistory(id, "template_reactivated", "Modelo reativado.");
   return getTemplate(id)!;
 }
 
