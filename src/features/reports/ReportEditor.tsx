@@ -7,7 +7,7 @@
  *  - Ações de bloco: mover cima/baixo, duplicar.
  *  - Botão "Aprovar seção" com validação (canApproveSection).
  */
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   ArrowUp,
