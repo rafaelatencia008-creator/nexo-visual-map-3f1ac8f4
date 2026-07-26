@@ -95,9 +95,10 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
   >("editor");
   const frozen = useSyncExternalStore(
     subscribeReports,
-    () => isReportFrozen(id),
-    () => isReportFrozen(id),
+    () => isReportFrozen(reportId),
+    () => isReportFrozen(reportId),
   );
+
 
 
   const activeSection: ReportSection | undefined = useMemo(() => {
