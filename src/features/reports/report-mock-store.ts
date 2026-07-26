@@ -89,6 +89,14 @@ const state: {
   reportsSnapshot: readonly ReportListSummary[] | null;
   historySnapshot: readonly ReportHistoryEvent[] | null;
   version: number;
+  // LV-16
+  versions: Map<string, ReportVersion[]>;
+  versionsSnapshot: Map<string, readonly ReportVersion[]>;
+  checklists: Map<string, ReportChecklist>;
+  frozen: Set<string>;
+  versionsListeners: Set<Listener>;
+  checklistListeners: Set<Listener>;
+  authorLabel: string;
 } = {
   documents: new Map(),
   order: [],
@@ -98,6 +106,13 @@ const state: {
   reportsSnapshot: null,
   historySnapshot: null,
   version: 0,
+  versions: new Map(),
+  versionsSnapshot: new Map(),
+  checklists: new Map(),
+  frozen: new Set(),
+  versionsListeners: new Set(),
+  checklistListeners: new Set(),
+  authorLabel: "Responsável mock",
 };
 
 function invalidateReportsSnapshot(): void {
@@ -107,6 +122,9 @@ function invalidateReportsSnapshot(): void {
 function invalidateHistorySnapshot(): void {
   state.historySnapshot = null;
 }
+function invalidateVersionsSnapshot(reportId: string): void {
+  state.versionsSnapshot.delete(reportId);
+}
 
 function notify(): void {
   invalidateReportsSnapshot();
@@ -115,6 +133,12 @@ function notify(): void {
 function notifyHistory(): void {
   invalidateHistorySnapshot();
   for (const l of state.historyListeners) l();
+}
+function notifyVersions(): void {
+  for (const l of state.versionsListeners) l();
+}
+function notifyChecklist(): void {
+  for (const l of state.checklistListeners) l();
 }
 
 export function subscribeReports(listener: Listener): () => void {
@@ -127,15 +151,31 @@ export function subscribeReportHistory(listener: Listener): () => void {
   return () => state.historyListeners.delete(listener);
 }
 
+export function subscribeReportVersions(listener: Listener): () => void {
+  state.versionsListeners.add(listener);
+  return () => state.versionsListeners.delete(listener);
+}
+
+export function subscribeReportChecklist(listener: Listener): () => void {
+  state.checklistListeners.add(listener);
+  return () => state.checklistListeners.delete(listener);
+}
+
 export function resetReportStore(): void {
   state.documents.clear();
   state.order = [];
   state.history = [];
   state.reportsSnapshot = null;
   state.historySnapshot = null;
+  state.versions.clear();
+  state.versionsSnapshot.clear();
+  state.checklists.clear();
+  state.frozen.clear();
   state.version += 1;
   notify();
   notifyHistory();
+  notifyVersions();
+  notifyChecklist();
 }
 
 export function getReportsVersion(): number {
@@ -149,7 +189,12 @@ function pushHistory(
   reportId: string,
   kind: ReportHistoryEventKind,
   description: string,
-  extras: { sectionId?: string; blockId?: string } = {},
+  extras: {
+    sectionId?: string;
+    blockId?: string;
+    versionId?: string;
+    relatedEventId?: string;
+  } = {},
 ): ReportHistoryEvent {
   const ev: ReportHistoryEvent = Object.freeze({
     id: makeReportId("hst"),
@@ -159,10 +204,13 @@ function pushHistory(
     reportId,
     sectionId: extras.sectionId,
     blockId: extras.blockId,
+    versionId: extras.versionId,
+    relatedEventId: extras.relatedEventId,
   });
   state.history.push(ev);
   notifyHistory();
   return ev;
+
 }
 
 export function getReportHistorySnapshot(): readonly ReportHistoryEvent[] {
