@@ -15,11 +15,16 @@
 
 import { getTemplate } from "./report-templates";
 import {
+  REPORT_CHECKLIST_LABEL,
+  REPORT_CHECKLIST_ORDER,
   REPORT_SECTION_LABEL,
   REPORT_SECTION_STATUS_LABEL,
   REPORT_TEMPLATE_LABEL,
+  REPORT_VERSION_TYPE_LABEL,
   type ReportBlock,
   type ReportBlockOrigin,
+  type ReportChecklist,
+  type ReportChecklistItemId,
   type ReportDocument,
   type ReportHistoryEvent,
   type ReportHistoryEventKind,
@@ -30,13 +35,25 @@ import {
   type ReportSourceKind,
   type ReportSourceRef,
   type ReportTemplateId,
+  type ReportVersion,
+  type ReportVersionListItem,
+  type ReportVersionType,
 } from "./report-types";
+import {
+  compareVersions as compareVersionsPure,
+  deepFreezeDocument,
+  emptyChecklist,
+  checklistProgress,
+  toggleChecklist,
+  watermarkFor,
+} from "./report-versions";
+import { computePendingItems, computeGeneralStatus } from "./report-review";
 
 // ---------- IDs / clock ----------
 
 let idCounter = 9000;
 export function makeReportId(
-  prefix: "rep" | "sec" | "blk" | "src" | "hst",
+  prefix: "rep" | "sec" | "blk" | "src" | "hst" | "ver",
 ): string {
   idCounter += 1;
   return `${prefix}-${idCounter}`;
@@ -44,6 +61,7 @@ export function makeReportId(
 export function resetReportIdCounter(seed = 9000): void {
   idCounter = seed;
 }
+
 
 let clockIso = "2026-07-25T12:00:00.000Z";
 export function reportNow(): string {
@@ -71,6 +89,14 @@ const state: {
   reportsSnapshot: readonly ReportListSummary[] | null;
   historySnapshot: readonly ReportHistoryEvent[] | null;
   version: number;
+  // LV-16
+  versions: Map<string, ReportVersion[]>;
+  versionsSnapshot: Map<string, readonly ReportVersion[]>;
+  checklists: Map<string, ReportChecklist>;
+  frozen: Set<string>;
+  versionsListeners: Set<Listener>;
+  checklistListeners: Set<Listener>;
+  authorLabel: string;
 } = {
   documents: new Map(),
   order: [],
@@ -80,6 +106,13 @@ const state: {
   reportsSnapshot: null,
   historySnapshot: null,
   version: 0,
+  versions: new Map(),
+  versionsSnapshot: new Map(),
+  checklists: new Map(),
+  frozen: new Set(),
+  versionsListeners: new Set(),
+  checklistListeners: new Set(),
+  authorLabel: "Responsável mock",
 };
 
 function invalidateReportsSnapshot(): void {
@@ -89,6 +122,9 @@ function invalidateReportsSnapshot(): void {
 function invalidateHistorySnapshot(): void {
   state.historySnapshot = null;
 }
+function invalidateVersionsSnapshot(reportId: string): void {
+  state.versionsSnapshot.delete(reportId);
+}
 
 function notify(): void {
   invalidateReportsSnapshot();
@@ -97,6 +133,12 @@ function notify(): void {
 function notifyHistory(): void {
   invalidateHistorySnapshot();
   for (const l of state.historyListeners) l();
+}
+function notifyVersions(): void {
+  for (const l of state.versionsListeners) l();
+}
+function notifyChecklist(): void {
+  for (const l of state.checklistListeners) l();
 }
 
 export function subscribeReports(listener: Listener): () => void {
@@ -109,15 +151,31 @@ export function subscribeReportHistory(listener: Listener): () => void {
   return () => state.historyListeners.delete(listener);
 }
 
+export function subscribeReportVersions(listener: Listener): () => void {
+  state.versionsListeners.add(listener);
+  return () => state.versionsListeners.delete(listener);
+}
+
+export function subscribeReportChecklist(listener: Listener): () => void {
+  state.checklistListeners.add(listener);
+  return () => state.checklistListeners.delete(listener);
+}
+
 export function resetReportStore(): void {
   state.documents.clear();
   state.order = [];
   state.history = [];
   state.reportsSnapshot = null;
   state.historySnapshot = null;
+  state.versions.clear();
+  state.versionsSnapshot.clear();
+  state.checklists.clear();
+  state.frozen.clear();
   state.version += 1;
   notify();
   notifyHistory();
+  notifyVersions();
+  notifyChecklist();
 }
 
 export function getReportsVersion(): number {
@@ -131,7 +189,12 @@ function pushHistory(
   reportId: string,
   kind: ReportHistoryEventKind,
   description: string,
-  extras: { sectionId?: string; blockId?: string } = {},
+  extras: {
+    sectionId?: string;
+    blockId?: string;
+    versionId?: string;
+    relatedEventId?: string;
+  } = {},
 ): ReportHistoryEvent {
   const ev: ReportHistoryEvent = Object.freeze({
     id: makeReportId("hst"),
@@ -141,10 +204,13 @@ function pushHistory(
     reportId,
     sectionId: extras.sectionId,
     blockId: extras.blockId,
+    versionId: extras.versionId,
+    relatedEventId: extras.relatedEventId,
   });
   state.history.push(ev);
   notifyHistory();
   return ev;
+
 }
 
 export function getReportHistorySnapshot(): readonly ReportHistoryEvent[] {
@@ -257,6 +323,25 @@ function requireDoc(id: string): ReportDocument {
   return doc;
 }
 
+/** LV-16 — guard: rejeita mutação quando documento está congelado. */
+export function isReportFrozen(reportId: string): boolean {
+  return state.frozen.has(reportId);
+}
+
+function assertMutable(reportId: string, action = "editar"): void {
+  if (state.frozen.has(reportId)) {
+    throw new Error(
+      `Documento congelado: ação "${action}" bloqueada. Reabra para editar.`,
+    );
+  }
+}
+
+function requireMutable(reportId: string, action = "editar"): ReportDocument {
+  const doc = requireDoc(reportId);
+  assertMutable(reportId, action);
+  return doc;
+}
+
 function touch(doc: ReportDocument, patch: Partial<ReportDocument>): ReportDocument {
   const next = Object.freeze({ ...doc, ...patch, updatedAt: reportNow() });
   state.documents.set(next.id, next);
@@ -300,7 +385,7 @@ export function changeTemplate(
   reportId: string,
   templateId: ReportTemplateId,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "trocar modelo");
   const next = touch(doc, {
     templateId,
     sections: buildSectionsFromTemplate(templateId),
@@ -314,7 +399,7 @@ export function changeTemplate(
 }
 
 export function renameReport(reportId: string, title: string): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "renomear");
   const next = touch(doc, { title: title.trim() });
   pushHistory(reportId, "titulo_alterado", `Título alterado para "${next.title}".`);
   return next;
@@ -326,7 +411,7 @@ export function updateBlockContent(
   blockId: string,
   content: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "atualizar conteúdo");
   const now = reportNow();
   let next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
@@ -349,7 +434,7 @@ export function updateBlockTitle(
   blockId: string,
   title: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "atualizar título do bloco");
   const now = reportNow();
   let next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
@@ -373,7 +458,7 @@ export function markBlockReviewed(
   blockId: string,
   reviewed: boolean,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "marcar revisão");
   const next = replaceBlock(doc, sectionId, blockId, (b) => ({ ...b, reviewed }));
   pushHistory(
     reportId,
@@ -394,7 +479,7 @@ function applySectionStatusInternal(
   sectionId: string,
   status: ReportSectionStatus,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "alterar status");
   const next = replaceSection(doc, sectionId, (s) => ({ ...s, status }));
   pushHistory(
     reportId,
@@ -437,6 +522,7 @@ export function approveSection(
   reportId: string,
   sectionId: string,
 ): ApproveSectionResult {
+  assertMutable(reportId, "aprovar seção");
   const doc = requireDoc(reportId);
   const sec = doc.sections.find((s) => s.id === sectionId);
   if (!sec) return { ok: false, reason: "Seção não encontrada." };
@@ -464,7 +550,7 @@ export function addBlock(
   sectionId: string,
   input: { title: string; content: string; origin?: ReportBlockOrigin },
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "adicionar bloco");
   const now = reportNow();
   let newBlockId = "";
   const next = replaceSection(doc, sectionId, (s) => {
@@ -499,7 +585,7 @@ export function removeBlock(
   sectionId: string,
   blockId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "remover bloco");
   const next = replaceSection(doc, sectionId, (s) => ({
     ...s,
     blocks: s.blocks.filter((b) => b.id !== blockId),
@@ -517,7 +603,7 @@ export function duplicateBlock(
   sectionId: string,
   blockId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "duplicar bloco");
   const now = reportNow();
   let newId = "";
   const next = replaceSection(doc, sectionId, (s) => {
@@ -552,7 +638,7 @@ export function moveBlock(
   blockId: string,
   direction: "up" | "down",
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "mover bloco");
   const next = replaceSection(doc, sectionId, (s) => {
     const idx = s.blocks.findIndex((b) => b.id === blockId);
     if (idx < 0) return s;
@@ -577,7 +663,7 @@ export function linkSourceToBlock(
   blockId: string,
   source: { kind: ReportSourceKind; refId: string; label: string },
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "vincular fonte");
   const next = replaceBlock(doc, sectionId, blockId, (b) => {
     if (b.sources.some((s) => s.kind === source.kind && s.refId === source.refId)) {
       return b;
@@ -603,7 +689,7 @@ export function unlinkSourceFromBlock(
   blockId: string,
   sourceId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "desvincular fonte");
   const next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
     sources: b.sources.filter((s) => s.id !== sourceId),
@@ -641,4 +727,343 @@ export function logExportBlocked(
   reason: string,
 ): ReportHistoryEvent {
   return pushHistory(reportId, "exportacao_bloqueada", reason);
+}
+
+// ============================================================================
+// LV-16 — Versões, Checklist, Fechamento, Reabertura, Comparação
+// ============================================================================
+
+// ---------- Autor mock ----------
+
+export function setAuthorLabel(label: string): void {
+  state.authorLabel = label || "Responsável mock";
+}
+export function getAuthorLabel(): string {
+  return state.authorLabel;
+}
+
+// ---------- Checklist ----------
+
+export function getChecklist(reportId: string): ReportChecklist {
+  const c = state.checklists.get(reportId);
+  if (c) return c;
+  const initial = emptyChecklist();
+  state.checklists.set(reportId, initial);
+  return initial;
+}
+
+export function getChecklistProgress(reportId: string) {
+  return checklistProgress(getChecklist(reportId));
+}
+
+export function setChecklistItem(
+  reportId: string,
+  item: ReportChecklistItemId,
+  value: boolean,
+): ReportChecklist {
+  requireDoc(reportId);
+  assertMutable(reportId, "atualizar checklist");
+  const before = getChecklist(reportId);
+  const next = toggleChecklist(before, item, value);
+  if (next === before) return before;
+  state.checklists.set(reportId, next);
+  pushHistory(
+    reportId,
+    value ? "checklist_marcado" : "checklist_desmarcado",
+    `Checklist: ${REPORT_CHECKLIST_LABEL[item]} — ${value ? "marcado" : "desmarcado"}.`,
+  );
+  notifyChecklist();
+  return next;
+}
+
+// ---------- Versões ----------
+
+function versionsOf(reportId: string): ReportVersion[] {
+  let arr = state.versions.get(reportId);
+  if (!arr) {
+    arr = [];
+    state.versions.set(reportId, arr);
+  }
+  return arr;
+}
+
+export function getReportVersionsSnapshot(
+  reportId: string,
+): readonly ReportVersion[] {
+  const cached = state.versionsSnapshot.get(reportId);
+  if (cached) return cached;
+  const frozen = Object.freeze(versionsOf(reportId).slice());
+  state.versionsSnapshot.set(reportId, frozen);
+  return frozen;
+}
+
+export function listReportVersions(reportId: string): readonly ReportVersion[] {
+  return getReportVersionsSnapshot(reportId);
+}
+
+export function listReportVersionItems(
+  reportId: string,
+): readonly ReportVersionListItem[] {
+  return getReportVersionsSnapshot(reportId).map((v) =>
+    Object.freeze({
+      id: v.id,
+      number: v.number,
+      type: v.type,
+      status: v.status,
+      createdAt: v.createdAt,
+      authorLabel: v.authorLabel,
+      reason: v.reason,
+      pendingCount: v.pendingCount,
+      generalStatus: v.generalStatus,
+    }),
+  );
+}
+
+export function getReportVersion(
+  reportId: string,
+  versionId: string,
+): ReportVersion | undefined {
+  return versionsOf(reportId).find((v) => v.id === versionId);
+}
+
+export function getLatestVersion(
+  reportId: string,
+): ReportVersion | undefined {
+  const arr = versionsOf(reportId);
+  return arr.length ? arr[arr.length - 1] : undefined;
+}
+
+export type CreateVersionResult =
+  | { readonly ok: true; readonly version: ReportVersion }
+  | { readonly ok: false; readonly reason: string };
+
+export function canCreateReviewedVersion(reportId: string): {
+  ok: boolean;
+  reason?: string;
+} {
+  const doc = requireDoc(reportId);
+  if (doc.title.trim().length === 0)
+    return { ok: false, reason: "Título vazio." };
+  if (!doc.caseId) return { ok: false, reason: "Perícia não vinculada." };
+  const pendings = computePendingItems(doc);
+  const blocking = pendings.filter((p) => p.severity === "impeditivo");
+  if (blocking.length > 0)
+    return {
+      ok: false,
+      reason: `Existem ${blocking.length} pendência(s) impeditiva(s).`,
+    };
+  return { ok: true };
+}
+
+export function canCloseReport(reportId: string): {
+  ok: boolean;
+  reason?: string;
+} {
+  const pre = canCreateReviewedVersion(reportId);
+  if (!pre.ok) return pre;
+  const doc = requireDoc(reportId);
+  const mandatoryNotApproved = doc.sections.filter(
+    (s) =>
+      ["identificacao_pericia", "identificacao_partes", "objeto", "historico",
+       "metodologia", "quesitos", "fundamentacao", "analise", "conclusao"].includes(s.kind) &&
+      s.status !== "aprovada",
+  );
+  if (mandatoryNotApproved.length > 0)
+    return {
+      ok: false,
+      reason: "Existem seções obrigatórias não aprovadas.",
+    };
+  const progress = getChecklistProgress(reportId);
+  if (!progress.complete)
+    return {
+      ok: false,
+      reason: `Checklist incompleto (${progress.done}/${progress.total}).`,
+    };
+  return { ok: true };
+}
+
+function buildSnapshot(doc: ReportDocument, checklist: ReportChecklist) {
+  const frozenDoc = deepFreezeDocument(doc);
+  const pendings = Object.freeze(computePendingItems(doc).map((p) => Object.freeze({ ...p })));
+  const generalStatus = computeGeneralStatus(doc, pendings);
+  return {
+    document: frozenDoc,
+    checklist: Object.freeze({ ...checklist }) as ReportChecklist,
+    pendings,
+    generalStatus,
+  } as const;
+}
+
+function nextVersionNumber(reportId: string): number {
+  const arr = versionsOf(reportId);
+  return arr.length + 1;
+}
+
+export function createReportVersion(
+  reportId: string,
+  type: ReportVersionType,
+  reason: string,
+  opts: { authorLabel?: string; confirmClosure?: boolean } = {},
+): CreateVersionResult {
+  if (!state.documents.has(reportId))
+    return { ok: false, reason: "Documento não encontrado." };
+  if (reason.trim().length === 0)
+    return { ok: false, reason: "Motivo obrigatório." };
+  if (state.frozen.has(reportId))
+    return { ok: false, reason: "Documento congelado. Reabra antes de criar nova versão." };
+
+  const doc = requireDoc(reportId);
+
+  if (type === "revisada") {
+    const g = canCreateReviewedVersion(reportId);
+    if (!g.ok) {
+      pushHistory(reportId, "versao_revisada_bloqueada", `Versão revisada bloqueada: ${g.reason}`);
+      return { ok: false, reason: g.reason ?? "Bloqueado." };
+    }
+  }
+  if (type === "fechada") {
+    if (!opts.confirmClosure) {
+      pushHistory(reportId, "fechamento_bloqueado", "Fechamento bloqueado: confirmação explícita obrigatória.");
+      return { ok: false, reason: "Confirmação explícita obrigatória." };
+    }
+    const g = canCloseReport(reportId);
+    if (!g.ok) {
+      pushHistory(reportId, "fechamento_bloqueado", `Fechamento bloqueado: ${g.reason}`);
+      return { ok: false, reason: g.reason ?? "Bloqueado." };
+    }
+  }
+
+  const checklist = getChecklist(reportId);
+  const snapshot = buildSnapshot(doc, checklist);
+  const number = nextVersionNumber(reportId);
+  const authorLabel = opts.authorLabel?.trim() || state.authorLabel;
+  const version: ReportVersion = Object.freeze({
+    id: makeReportId("ver"),
+    number,
+    reportId,
+    type,
+    status: type === "fechada" ? "fechada" : type === "revisada" ? "em_revisao" : "rascunho",
+    title: doc.title,
+    templateId: doc.templateId,
+    caseId: doc.caseId,
+    caseLabel: doc.caseLabel,
+    createdAt: reportNow(),
+    authorLabel,
+    reason: reason.trim(),
+    pendingCount: snapshot.pendings.length,
+    generalStatus: snapshot.generalStatus,
+    watermark: watermarkFor(type),
+    snapshot,
+    demonstrative: true,
+  }) as ReportVersion;
+
+  versionsOf(reportId).push(version);
+  invalidateVersionsSnapshot(reportId);
+  notifyVersions();
+
+  if (type === "trabalho") {
+    pushHistory(reportId, "versao_trabalho_criada", `Versão ${number} de trabalho criada.`, { versionId: version.id });
+  } else if (type === "revisada") {
+    pushHistory(reportId, "versao_revisada_criada", `Versão ${number} revisada criada.`, { versionId: version.id });
+  } else {
+    // Marcar versão fechada anterior como substituída
+    const prevClosed = versionsOf(reportId)
+      .slice(0, -1)
+      .reverse()
+      .find((v) => v.type === "fechada" && v.status === "fechada");
+    if (prevClosed) {
+      const idx = versionsOf(reportId).indexOf(prevClosed);
+      const updated: ReportVersion = Object.freeze({ ...prevClosed, status: "substituida" }) as ReportVersion;
+      versionsOf(reportId)[idx] = updated;
+      invalidateVersionsSnapshot(reportId);
+      pushHistory(reportId, "versao_anterior_substituida",
+        `Versão ${prevClosed.number} marcada como substituída pela versão ${number}.`,
+        { versionId: prevClosed.id, relatedEventId: version.id });
+    }
+    pushHistory(reportId, "versao_fechada_criada", `Versão ${number} fechada criada.`, { versionId: version.id });
+    // Congelar documento
+    state.frozen.add(reportId);
+    pushHistory(reportId, "documento_congelado", "Documento congelado após fechamento.");
+    notify();
+  }
+  return { ok: true, version };
+}
+
+export function reopenReport(
+  reportId: string,
+  reason: string,
+  opts: { confirm?: boolean } = {},
+): { ok: boolean; reason?: string } {
+  if (!state.documents.has(reportId))
+    return { ok: false, reason: "Documento não encontrado." };
+  if (!state.frozen.has(reportId)) {
+    pushHistory(reportId, "reabertura_bloqueada", "Reabertura bloqueada: documento não está congelado.");
+    return { ok: false, reason: "Documento não está congelado." };
+  }
+  if (reason.trim().length === 0) {
+    pushHistory(reportId, "reabertura_bloqueada", "Reabertura bloqueada: motivo obrigatório.");
+    return { ok: false, reason: "Motivo obrigatório." };
+  }
+  if (!opts.confirm) {
+    pushHistory(reportId, "reabertura_bloqueada", "Reabertura bloqueada: confirmação explícita obrigatória.");
+    return { ok: false, reason: "Confirmação explícita obrigatória." };
+  }
+  pushHistory(reportId, "reabertura_solicitada", `Reabertura solicitada. Motivo: ${reason.trim()}`);
+  state.frozen.delete(reportId);
+  pushHistory(reportId, "documento_reaberto",
+    "Documento reaberto. A versão fechada anterior será preservada e não será modificada.");
+  notify();
+  return { ok: true };
+}
+
+// ---------- Comparação ----------
+
+export function compareReportVersions(
+  reportId: string,
+  versionAId: string,
+  versionBId: string,
+) {
+  const a = getReportVersion(reportId, versionAId);
+  const b = getReportVersion(reportId, versionBId);
+  if (!a || !b) throw new Error("Versão não encontrada.");
+  if (a.reportId !== reportId || b.reportId !== reportId)
+    throw new Error("Versões pertencem a documentos diferentes.");
+  pushHistory(reportId, "comparacao_aberta",
+    `Comparação aberta entre versões ${a.number} e ${b.number}.`);
+  return compareVersionsPure(a, b);
+}
+
+// ---------- Logs ----------
+
+export function logVersionViewed(reportId: string, versionId: string): void {
+  const v = getReportVersion(reportId, versionId);
+  if (!v) return;
+  pushHistory(reportId, "versao_visualizada",
+    `Versão ${v.number} (${REPORT_VERSION_TYPE_LABEL[v.type]}) visualizada.`,
+    { versionId });
+}
+
+export function logVersionExported(
+  reportId: string,
+  versionId: string,
+  description: string,
+): void {
+  pushHistory(reportId, "versao_exportada", description, { versionId });
+}
+
+export function logVersionPrinted(reportId: string, versionId: string): void {
+  const v = getReportVersion(reportId, versionId);
+  if (!v) return;
+  pushHistory(reportId, "versao_impressa", `Versão ${v.number} impressa localmente.`, { versionId });
+}
+
+export function logClosureFlow(
+  reportId: string,
+  kind: "iniciado" | "cancelado",
+): void {
+  pushHistory(
+    reportId,
+    kind === "iniciado" ? "fechamento_iniciado" : "fechamento_cancelado",
+    kind === "iniciado" ? "Fluxo de fechamento iniciado." : "Fluxo de fechamento cancelado.",
+  );
 }

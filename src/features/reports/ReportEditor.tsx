@@ -55,6 +55,7 @@ import {
   changeTemplate,
   duplicateBlock,
   getReport,
+  isReportFrozen,
   markBlockReviewed,
   moveBlock,
   removeBlock,
@@ -68,6 +69,10 @@ import { ReportSourceLinkDialog } from "./ReportSourceLinkDialog";
 import { ReportReviewPanel } from "./ReportReviewPanel";
 import { ReportPreview } from "./ReportPreview";
 import { ReportExportDialog } from "./ReportExportDialog";
+import { ReportClosurePanel } from "./ReportClosurePanel";
+import { ReportVersionsPanel } from "./ReportVersionsPanel";
+import { ReportHistoryPanel } from "./ReportHistoryPanel";
+
 
 export type ReportEditorProps = {
   reportId: string;
@@ -90,7 +95,16 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
     blockId: string;
   } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [tab, setTab] = useState<"editor" | "revisao" | "previa">("editor");
+  const [tab, setTab] = useState<
+    "editor" | "revisao" | "previa" | "fechamento" | "versoes" | "historico"
+  >("editor");
+  const frozen = useSyncExternalStore(
+    subscribeReports,
+    () => isReportFrozen(reportId),
+    () => isReportFrozen(reportId),
+  );
+
+
 
   const activeSection: ReportSection | undefined = useMemo(() => {
     if (!doc) return undefined;
@@ -171,11 +185,23 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
         </div>
       </div>
 
+      {frozen && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800">
+          <strong>Documento congelado.</strong> A edição está bloqueada porque existe
+          uma versão fechada demonstrativa. Prévia, exportação e comparação continuam
+          disponíveis. Para editar novamente, reabra o documento na aba Versões.
+        </div>
+      )}
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList>
+        <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="editor">Editor</TabsTrigger>
           <TabsTrigger value="revisao">Revisão</TabsTrigger>
           <TabsTrigger value="previa">Prévia</TabsTrigger>
+          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+          <TabsTrigger value="versoes">Versões</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="editor" className="mt-4">
@@ -448,7 +474,20 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
         <TabsContent value="previa" className="mt-4">
           <ReportPreview document={doc} />
         </TabsContent>
+
+        <TabsContent value="fechamento" className="mt-4">
+          <ReportClosurePanel document={doc} />
+        </TabsContent>
+
+        <TabsContent value="versoes" className="mt-4">
+          <ReportVersionsPanel reportId={doc.id} />
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-4">
+          <ReportHistoryPanel reportId={doc.id} />
+        </TabsContent>
       </Tabs>
+
 
       {sourceDialog && (
         <ReportSourceLinkDialog
