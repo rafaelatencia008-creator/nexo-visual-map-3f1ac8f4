@@ -78,7 +78,7 @@ const SAMPLE_TEMPLATE = (name = "Modelo P") =>
 
 function buildEnvelope(template = SAMPLE_TEMPLATE()) {
   return {
-    format: "nexo-report-template-export" as const,
+    format: "nexo-report-template" as const,
     schemaVersion: "1.0" as const,
     exportedAt: "2026-07-25T12:00:00.000Z",
     exportedBy: "usr-test",
