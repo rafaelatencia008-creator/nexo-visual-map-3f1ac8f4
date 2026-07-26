@@ -345,6 +345,7 @@ describe("LV-18.2 · Histórico append-only", () => {
   });
 
   it("publicação registra evento e cria versão", () => {
+    returnTemplateToDraft(PSICO);
     publishTemplate(PSICO);
     const evs = listTemplateHistory(PSICO);
     expect(evs.some((e) => e.action === "template_published")).toBe(true);
