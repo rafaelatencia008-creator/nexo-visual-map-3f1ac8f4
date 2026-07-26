@@ -80,9 +80,9 @@ export function collectAvailableSources(): readonly CopilotSourceRecord[] {
       sourceType: "quesito",
       id: q.id,
       parentId: q.caseId,
-      label: q.questionText.slice(0, 80),
-      searchableText: txt(q.questionText, q.origin, q.status, q.answerText),
-      excerpt: q.answerText ?? q.questionText,
+      label: q.text.slice(0, 80),
+      searchableText: txt(q.text, q.origin, q.status, q.technicalAnswer),
+      excerpt: q.technicalAnswer ?? q.text,
       route: `/app/quesitos`,
       updatedAt: q.updatedAt,
       metadata: {
@@ -91,7 +91,7 @@ export function collectAvailableSources(): readonly CopilotSourceRecord[] {
         priority: q.priority,
         readyForReport: q.readyForReport,
         evidenceCount: q.evidenceLinks.length,
-        gapCount: q.gaps.filter((g) => g.status === "aberta").length,
+        gapCount: q.gapItems.filter((g) => !g.resolved).length,
       },
     });
     for (const e of q.evidenceLinks) {
