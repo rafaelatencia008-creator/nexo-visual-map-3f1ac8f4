@@ -621,6 +621,7 @@ export function addVariable(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "variable_added", `Variável adicionada: ${key}.`, { variableId: nv.id, key });
   return getTemplate(templateId)!.variables.find((v) => v.id === nv.id)!;
 }
 
