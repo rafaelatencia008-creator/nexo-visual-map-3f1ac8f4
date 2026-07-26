@@ -738,6 +738,57 @@ export function initialTemplateCount(): number {
   return INITIAL_TEMPLATE_COUNT;
 }
 
+// ---------- LV-18.3 · Suporte a importação ----------
+
+/** Gera novo ID de modelo para uso pela camada de importação. */
+export function generateImportedTemplateId(): ReportTemplateId {
+  return nextId("rtpl") as ReportTemplateId;
+}
+export function generateImportedSectionId(): ReportTemplateSectionId {
+  return nextId("rsec") as ReportTemplateSectionId;
+}
+export function generateImportedBlockId(): ReportTemplateBlockId {
+  return nextId("rblk") as ReportTemplateBlockId;
+}
+export function generateImportedVariableId(): ReportTemplateVariableId {
+  return nextId("rvar") as ReportTemplateVariableId;
+}
+
+/**
+ * Insere atomicamente um conjunto de modelos previamente validados
+ * (originados de importação). Emite uma única notificação. Se qualquer
+ * ID colidir com o estado atual, nada é inserido.
+ */
+export function bulkInsertImportedTemplates(
+  templates: readonly ReportTemplate[],
+): readonly ReportTemplate[] {
+  if (templates.length === 0) return [];
+  const existingIds = new Set(internalTemplates.map((t) => t.id));
+  const seen = new Set<string>();
+  for (const t of templates) {
+    if (existingIds.has(t.id)) {
+      throw new ReportTemplateError(
+        "import_conflict",
+        `ID de modelo já existe: ${t.id}`,
+        { templateId: t.id },
+      );
+    }
+    if (seen.has(t.id)) {
+      throw new ReportTemplateError(
+        "import_duplicate_id",
+        `ID de modelo duplicado no lote: ${t.id}`,
+        { templateId: t.id },
+      );
+    }
+    seen.add(t.id);
+    validateUniqueSectionIds(t.sections);
+  }
+  const clones = templates.map((t) => deepClone(t));
+  internalTemplates = [...internalTemplates, ...clones];
+  commit();
+  return clones.map((t) => getTemplate(t.id)!);
+}
+
 // ---------- LV-18.2 · Ciclo de vida e histórico ----------
 
 function logHistory(
