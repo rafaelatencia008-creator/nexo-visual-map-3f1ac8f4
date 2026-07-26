@@ -323,6 +323,25 @@ function requireDoc(id: string): ReportDocument {
   return doc;
 }
 
+/** LV-16 — guard: rejeita mutação quando documento está congelado. */
+export function isReportFrozen(reportId: string): boolean {
+  return state.frozen.has(reportId);
+}
+
+function assertMutable(reportId: string, action = "editar"): void {
+  if (state.frozen.has(reportId)) {
+    throw new Error(
+      `Documento congelado: ação "${action}" bloqueada. Reabra para editar.`,
+    );
+  }
+}
+
+function requireMutable(reportId: string, action = "editar"): ReportDocument {
+  const doc = requireDoc(reportId);
+  assertMutable(reportId, action);
+  return doc;
+}
+
 function touch(doc: ReportDocument, patch: Partial<ReportDocument>): ReportDocument {
   const next = Object.freeze({ ...doc, ...patch, updatedAt: reportNow() });
   state.documents.set(next.id, next);
@@ -366,7 +385,7 @@ export function changeTemplate(
   reportId: string,
   templateId: ReportTemplateId,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "trocar modelo");
   const next = touch(doc, {
     templateId,
     sections: buildSectionsFromTemplate(templateId),
@@ -380,7 +399,7 @@ export function changeTemplate(
 }
 
 export function renameReport(reportId: string, title: string): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "renomear");
   const next = touch(doc, { title: title.trim() });
   pushHistory(reportId, "titulo_alterado", `Título alterado para "${next.title}".`);
   return next;
@@ -392,7 +411,7 @@ export function updateBlockContent(
   blockId: string,
   content: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "atualizar conteúdo");
   const now = reportNow();
   let next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
@@ -415,7 +434,7 @@ export function updateBlockTitle(
   blockId: string,
   title: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "atualizar título do bloco");
   const now = reportNow();
   let next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
@@ -439,7 +458,7 @@ export function markBlockReviewed(
   blockId: string,
   reviewed: boolean,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "marcar revisão");
   const next = replaceBlock(doc, sectionId, blockId, (b) => ({ ...b, reviewed }));
   pushHistory(
     reportId,
@@ -460,7 +479,7 @@ function applySectionStatusInternal(
   sectionId: string,
   status: ReportSectionStatus,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "alterar status");
   const next = replaceSection(doc, sectionId, (s) => ({ ...s, status }));
   pushHistory(
     reportId,
@@ -503,6 +522,7 @@ export function approveSection(
   reportId: string,
   sectionId: string,
 ): ApproveSectionResult {
+  assertMutable(reportId, "aprovar seção");
   const doc = requireDoc(reportId);
   const sec = doc.sections.find((s) => s.id === sectionId);
   if (!sec) return { ok: false, reason: "Seção não encontrada." };
@@ -530,7 +550,7 @@ export function addBlock(
   sectionId: string,
   input: { title: string; content: string; origin?: ReportBlockOrigin },
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "adicionar bloco");
   const now = reportNow();
   let newBlockId = "";
   const next = replaceSection(doc, sectionId, (s) => {
@@ -565,7 +585,7 @@ export function removeBlock(
   sectionId: string,
   blockId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "remover bloco");
   const next = replaceSection(doc, sectionId, (s) => ({
     ...s,
     blocks: s.blocks.filter((b) => b.id !== blockId),
@@ -583,7 +603,7 @@ export function duplicateBlock(
   sectionId: string,
   blockId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "duplicar bloco");
   const now = reportNow();
   let newId = "";
   const next = replaceSection(doc, sectionId, (s) => {
@@ -618,7 +638,7 @@ export function moveBlock(
   blockId: string,
   direction: "up" | "down",
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "mover bloco");
   const next = replaceSection(doc, sectionId, (s) => {
     const idx = s.blocks.findIndex((b) => b.id === blockId);
     if (idx < 0) return s;
@@ -643,7 +663,7 @@ export function linkSourceToBlock(
   blockId: string,
   source: { kind: ReportSourceKind; refId: string; label: string },
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "vincular fonte");
   const next = replaceBlock(doc, sectionId, blockId, (b) => {
     if (b.sources.some((s) => s.kind === source.kind && s.refId === source.refId)) {
       return b;
@@ -669,7 +689,7 @@ export function unlinkSourceFromBlock(
   blockId: string,
   sourceId: string,
 ): ReportDocument {
-  const doc = requireDoc(reportId);
+  const doc = requireMutable(reportId, "desvincular fonte");
   const next = replaceBlock(doc, sectionId, blockId, (b) => ({
     ...b,
     sources: b.sources.filter((s) => s.id !== sourceId),
