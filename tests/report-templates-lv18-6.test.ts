@@ -55,7 +55,7 @@ const SAMPLE_TEMPLATE = (name = "Modelo P") =>
         blocks: [
           {
             id: "rblk-iso-1",
-            kind: "texto",
+            kind: "paragrafo",
             title: "Objeto",
             content: "Laudo de {{nome}}.",
             position: 0,
@@ -69,7 +69,7 @@ const SAMPLE_TEMPLATE = (name = "Modelo P") =>
         id: "rvar-iso-1",
         key: "nome",
         label: "Nome",
-        kind: "texto",
+        kind: "paragrafo",
         required: true,
         defaultValue: "",
       },
