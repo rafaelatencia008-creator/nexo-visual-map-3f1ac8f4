@@ -16,6 +16,7 @@ import type {
   ReportTemplateSection,
   ReportTemplateSectionId,
   ReportTemplateSpecialty,
+  ReportTemplateStatus,
   ReportTemplateVariable,
   ReportTemplateVariableId,
   ReportTemplateVariableKind,
@@ -52,6 +53,7 @@ type TemplateSeed = {
   name: string;
   description: string;
   specialty: ReportTemplateSpecialty;
+  status?: ReportTemplateStatus;
   sections: readonly SectionSeed[];
   variables: readonly VariableSeed[];
 };
