@@ -90,7 +90,15 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
     blockId: string;
   } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [tab, setTab] = useState<"editor" | "revisao" | "previa">("editor");
+  const [tab, setTab] = useState<
+    "editor" | "revisao" | "previa" | "fechamento" | "versoes" | "historico"
+  >("editor");
+  const frozen = useSyncExternalStore(
+    subscribeReports,
+    () => isReportFrozen(id),
+    () => isReportFrozen(id),
+  );
+
 
   const activeSection: ReportSection | undefined = useMemo(() => {
     if (!doc) return undefined;
