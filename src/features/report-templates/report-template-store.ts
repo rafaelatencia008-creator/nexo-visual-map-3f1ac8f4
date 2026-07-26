@@ -680,15 +680,116 @@ export function removeVariable(
 
 /**
  * Restaura o estado inicial exatamente como as fixtures determinísticas.
- * Emite UMA única notificação para todos os assinantes.
+ * Também reinicia as stores auxiliares de versões e histórico. Emite UMA
+ * única notificação para os assinantes desta store.
  */
 export function resetReportTemplateStore(): void {
   seedInitial();
-  // seedInitial redefine mutationVersion=1; forçamos uma emissão única.
+  resetTemplateVersionStore();
+  resetTemplateHistoryStore();
   emit();
 }
 
 /** Total esperado inicial (para asserções externas). */
 export function initialTemplateCount(): number {
   return INITIAL_TEMPLATE_COUNT;
+}
+
+// ---------- LV-18.2 · Ciclo de vida e histórico ----------
+
+function logHistory(
+  templateId: ReportTemplateId,
+  action: ReportTemplateHistoryAction,
+  description: string,
+  metadata?: Record<string, unknown>,
+  result: "success" | "blocked" | "failure" = "success",
+): void {
+  try {
+    appendTemplateHistoryEvent({
+      templateId,
+      action,
+      description,
+      metadata,
+      result,
+    });
+  } catch (e) {
+    // Falha no histórico não deve corromper a store principal.
+    throw new ReportTemplateError(
+      "history_append_failed",
+      "Falha ao registrar histórico: " + (e as Error).message,
+    );
+  }
+}
+
+/** Publica um modelo de rascunho após validação, criando versão imutável. */
+export function publishTemplate(id: ReportTemplateId, reason?: string): ReportTemplate {
+  const { idx, t } = requireInternal(id);
+  if (t.status === "arquivado") {
+    logHistory(id, "template_transition_blocked", "Publicação bloqueada: arquivado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("template_archived", `Modelo ${id} está arquivado.`);
+  }
+  if (t.status === "publicado") {
+    logHistory(id, "template_transition_blocked", "Publicação bloqueada: já publicado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("invalid_transition", "Modelo já está publicado.");
+  }
+  const validation = validateReportTemplate(t);
+  logHistory(id, "template_validated", `Validação: ${validation.errors.length} erro(s), ${validation.warnings.length} aviso(s).`, {
+    errors: validation.errors.length,
+    warnings: validation.warnings.length,
+  });
+  if (!validation.valid) {
+    logHistory(id, "template_publication_blocked", "Publicação bloqueada por erros de validação.", { errors: validation.errors.length }, "blocked");
+    throw new ReportTemplateError(
+      "template_invalid",
+      "Modelo possui erros de validação — corrija antes de publicar.",
+      { errors: validation.errors.length },
+    );
+  }
+  const next: ReportTemplate = { ...t, status: "publicado", updatedAt: now() };
+  replaceInternal(idx, next);
+  commit();
+  const ver = createTemplateVersion({
+    template: getTemplate(id)!,
+    reason: reason?.trim() && reason.trim().length > 0 ? reason.trim() : "Publicação",
+    changeSummary: "Versão gerada automaticamente pela publicação.",
+  });
+  logHistory(id, "template_published", "Modelo publicado.", { versionNumber: ver.versionNumber });
+  logHistory(id, "version_created", `Versão ${ver.versionNumber} criada.`, { versionNumber: ver.versionNumber });
+  return getTemplate(id)!;
+}
+
+/** Retorna um modelo publicado para o estado de rascunho editável. */
+export function returnTemplateToDraft(id: ReportTemplateId): ReportTemplate {
+  const { idx, t } = requireInternal(id);
+  if (t.status === "arquivado") {
+    logHistory(id, "template_transition_blocked", "Retorno a rascunho bloqueado: arquivado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("template_archived", `Modelo ${id} está arquivado.`);
+  }
+  if (t.status === "rascunho") {
+    return getTemplate(id)!; // no-op
+  }
+  replaceInternal(idx, { ...t, status: "rascunho", updatedAt: now() });
+  commit();
+  logHistory(id, "template_returned_to_draft", "Modelo retornado ao rascunho.");
+  return getTemplate(id)!;
+}
+
+/** Cria manualmente uma versão imutável do modelo atual — motivo obrigatório. */
+export function createManualTemplateVersion(
+  id: ReportTemplateId,
+  reason: string,
+  changeSummary?: string,
+) {
+  const t = getTemplate(id);
+  if (!t) throw new ReportTemplateError("template_not_found", `Modelo ${id} não encontrado.`);
+  const trimmed = (reason ?? "").trim();
+  if (trimmed.length === 0) {
+    throw new ReportTemplateError("version_reason_required", "Motivo é obrigatório para criar uma versão.");
+  }
+  const ver = createTemplateVersion({ template: t, reason: trimmed, changeSummary: changeSummary ?? "" });
+  logHistory(id, "version_created", `Versão ${ver.versionNumber} criada manualmente.`, {
+    versionNumber: ver.versionNumber,
+    reason: trimmed,
+  });
+  return ver;
 }
