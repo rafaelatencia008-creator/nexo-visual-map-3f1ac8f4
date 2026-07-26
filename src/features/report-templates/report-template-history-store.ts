@@ -31,7 +31,12 @@ export type ReportTemplateHistoryAction =
   | "variable_added"
   | "variable_updated"
   | "variable_removed"
-  | "version_created";
+  | "version_created"
+  | "template_exported"
+  | "template_import_previewed"
+  | "template_imported"
+  | "template_import_blocked"
+  | "template_import_failed";
 
 export type ReportTemplateHistoryResult = "success" | "blocked" | "failure";
 
