@@ -68,18 +68,34 @@ const state: {
   listeners: Set<Listener>;
   history: ReportHistoryEvent[];
   historyListeners: Set<Listener>;
+  reportsSnapshot: readonly ReportListSummary[] | null;
+  historySnapshot: readonly ReportHistoryEvent[] | null;
+  version: number;
 } = {
   documents: new Map(),
   order: [],
   listeners: new Set(),
   history: [],
   historyListeners: new Set(),
+  reportsSnapshot: null,
+  historySnapshot: null,
+  version: 0,
 };
 
+function invalidateReportsSnapshot(): void {
+  state.reportsSnapshot = null;
+  state.version += 1;
+}
+function invalidateHistorySnapshot(): void {
+  state.historySnapshot = null;
+}
+
 function notify(): void {
+  invalidateReportsSnapshot();
   for (const l of state.listeners) l();
 }
 function notifyHistory(): void {
+  invalidateHistorySnapshot();
   for (const l of state.historyListeners) l();
 }
 
@@ -97,9 +113,17 @@ export function resetReportStore(): void {
   state.documents.clear();
   state.order = [];
   state.history = [];
+  state.reportsSnapshot = null;
+  state.historySnapshot = null;
+  state.version += 1;
   notify();
   notifyHistory();
 }
+
+export function getReportsVersion(): number {
+  return state.version;
+}
+
 
 // ---------- Histórico (append-only) ----------
 
