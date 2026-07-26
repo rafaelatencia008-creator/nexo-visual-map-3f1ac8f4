@@ -136,6 +136,8 @@ export function ReportSourceLinkDialog({
                   <Button
                     size="sm"
                     variant="outline"
+                    disabled={frozen}
+                    aria-disabled={frozen}
                     onClick={() => handleLink(c.refId, c.label)}
                   >
                     Vincular
