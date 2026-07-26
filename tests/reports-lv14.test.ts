@@ -28,6 +28,7 @@ import {
 } from "@/features/reports/report-templates";
 import {
   addBlock,
+  approveSection,
   changeTemplate,
   createReport,
   findSection,
