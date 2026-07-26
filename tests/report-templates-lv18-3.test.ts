@@ -356,14 +356,7 @@ describe("LV-18.3 · Prototype pollution", () => {
   });
 
   it("bloqueia __proto__ profundamente aninhado em array", () => {
-    const bad = JSON.stringify({
-      format: REPORT_TEMPLATE_EXPORT_FORMAT,
-      schemaVersion: 1,
-      exportedAt: "x",
-      exportedBy: "y",
-      source: "mock",
-      templates: [{ nested: [{ __proto__: { evil: true } }] }],
-    });
+    const bad = `{"format":"${REPORT_TEMPLATE_EXPORT_FORMAT}","schemaVersion":1,"exportedAt":"x","exportedBy":"y","source":"mock","templates":[{"nested":[{"__proto__":{"evil":true}}]}]}`;
     try {
       parseReportTemplateImport(bad);
     } catch (e) {
