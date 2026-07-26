@@ -54,7 +54,7 @@ export const APP_NAV: AppNavGroup[] = [
       { label: "Entrevistas e diligências", to: "/app/entrevistas", icon: Mic, description: "Registros de campo" },
       { label: "Quesitos e evidências", to: "/app/quesitos", icon: ListChecks, description: "Perguntas e provas" },
       { label: "Laudos", to: "/app/laudos", icon: FileText, description: "Peças técnicas" },
-      { label: "Modelos", to: "/app/modelos", icon: Layout, construction: true, description: "Templates de laudo" },
+      { label: "Modelos", to: "/app/modelos", icon: Layout, description: "Templates de laudo" },
     ],
   },
   {
