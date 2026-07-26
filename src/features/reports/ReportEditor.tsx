@@ -231,7 +231,9 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {REPORT_SECTION_STATUSES.map((s) => (
+                        {REPORT_SECTION_STATUSES.filter(
+                          (s) => s !== "aprovada",
+                        ).map((s) => (
                           <SelectItem key={s} value={s}>
                             {REPORT_SECTION_STATUS_LABEL[s]}
                           </SelectItem>
