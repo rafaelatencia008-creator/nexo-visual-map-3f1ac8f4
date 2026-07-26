@@ -1,5 +1,5 @@
 /**
- * LV-18.5 — Caso de uso central: aplicar Modelo de Laudo a um novo Laudo.
+ * LV-18.5 / LV-18.6 — Caso de uso central: aplicar Modelo de Laudo a um novo Laudo.
  *
  * Este módulo é a única porta legítima para criar laudos a partir de
  * modelos. A UI é fina — não monta estrutura, não gera IDs, não valida
@@ -7,16 +7,13 @@
  *
  * Restrições:
  *  - Sem persistência, sem rede, sem IA, sem eval.
- *  - Só usa stores mock existentes (LV-18 e LV-14).
+ *  - Recebe `ReportTemplateRepository` por injeção (LV-18.6).
  *  - Emite UMA única atualização por criação bem-sucedida.
  *  - Não muta o modelo original. Cópia profunda de tudo que entra.
  */
 
-import {
-  getSnapshot as getTemplatesSnapshot,
-  getTemplate as getTemplateFromStore,
-} from "@/features/report-templates/report-template-store";
-import { listTemplateVersions } from "@/features/report-templates/report-template-version-store";
+import { reportTemplateRepository } from "@/features/report-templates/report-template-composition";
+import type { ReportTemplateRepository } from "@/features/report-templates/report-template-repository";
 import { validateReportTemplate } from "@/features/report-templates/report-template-validation";
 import type {
   ReportTemplate,
@@ -65,8 +62,11 @@ export function isTemplateCompatibleWithReportContext(
 
 // ---------- Localização de modelo e versão ----------
 
-function requireTemplateOrThrow(id: TemplateId): ReportTemplate {
-  const t = getTemplateFromStore(id);
+function requireTemplateOrThrow(
+  id: TemplateId,
+  repository: ReportTemplateRepository,
+): ReportTemplate {
+  const t = repository.getById(id);
   if (!t) {
     throw new ReportTemplateApplicationError(
       "report_template_not_found",
@@ -78,8 +78,12 @@ function requireTemplateOrThrow(id: TemplateId): ReportTemplate {
 }
 
 /** Localiza a versão publicada aplicável (a versão de publicação mais recente). */
-function locatePublishedVersion(templateId: TemplateId, versionId?: string) {
-  const versions = listTemplateVersions(templateId);
+function locatePublishedVersion(
+  templateId: TemplateId,
+  repository: ReportTemplateRepository,
+  versionId?: string,
+) {
+  const versions = repository.listTemplateVersions(templateId);
   if (versionId) {
     const v = versions.find((x) => x.id === versionId);
     if (!v) {
@@ -205,6 +209,7 @@ export function previewReportTemplateApplication(
     readonly caseId?: string;
     readonly caseLabel?: string;
   },
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateApplicationPreview {
   if (!input.templateId) {
     throw new ReportTemplateApplicationError(
@@ -213,7 +218,7 @@ export function previewReportTemplateApplication(
     );
   }
 
-  const template = requireTemplateOrThrow(input.templateId);
+  const template = requireTemplateOrThrow(input.templateId, repository);
   if (template.status !== "publicado") {
     throw new ReportTemplateApplicationError(
       "report_template_not_published",
@@ -243,7 +248,7 @@ export function previewReportTemplateApplication(
     );
   }
 
-  const version = locatePublishedVersion(input.templateId, input.templateVersionId);
+  const version = locatePublishedVersion(input.templateId, repository, input.templateVersionId);
 
   // Referências quebradas
   const broken = findBrokenVariableReferences(version.snapshot);
@@ -343,6 +348,7 @@ export function previewReportTemplateApplication(
  */
 export function createReportFromTemplate(
   input: ReportTemplateApplicationInput,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): ReportTemplateApplicationResult {
   const title = (input.title ?? "").trim();
   if (title.length === 0) {
@@ -364,7 +370,7 @@ export function createReportFromTemplate(
     templateVersionId: input.templateVersionId,
     variableValues: input.variableValues,
     contextSpecialty: input.contextSpecialty,
-  });
+  }, repository);
 
   // 4 — fingerprint (concorrência)
   if (input.fingerprint && input.fingerprint !== preview.fingerprint) {
@@ -377,7 +383,7 @@ export function createReportFromTemplate(
 
   // Releitura defensiva do snapshot para garantir que o modelo continua
   // existindo e publicado no exato momento da confirmação.
-  const nowTemplate = getTemplateFromStore(input.templateId);
+  const nowTemplate = repository.getById(input.templateId);
   if (!nowTemplate) {
     throw new ReportTemplateApplicationError(
       "report_template_not_found",
@@ -443,8 +449,9 @@ export function createReportFromTemplate(
 /** Lista modelos elegíveis para aplicação (publicados, opcionalmente por especialidade). */
 export function listApplicableTemplates(
   contextSpecialty?: ReportTemplateSpecialty,
+  repository: ReportTemplateRepository = reportTemplateRepository,
 ): readonly ReportTemplate[] {
-  const snap = getTemplatesSnapshot();
+  const snap = repository.getSnapshot();
   return snap.templates.filter(
     (t) =>
       t.status === "publicado" &&
