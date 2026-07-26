@@ -372,6 +372,7 @@ export function addSection(
   validateUniqueSectionIds(next.sections);
   replaceInternal(idx, next);
   commit();
+  logHistory(templateId, "section_added", `Seção adicionada: ${title}.`, { sectionId: newSection.id, title });
   return getTemplate(templateId)!.sections.find((s) => s.id === newSection.id)!;
 }
 
