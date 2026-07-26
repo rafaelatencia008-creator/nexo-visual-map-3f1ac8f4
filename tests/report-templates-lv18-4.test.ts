@@ -211,7 +211,7 @@ describe("LV-18.4 — round-trip export → import via caminhos da UI", () => {
       { recordHistory: false },
     );
     expect(json).toBe(first); // determinístico
-    expect(json).toContain("modelos-de-laudo-v1");
+    expect(json).toContain("\"format\": \"nexo-report-template\"");
   });
 });
 
