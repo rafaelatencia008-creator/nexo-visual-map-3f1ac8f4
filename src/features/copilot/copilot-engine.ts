@@ -15,6 +15,7 @@ import {
   UNKNOWN_INTENT_MESSAGE,
 } from "./copilot-labels";
 import { computeFingerprint } from "./copilot-action-adapters";
+import { scopeSourcesToContext, scopeQualifier, type CopilotScope } from "./copilot-scope";
 
 let engineCounter = 0;
 function nextId(prefix: string): string {
@@ -25,6 +26,9 @@ export function resetEngineCounter(seed = 0): void {
   engineCounter = seed;
 }
 
+const NO_SELECTION_MESSAGE =
+  "Abra ou selecione o registro específico para que eu possa propor uma alteração exata. Nenhuma mutação foi criada.";
+
 function pickByType(
   sources: readonly CopilotSourceRecord[],
   type: CopilotSourceType,
@@ -33,9 +37,7 @@ function pickByType(
   return sources.filter((s) => s.sourceType === type).slice(0, limit);
 }
 
-function refFromSource(
-  s: CopilotSourceRecord,
-): CopilotReference {
+function refFromSource(s: CopilotSourceRecord): CopilotReference {
   return {
     id: nextId("ref"),
     sourceType: s.sourceType,
@@ -52,10 +54,26 @@ function bulletize(items: readonly string[]): string {
   return items.map((i) => `• ${i}`).join("\n");
 }
 
+function candidatesLine(
+  items: readonly CopilotSourceRecord[],
+  singularLabel: string,
+): string {
+  if (items.length === 0) return "";
+  const list = bulletize(items.slice(0, 6).map((i) => i.label));
+  return `\n\nCandidatos encontrados (abra um ${singularLabel} para prosseguir):\n${list}`;
+}
+
 export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   const intent = classifyIntent(input.text, input.context);
   const ctx = input.context;
-  const sources = input.availableSources;
+  const scopeResult = scopeSourcesToContext({
+    context: ctx,
+    availableSources: input.availableSources,
+  });
+  const sources = scopeResult.scoped;
+  const scope = scopeResult.scope;
+  const qualifier = scopeQualifier(scope);
+  const selected = scopeResult.selected;
 
   if (intent === "recusar_acao") {
     return {
@@ -116,13 +134,12 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
         proposedActions: [],
       };
     }
-    const refs = items.map(refFromSource);
     return {
       intent,
-      responseText: `Encontrei ${items.length} pendências no sistema:\n${bulletize(
+      responseText: `Encontrei ${items.length} pendências ${qualifier}:\n${bulletize(
         items.map((i) => `${i.label}${i.excerpt ? ` — ${i.excerpt}` : ""}`),
       )}`,
-      references: refs,
+      references: items.map(refFromSource),
       suggestedPrompts: ["Identifique prazos vencidos.", "Quais prazos estão próximos?"],
       proposedActions: [],
     };
@@ -143,7 +160,7 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
     }
     return {
       intent,
-      responseText: `Documentos com prazo cadastrado:\n${bulletize(docs.map((d) => d.label))}`,
+      responseText: `Documentos com prazo cadastrado (${qualifier}):\n${bulletize(docs.map((d) => d.label))}`,
       references: docs.map(refFromSource),
       suggestedPrompts: ["Quais pendências exigem atenção?"],
       proposedActions: [],
@@ -151,7 +168,13 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "localizar_documentos" || intent === "resumir_documentos") {
-    const docs = pickByType(sources, "documento", 6);
+    // Se o documento estiver selecionado, priorize-o.
+    const selectedDoc =
+      selected && selected.sourceType === "documento" ? selected : undefined;
+    let docs = pickByType(sources, "documento", 6);
+    if (selectedDoc) {
+      docs = [selectedDoc, ...docs.filter((d) => d.id !== selectedDoc.id)].slice(0, 6);
+    }
     if (docs.length === 0) {
       return {
         intent,
@@ -161,9 +184,12 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
         proposedActions: [],
       };
     }
+    const head = selectedDoc
+      ? `Documento em foco: ${selectedDoc.label}. Outros documentos relacionados ${qualifier}:`
+      : `Localizei ${docs.length} documentos ${qualifier}:`;
     return {
       intent,
-      responseText: `Localizei ${docs.length} documentos no contexto atual:\n${bulletize(
+      responseText: `${head}\n${bulletize(
         docs.map((d) => `${d.label}${d.excerpt ? ` — ${d.excerpt}` : ""}`),
       )}`,
       references: docs.map(refFromSource),
@@ -173,7 +199,16 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "sugerir_perguntas_entrevista" || intent === "preparar_roteiro_entrevista") {
+    const selEntrevista =
+      selected && selected.sourceType === "entrevista" ? selected : undefined;
     const ent = pickByType(sources, "entrevista", 4);
+    const refs = (selEntrevista ? [selEntrevista] : ent).map(refFromSource);
+    const suffix =
+      selEntrevista
+        ? `\n\nEntrevista alvo: ${selEntrevista.label}.`
+        : ent.length > 1
+          ? candidatesLine(ent, "entrevista")
+          : "";
     return {
       intent,
       responseText:
@@ -185,23 +220,25 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
           "Você tem informações complementares relevantes?",
         ]) +
         "\n\n" +
-        DRAFT_DISCLAIMER,
-      references: ent.map(refFromSource),
+        DRAFT_DISCLAIMER +
+        suffix +
+        (!selEntrevista && ent.length > 1 ? `\n\n${NO_SELECTION_MESSAGE}` : ""),
+      references: refs,
       suggestedPrompts: ["Resuma as notas registradas na entrevista."],
-      proposedActions: ent[0]
+      proposedActions: selEntrevista
         ? [
             makeAction({
               kind: "add_interview_note",
               label: "Adicionar nota à entrevista",
-              description: `Adiciona nota manual demonstrativa em ${ent[0].label}.`,
+              description: `Adiciona nota manual demonstrativa em ${selEntrevista.label}.`,
               targetType: "entrevista",
-              targetId: ent[0].id,
+              targetId: selEntrevista.id,
               payload: {
                 text: "Nota gerada por rascunho do copiloto — revisar antes de manter.",
                 kind: "observacao",
               },
               risk: "medium",
-              fingerprint: computeFingerprint(ent[0]),
+              fingerprint: computeFingerprint(selEntrevista),
             }),
           ]
         : [],
@@ -209,7 +246,16 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "preparar_checklist_diligencia") {
+    const selDil =
+      selected && selected.sourceType === "diligencia" ? selected : undefined;
     const dil = pickByType(sources, "diligencia", 3);
+    const refs = (selDil ? [selDil] : dil).map(refFromSource);
+    const suffix =
+      selDil
+        ? `\n\nDiligência alvo: ${selDil.label}.`
+        : dil.length > 1
+          ? candidatesLine(dil, "diligência")
+          : "";
     return {
       intent,
       responseText:
@@ -222,20 +268,22 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
           "Anotar pessoas presentes e testemunhas.",
         ]) +
         "\n\n" +
-        DRAFT_DISCLAIMER,
-      references: dil.map(refFromSource),
+        DRAFT_DISCLAIMER +
+        suffix +
+        (!selDil && dil.length > 1 ? `\n\n${NO_SELECTION_MESSAGE}` : ""),
+      references: refs,
       suggestedPrompts: ["Liste as pendências da diligência."],
-      proposedActions: dil[0]
+      proposedActions: selDil
         ? [
             makeAction({
               kind: "add_diligence_pending",
               label: "Adicionar pendência à diligência",
-              description: `Registra pendência demonstrativa em ${dil[0].label}.`,
+              description: `Registra pendência demonstrativa em ${selDil.label}.`,
               targetType: "diligencia",
-              targetId: dil[0].id,
+              targetId: selDil.id,
               payload: { text: "Confirmar equipamentos antes de sair." },
               risk: "low",
-              fingerprint: computeFingerprint(dil[0]),
+              fingerprint: computeFingerprint(selDil),
             }),
           ]
         : [],
@@ -261,7 +309,7 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
     }
     return {
       intent,
-      responseText: `Evidências no contexto atual:\n${bulletize(evs.map((e) => e.label))}`,
+      responseText: `Evidências ${qualifier}:\n${bulletize(evs.map((e) => e.label))}`,
       references: evs.map(refFromSource),
       suggestedPrompts: ["Quais lacunas impedem este quesito de ser concluído?"],
       proposedActions: [],
@@ -269,36 +317,33 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "identificar_lacunas") {
+    const selQ = selected && selected.sourceType === "quesito" ? selected : undefined;
     const qs = pickByType(sources, "quesito", 20).filter(
       (q) => Number((q.metadata as Record<string, unknown>).gapCount ?? 0) > 0,
     );
-    const target = ctx.entityType === "quesito" && ctx.entityId
-      ? sources.find((s) => s.sourceType === "quesito" && s.id === ctx.entityId)
-      : undefined;
-    const refs = (target ? [target, ...qs.filter((q) => q.id !== target.id)] : qs)
+    const refs = (selQ ? [selQ, ...qs.filter((q) => q.id !== selQ.id)] : qs)
       .slice(0, 6)
       .map(refFromSource);
     return {
       intent,
       responseText:
-        qs.length === 0 && !target
+        qs.length === 0 && !selQ
           ? INSUFFICIENT_DATA_MESSAGE
-          : `Identifiquei quesitos com lacunas abertas:\n${bulletize(
-              refs.map((r) => r.label),
-            )}`,
+          : `Quesitos com lacunas abertas (${qualifier}):\n${bulletize(refs.map((r) => r.label))}` +
+            (!selQ && qs.length > 1 ? `\n\n${NO_SELECTION_MESSAGE}` : ""),
       references: refs,
       suggestedPrompts: ["Localize evidências relevantes no contexto atual."],
-      proposedActions: target
+      proposedActions: selQ
         ? [
             makeAction({
               kind: "create_question_gap",
               label: "Registrar lacuna no quesito",
-              description: `Adiciona lacuna demonstrativa em ${target.label}.`,
+              description: `Adiciona lacuna demonstrativa em ${selQ.label}.`,
               targetType: "quesito",
-              targetId: target.id,
+              targetId: selQ.id,
               payload: { text: "Falta documento comprobatório." },
               risk: "medium",
-              fingerprint: computeFingerprint(target),
+              fingerprint: computeFingerprint(selQ),
             }),
           ]
         : [],
@@ -306,14 +351,17 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "explicar_cobertura_quesito") {
-    const target = ctx.entityType === "quesito" && ctx.entityId
-      ? sources.find((s) => s.sourceType === "quesito" && s.id === ctx.entityId)
-      : pickByType(sources, "quesito", 1)[0];
+    const target = selected && selected.sourceType === "quesito" ? selected : undefined;
     if (!target) {
+      const cands = pickByType(sources, "quesito", 6);
       return {
         intent,
-        responseText: INSUFFICIENT_DATA_MESSAGE,
-        references: [],
+        responseText:
+          (cands.length === 0
+            ? INSUFFICIENT_DATA_MESSAGE
+            : `Nenhum quesito selecionado. ${NO_SELECTION_MESSAGE}`) +
+          candidatesLine(cands, "quesito"),
+        references: cands.map(refFromSource),
         suggestedPrompts: [],
         proposedActions: [],
       };
@@ -330,14 +378,17 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   }
 
   if (intent === "rascunhar_resposta_quesito") {
-    const target = ctx.entityType === "quesito" && ctx.entityId
-      ? sources.find((s) => s.sourceType === "quesito" && s.id === ctx.entityId)
-      : pickByType(sources, "quesito", 1)[0];
+    const target = selected && selected.sourceType === "quesito" ? selected : undefined;
     if (!target) {
+      const cands = pickByType(sources, "quesito", 6);
       return {
         intent,
-        responseText: INSUFFICIENT_DATA_MESSAGE,
-        references: [],
+        responseText:
+          (cands.length === 0
+            ? INSUFFICIENT_DATA_MESSAGE
+            : `Não é possível rascunhar sem escolher o quesito exato. ${NO_SELECTION_MESSAGE}`) +
+          candidatesLine(cands, "quesito"),
+        references: cands.map(refFromSource),
         suggestedPrompts: [],
         proposedActions: [],
       };
@@ -383,7 +434,7 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
     }
     return {
       intent,
-      responseText: `Quesitos preparados para o laudo:\n${bulletize(qs.map((q) => q.label))}`,
+      responseText: `Quesitos preparados para o laudo (${qualifier}):\n${bulletize(qs.map((q) => q.label))}`,
       references: qs.map(refFromSource),
       suggestedPrompts: ["Liste itens ainda pendentes para o laudo."],
       proposedActions: [],
@@ -436,7 +487,7 @@ export function runCopilot(input: CopilotEngineInput): CopilotEngineOutput {
   return {
     intent: "resumo_contexto",
     responseText:
-      `Você está em ${ctx.moduleLabel}${ctx.entityLabel ? ` — ${ctx.entityLabel}` : ""}.\n` +
+      `Você está em ${ctx.moduleLabel}${ctx.entityLabel ? ` — ${ctx.entityLabel}` : ""} (${qualifier}).\n` +
       `• Documentos: ${totalDocs}\n• Entrevistas: ${totalEnt}\n• Quesitos: ${totalQ}\n• Pendências: ${totalPend}`,
     references: pickByType(sources, "processo", 2).map(refFromSource),
     suggestedPrompts: [
@@ -474,51 +525,53 @@ function makeAction(opts: {
 export function suggestionsForContext(
   ctx: CopilotEngineInput["context"],
 ): readonly string[] {
+  // IMPORTANTE: cada sugestão precisa ser reconhecida pelo `classifyIntent`.
   switch (ctx.moduleKey) {
     case "documentos":
       return [
-        "Resumir arquivos disponíveis",
-        "Localizar documentos sem classificação",
-        "Listar documentos relacionados ao processo atual",
+        "Resuma os arquivos disponíveis.",
+        "Localize documentos sem classificação.",
+        "Quais documentos têm prazo próximo?",
       ];
     case "entrevistas":
       return [
-        "Listar perguntas pendentes",
-        "Sugerir perguntas complementares",
-        "Preparar roteiro",
-        "Resumir notas registradas",
+        "Sugira perguntas complementares para a entrevista.",
+        "Prepare um roteiro de entrevista.",
+        "Prepare um checklist para a diligência.",
+        "Quais pendências exigem atenção?",
       ];
     case "diligencias":
       return [
-        "Preparar checklist",
-        "Listar pendências da diligência",
-        "Resumir fotos e localização",
+        "Prepare um checklist para a diligência.",
+        "Liste pendências da diligência.",
+        "Quais prazos estão próximos?",
       ];
     case "quesitos":
       return [
-        "Identificar lacunas",
-        "Explicar cobertura",
-        "Localizar evidências",
-        "Rascunhar resposta técnica",
-        "Preparar para o laudo",
+        "Identifique lacunas nos quesitos.",
+        "Explique a cobertura deste quesito.",
+        "Localize evidências no contexto atual.",
+        "Rascunhe uma resposta técnica ao quesito.",
+        "Preparar conteúdo para o laudo.",
       ];
     case "agenda":
     case "pendencias":
       return [
-        "Listar próximos compromissos",
-        "Priorizar pendências",
-        "Identificar prazos próximos",
+        "Quais pendências exigem atenção?",
+        "Quais prazos estão próximos?",
+        "Identifique prazos vencidos.",
       ];
     case "processos":
       return [
         "Explique a situação deste processo.",
-        "Quais perícias estão em andamento?",
         "Quais pendências exigem atenção?",
+        "Sugira próximos passos.",
       ];
     case "pericias":
       return [
         "Sugira próximos passos para esta perícia.",
         "Quais quesitos estão preparados para o laudo?",
+        "Quais pendências exigem atenção?",
       ];
     default:
       return [
@@ -545,3 +598,5 @@ export function moduleFromRoute(route: string): {
   if (route === "/app" || route.startsWith("/app")) return { moduleKey: "inicio", moduleLabel: "Painel" };
   return { moduleKey: "outro", moduleLabel: "Área do aplicativo" };
 }
+
+export { NO_SELECTION_MESSAGE };
