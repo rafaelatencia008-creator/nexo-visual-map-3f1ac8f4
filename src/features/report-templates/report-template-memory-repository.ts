@@ -381,7 +381,7 @@ export function createIsolatedReportTemplateRepository(): ReportTemplateReposito
     return ver;
   };
 
-  return Object.freeze({
+  const result = Object.freeze({
     getSnapshot: () => templateSnapshot,
     subscribe: (listener) => {
       templateListeners.add(listener);
