@@ -80,12 +80,7 @@ export function getMockRepositories(): Repositories {
     list: () => listReports(),
     getById: (id) => getReport(id),
     subscribe: (listener) => subscribeReports(listener),
-    create: (input) =>
-      createReport({
-        title: input.title,
-        templateId: input.templateId,
-        caseId: input.caseId,
-      }),
+    create: (input) => createReport(input),
     isFrozen: (id) => isReportFrozen(id),
   };
   const reportVersions: ReportVersionRepository = {
