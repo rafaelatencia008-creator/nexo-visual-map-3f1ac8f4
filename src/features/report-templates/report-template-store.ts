@@ -16,6 +16,16 @@ import {
   INITIAL_TEMPLATE_COUNT,
 } from "./report-template-fixtures";
 import {
+  appendTemplateHistoryEvent,
+  resetTemplateHistoryStore,
+  type ReportTemplateHistoryAction,
+} from "./report-template-history-store";
+import {
+  createTemplateVersion,
+  resetTemplateVersionStore,
+} from "./report-template-version-store";
+import { validateReportTemplate } from "./report-template-validation";
+import {
   ReportTemplateError,
   type AddBlockInput,
   type AddSectionInput,

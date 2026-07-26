@@ -179,6 +179,8 @@ export interface UpdateVariableInput {
 export type ReportTemplateErrorCode =
   | "template_not_found"
   | "template_archived"
+  | "template_published"
+  | "template_invalid"
   | "section_not_found"
   | "block_not_found"
   | "variable_not_found"
@@ -187,14 +189,27 @@ export type ReportTemplateErrorCode =
   | "empty_name"
   | "empty_variable_key"
   | "invalid_position"
-  | "variable_in_use";
+  | "variable_in_use"
+  | "invalid_transition"
+  | "version_not_found"
+  | "version_reason_required"
+  | "invalid_variable_reference"
+  | "validation_failed"
+  | "operation_not_allowed"
+  | "history_append_failed";
 
 export class ReportTemplateError extends Error {
   readonly code: ReportTemplateErrorCode;
-  constructor(code: ReportTemplateErrorCode, message: string) {
+  readonly context?: Readonly<Record<string, unknown>>;
+  constructor(
+    code: ReportTemplateErrorCode,
+    message: string,
+    context?: Readonly<Record<string, unknown>>,
+  ) {
     super(message);
     this.name = "ReportTemplateError";
     this.code = code;
+    this.context = context ? Object.freeze({ ...context }) : undefined;
   }
 }
 
