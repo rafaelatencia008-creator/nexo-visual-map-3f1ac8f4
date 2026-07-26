@@ -127,19 +127,89 @@ function truncate(s: string, n = 80): string {
 }
 
 function detectConflicts(env: ReportTemplateExportEnvelope): ImportConflict[] {
-  const existing = new Set(getSnapshot().templates.map((t) => t.id));
+  const existing = getExistingReportTemplateIds();
   const out: ImportConflict[] = [];
+  const batchTpl = new Set<string>();
+  const batchSec = new Set<string>();
+  const batchBlk = new Set<string>();
+  const batchVar = new Set<string>();
   for (const t of env.templates) {
-    if (existing.has(t.sourceId as ReportTemplateId)) {
+    if (existing.templates.has(t.sourceId)) {
       out.push({
         sourceId: t.sourceId,
         kind: "template",
-        reason: "ID já existe na store atual.",
+        reason: "ID de modelo já existe na store.",
+        templateSourceId: t.sourceId,
       });
+    } else if (batchTpl.has(t.sourceId)) {
+      out.push({
+        sourceId: t.sourceId,
+        kind: "template",
+        reason: "ID de modelo duplicado no pacote.",
+        templateSourceId: t.sourceId,
+      });
+    }
+    batchTpl.add(t.sourceId);
+
+    for (const v of t.variables) {
+      if (existing.variables.has(v.sourceId)) {
+        out.push({
+          sourceId: v.sourceId,
+          kind: "variable",
+          reason: "ID de variável já existe na store.",
+          templateSourceId: t.sourceId,
+        });
+      } else if (batchVar.has(v.sourceId)) {
+        out.push({
+          sourceId: v.sourceId,
+          kind: "variable",
+          reason: "ID de variável duplicado entre modelos do pacote.",
+          templateSourceId: t.sourceId,
+        });
+      }
+      batchVar.add(v.sourceId);
+    }
+
+    for (const s of t.sections) {
+      if (existing.sections.has(s.sourceId)) {
+        out.push({
+          sourceId: s.sourceId,
+          kind: "section",
+          reason: "ID de seção já existe na store.",
+          templateSourceId: t.sourceId,
+        });
+      } else if (batchSec.has(s.sourceId)) {
+        out.push({
+          sourceId: s.sourceId,
+          kind: "section",
+          reason: "ID de seção duplicado entre modelos do pacote.",
+          templateSourceId: t.sourceId,
+        });
+      }
+      batchSec.add(s.sourceId);
+      for (const b of s.blocks) {
+        if (existing.blocks.has(b.sourceId)) {
+          out.push({
+            sourceId: b.sourceId,
+            kind: "block",
+            reason: "ID de bloco já existe na store.",
+            templateSourceId: t.sourceId,
+          });
+        } else if (batchBlk.has(b.sourceId)) {
+          out.push({
+            sourceId: b.sourceId,
+            kind: "block",
+            reason: "ID de bloco duplicado entre modelos do pacote.",
+            templateSourceId: t.sourceId,
+          });
+        }
+        batchBlk.add(b.sourceId);
+      }
     }
   }
   return out;
 }
+
 
 function countRegeneratedIds(env: ReportTemplateExportEnvelope): number {
   let n = 0;
