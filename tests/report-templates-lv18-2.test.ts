@@ -128,6 +128,7 @@ describe("LV-18.2 · Validação", () => {
 
 describe("LV-18.2 · Transições e publicação", () => {
   it("publica um modelo válido de rascunho e cria versão", () => {
+    returnTemplateToDraft(PSICO);
     const t = publishTemplate(PSICO);
     expect(t.status).toBe("publicado");
     const vs = listTemplateVersions(PSICO);
@@ -136,13 +137,8 @@ describe("LV-18.2 · Transições e publicação", () => {
     expect(vs[0]!.statusAtCreation).toBe("publicado");
   });
 
-  it("publicação inválida bloqueia", () => {
-    // Modelo Vazio precisa ganhar erros — sem seções em status publicado, mas
-    // vazio-em-rascunho tem isenção. Force erro removendo o nome via update:
-    // aqui basta usar TECN sem seções — modificamos criando um novo.
-    const t = createTemplate({ name: " " } as never);
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    t; // placeholder
+  it("publicação de já publicado é bloqueada com invalid_transition", () => {
+    expect(() => publishTemplate(PSICO)).toThrow(ReportTemplateError);
   });
 
   it("bloqueia publicação de modelo sem seções (não isento)", () => {
@@ -155,7 +151,6 @@ describe("LV-18.2 · Transições e publicação", () => {
   });
 
   it("retorna publicado para rascunho", () => {
-    publishTemplate(PSICO);
     const back = returnTemplateToDraft(PSICO);
     expect(back.status).toBe("rascunho");
     const hist = listTemplateHistory(PSICO);
