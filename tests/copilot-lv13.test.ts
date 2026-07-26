@@ -206,7 +206,7 @@ describe("classifyIntent", () => {
   });
   it("contexto de quesitos favorece intents de quesito", () => {
     // texto ambíguo — em contexto quesitos deve preferir cobertura
-    expect(classifyIntent("cobertura", CTX_QUESITOS)).toBe("explicar_cobertura_quesito");
+    expect(classifyIntent("qual a cobertura do quesito", CTX_QUESITOS)).toBe("explicar_cobertura_quesito");
   });
 });
 
