@@ -55,6 +55,7 @@ import {
   changeTemplate,
   duplicateBlock,
   getReport,
+  isReportFrozen,
   markBlockReviewed,
   moveBlock,
   removeBlock,
@@ -68,6 +69,10 @@ import { ReportSourceLinkDialog } from "./ReportSourceLinkDialog";
 import { ReportReviewPanel } from "./ReportReviewPanel";
 import { ReportPreview } from "./ReportPreview";
 import { ReportExportDialog } from "./ReportExportDialog";
+import { ReportClosurePanel } from "./ReportClosurePanel";
+import { ReportVersionsPanel } from "./ReportVersionsPanel";
+import { ReportHistoryPanel } from "./ReportHistoryPanel";
+
 
 export type ReportEditorProps = {
   reportId: string;
