@@ -79,7 +79,7 @@ const SAMPLE_TEMPLATE = (name = "Modelo P") =>
 function buildEnvelope(template = SAMPLE_TEMPLATE()) {
   return {
     format: "nexo-report-template" as const,
-    schemaVersion: "1.0" as const,
+    schemaVersion: 1 as const,
     exportedAt: "2026-07-25T12:00:00.000Z",
     exportedBy: "usr-test",
     source: "mock" as const,
@@ -213,7 +213,6 @@ describe("LV-18.6 — aplicação de modelo em laudo via repositório", () => {
     const t = iso.create({ name: "Base" });
     iso.publish(t.id);
     iso.createManualVersion(t.id, "Revisão", "Ajuste");
-    iso.publish(t.id, "Re-publicação");
 
     const preview = previewReportTemplateApplication(
       {
