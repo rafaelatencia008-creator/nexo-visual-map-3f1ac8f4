@@ -342,7 +342,12 @@ export function markBlockReviewed(
   return next;
 }
 
-export function setSectionStatus(
+/**
+ * LV-15 (correção) — mutação interna privada para alterar status.
+ * Não faz validação: usada por `setSectionStatus` (com bloqueio de "aprovada")
+ * e por `approveSection` (após validação completa).
+ */
+function applySectionStatusInternal(
   reportId: string,
   sectionId: string,
   status: ReportSectionStatus,
@@ -356,6 +361,23 @@ export function setSectionStatus(
     { sectionId },
   );
   return next;
+}
+
+/**
+ * LV-15 (correção) — rejeita explicitamente `"aprovada"`.
+ * A aprovação só pode ocorrer via `approveSection`, que valida conteúdo e revisão.
+ */
+export function setSectionStatus(
+  reportId: string,
+  sectionId: string,
+  status: ReportSectionStatus,
+): ReportDocument {
+  if (status === "aprovada") {
+    throw new Error(
+      "setSectionStatus não pode aplicar \"aprovada\" diretamente. Use approveSection.",
+    );
+  }
+  return applySectionStatusInternal(reportId, sectionId, status);
 }
 
 /**
@@ -390,9 +412,10 @@ export function approveSection(
       ok: false,
       reason: "Existem blocos não revisados. Revise antes de aprovar.",
     };
-  const next = setSectionStatus(reportId, sectionId, "aprovada");
+  const next = applySectionStatusInternal(reportId, sectionId, "aprovada");
   return { ok: true, document: next };
 }
+
 
 export function addBlock(
   reportId: string,

@@ -28,6 +28,7 @@ import {
 } from "@/features/reports/report-templates";
 import {
   addBlock,
+  approveSection,
   changeTemplate,
   createReport,
   findSection,
@@ -251,20 +252,42 @@ describe("LV-14 — edição de blocos", () => {
 });
 
 describe("LV-14 — alteração de status de seção", () => {
-  it("aplica todos os 4 status", () => {
+  it("aplica os status não-aprovados via setSectionStatus e 'aprovada' via approveSection", () => {
     const doc = seed();
     const secId = doc.sections[0].id;
     for (const s of REPORT_SECTION_STATUSES) {
-      const next = setSectionStatus(doc.id, secId, s);
-      const cur = next.sections.find((x) => x.id === secId)!;
-      expect(cur.status).toBe(s);
+      if (s === "aprovada") {
+        // aprovação exige conteúdo + revisão e passa por approveSection
+        const cur = getReport(doc.id)!.sections.find((x) => x.id === secId)!;
+        for (const b of cur.blocks) {
+          updateBlockContent(doc.id, secId, b.id, "conteúdo válido");
+          markBlockReviewed(doc.id, secId, b.id, true);
+        }
+        const res = approveSection(doc.id, secId);
+        expect(res.ok).toBe(true);
+        if (res.ok) {
+          const secAfter = res.document.sections.find((x) => x.id === secId)!;
+          expect(secAfter.status).toBe("aprovada");
+        }
+      } else {
+        const next = setSectionStatus(doc.id, secId, s);
+        const cur = next.sections.find((x) => x.id === secId)!;
+        expect(cur.status).toBe(s);
+      }
     }
   });
 
   it("progresso de revisão considera 'revisada' e 'aprovada'", () => {
     const doc = seed();
     setSectionStatus(doc.id, doc.sections[0].id, "revisada");
-    setSectionStatus(doc.id, doc.sections[1].id, "aprovada");
+    // aprovar a seção 1 via caminho oficial
+    const sec1 = doc.sections[1];
+    for (const b of sec1.blocks) {
+      updateBlockContent(doc.id, sec1.id, b.id, "conteúdo válido");
+      markBlockReviewed(doc.id, sec1.id, b.id, true);
+    }
+    const res = approveSection(doc.id, sec1.id);
+    expect(res.ok).toBe(true);
     setSectionStatus(doc.id, doc.sections[2].id, "em_elaboracao");
     const list = listReports();
     const total = REPORT_SECTION_KINDS.length;
