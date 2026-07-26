@@ -308,7 +308,8 @@ export function CopilotPanel() {
                     <MessageBubble
                       key={m.id}
                       message={m}
-                      onAction={(a) => openConfirm(active.id, m.id, a)}
+                      onAction={(a) => openConfirm(active.id, m.id, a, m.references)}
+                      onOpenSource={(ref) => handleOpenSource(active.id, m.id, ref)}
                       onReject={(a) => rejectAction(active.id, m.id, a)}
                       onFeedback={(helpful, reason) =>
                         setMessageFeedback(active.id, m.id, { helpful, reason, createdAt: copilotNow() })
