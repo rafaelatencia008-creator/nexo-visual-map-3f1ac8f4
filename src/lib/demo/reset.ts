@@ -14,11 +14,13 @@
 import { resetReportStore } from "@/features/reports/report-mock-store";
 import { resetInterviewStore } from "@/features/interviews/interview-mock-store";
 import { resetCopilotStore } from "@/features/copilot/copilot-mock-store";
+import { resetReportTemplateStore } from "@/features/report-templates/report-template-store";
 import { logDemo } from "./logger";
 
 export function resetDemoData(): void {
   resetReportStore();
   resetInterviewStore();
   resetCopilotStore();
+  resetReportTemplateStore();
   logDemo("reset", "Estado demonstrativo restaurado");
 }
