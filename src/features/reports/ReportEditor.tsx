@@ -127,8 +127,37 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
     );
   }
 
+  // Fecha o diálogo de vínculo de fontes se o documento for congelado.
+  useEffect(() => {
+    if (frozen && sourceDialog) setSourceDialog(null);
+  }, [frozen, sourceDialog]);
+
+  function notifyFrozen(): void {
+    toast.info("Documento congelado. Reabra o documento para editar.");
+  }
+
+  function guarded<A extends unknown[]>(fn: (...args: A) => void) {
+    return (...args: A) => {
+      if (frozen) {
+        notifyFrozen();
+        return;
+      }
+      try {
+        fn(...args);
+      } catch (err) {
+        // Falha inesperada da store — evita chegar ao error boundary.
+        const msg = err instanceof Error ? err.message : "Falha ao aplicar alteração.";
+        toast.error(msg);
+      }
+    };
+  }
+
   function handleTemplateChange(next: ReportTemplateId): void {
     if (!doc) return;
+    if (frozen) {
+      notifyFrozen();
+      return;
+    }
     if (next === doc.templateId) return;
     const ok = window.confirm(
       "Trocar o modelo recria a estrutura inicial das seções. Continuar?",
@@ -140,6 +169,10 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
 
   function handleApproveSection(sectionId: string): void {
     if (!doc) return;
+    if (frozen) {
+      notifyFrozen();
+      return;
+    }
     const result = approveSection(doc.id, sectionId);
     if (!result.ok) {
       toast.error(result.reason);
