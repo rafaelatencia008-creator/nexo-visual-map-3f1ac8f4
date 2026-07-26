@@ -11,6 +11,7 @@ import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { NotificationsPopover } from "@/components/app/NotificationsPopover";
 import { UserMenu } from "@/components/app/UserMenu";
 import { QuickActionsMenu } from "@/components/app/QuickActions";
+import { CopilotTrigger } from "@/features/copilot/CopilotTrigger";
 
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
@@ -80,6 +81,7 @@ export function AppTopbar() {
         <div className="hidden sm:block">
           <QuickActionsMenu />
         </div>
+        <CopilotTrigger />
         <Button
           variant="ghost"
           size="icon"

@@ -5,6 +5,7 @@ import { AppTopbar } from "@/components/app/AppTopbar";
 import { BottomNav } from "@/components/app/BottomNav";
 import { AuthGate } from "@/components/app/AuthGate";
 import { MockDomainProvider } from "@/components/app/MockDomainProvider";
+import { CopilotProvider } from "@/features/copilot/CopilotProvider";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
@@ -20,17 +21,19 @@ function AppLayout() {
   return (
     <AuthGate>
       <MockDomainProvider>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset className="min-h-screen bg-muted/20">
-            <AppTopbar />
-            {/* pb-24 sm:pb-8 evita que a barra inferior cubra conteúdo no celular */}
-            <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-8 lg:p-8 lg:pb-10">
-              <Outlet />
-            </main>
-            <BottomNav />
-          </SidebarInset>
-        </SidebarProvider>
+        <CopilotProvider>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="min-h-screen bg-muted/20">
+              <AppTopbar />
+              {/* pb-24 sm:pb-8 evita que a barra inferior cubra conteúdo no celular */}
+              <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-8 lg:p-8 lg:pb-10">
+                <Outlet />
+              </main>
+              <BottomNav />
+            </SidebarInset>
+          </SidebarProvider>
+        </CopilotProvider>
       </MockDomainProvider>
     </AuthGate>
   );
