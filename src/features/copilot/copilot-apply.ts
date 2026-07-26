@@ -55,7 +55,7 @@ export function applyAction(
         const p = action.payload as { text?: string };
         addGapItem(q.id, {
           kind: "documento_ausente",
-          priority: "media",
+          priority: "normal",
           description: String(p.text ?? "Lacuna sugerida pelo copiloto."),
         });
         return { ok: true, summary: `Lacuna registrada em ${q.text.slice(0, 40)}.` };
