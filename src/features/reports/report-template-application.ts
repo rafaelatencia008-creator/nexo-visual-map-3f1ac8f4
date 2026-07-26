@@ -89,6 +89,20 @@ function locatePublishedVersion(templateId: TemplateId, versionId?: string) {
         { templateId, versionId },
       );
     }
+    if (v.templateId !== templateId) {
+      throw new ReportTemplateApplicationError(
+        "report_template_version_mismatch",
+        "A versão informada não pertence ao modelo selecionado.",
+        { templateId, versionId, versionTemplateId: v.templateId },
+      );
+    }
+    if (v.statusAtCreation !== "publicado") {
+      throw new ReportTemplateApplicationError(
+        "report_template_version_not_published",
+        "A versão selecionada não é uma versão publicada do modelo.",
+        { templateId, versionId, statusAtCreation: v.statusAtCreation },
+      );
+    }
     return v;
   }
   // Última versão gerada quando o modelo estava publicado.
