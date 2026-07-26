@@ -415,59 +415,6 @@ function firstIdsOf(templateId = PSICO) {
   };
 }
 
-interface Guard {
-  snapshotRef: ReturnType<typeof getSnapshot>;
-  version: number;
-  versionsBefore: number;
-  historyBefore: number;
-  emissions: number;
-  unsubscribe: () => void;
-}
-
-function guardPublished(templateId = PSICO): Guard {
-  const snapshotRef = getSnapshot();
-  let emissions = 0;
-  const unsubscribe = subscribe(() => emissions++);
-  return {
-    snapshotRef,
-    version: snapshotRef.version,
-    versionsBefore: listTemplateVersions(templateId).length,
-    historyBefore: listTemplateHistory(templateId).length,
-    emissions: 0,
-    unsubscribe,
-    // proxied getter via closure — cheat by mutating below in expectBlocked
-    // (Bun's Object literal is fine — we read closure `emissions` later)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...( { get _emissions() { return emissions; } } as any),
-  } as Guard;
-}
-
-function expectBlocked(
-  templateId: ReportTemplateId,
-  guard: Guard,
-  fn: () => void,
-): void {
-  expect(fn).toThrow(ReportTemplateError);
-  try {
-    fn();
-  } catch (e) {
-    expect(e).toBeInstanceOf(ReportTemplateError);
-    expect((e as ReportTemplateError).code).toBe("template_published");
-  }
-  const after = getSnapshot();
-  expect(after).toBe(guard.snapshotRef); // mesma referência
-  expect(after.version).toBe(guard.version);
-  expect(listTemplateVersions(templateId).length).toBe(guard.versionsBefore);
-  // dois expectBlocked disparos por teste (o toThrow + o try/catch) → 2 eventos "blocked"
-  const hist = listTemplateHistory(templateId);
-  const newEvents = hist.slice(guard.historyBefore);
-  expect(newEvents.length).toBeGreaterThan(0);
-  for (const ev of newEvents) {
-    expect(ev.result).toBe("blocked");
-    expect(ev.action).toBe("template_operation_blocked");
-  }
-  guard.unsubscribe();
-}
 
 // Alternativa: uma única invocação por teste, com contagem exata de histórico=1.
 function expectBlockedOnce(
