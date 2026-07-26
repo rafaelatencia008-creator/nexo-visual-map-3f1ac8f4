@@ -71,3 +71,52 @@ export type {
   ReportTemplateValidationResult,
   ReportTemplateValidationSeverity,
 } from "./report-template-validation";
+
+// LV-18.3 — Importação e exportação
+export {
+  canonicalStringify,
+  MAX_BLOCK_CONTENT_LENGTH,
+  MAX_BLOCKS_PER_SECTION,
+  MAX_IMPORT_BYTES,
+  MAX_SECTIONS_PER_TEMPLATE,
+  MAX_STRING_LENGTH,
+  MAX_TEMPLATES_PER_IMPORT,
+  MAX_VARIABLES_PER_TEMPLATE,
+  REPORT_TEMPLATE_EXPORT_FORMAT,
+  REPORT_TEMPLATE_SCHEMA_VERSION,
+} from "./report-template-serialization";
+export type {
+  ExportedReportTemplate,
+  ExportedReportTemplateBlock,
+  ExportedReportTemplateSection,
+  ExportedReportTemplateVariable,
+  ReportTemplateExportEnvelope,
+} from "./report-template-serialization";
+
+export {
+  exportReportTemplate,
+  exportReportTemplates,
+  serializeReportTemplate,
+  serializeReportTemplates,
+  toExportedTemplate,
+} from "./report-template-export";
+export type { ExportOptions } from "./report-template-export";
+
+export { parseReportTemplateImport } from "./report-template-import-schema";
+export type { ParsedImportResult } from "./report-template-import-schema";
+
+export {
+  importReportTemplate,
+  importReportTemplates,
+  previewReportTemplateImport,
+} from "./report-template-import";
+export type {
+  ImportConflict,
+  ImportConflictStrategy,
+  ImportIdMapping,
+  ImportOptions,
+  ImportPreview,
+  ImportWarning,
+  ImportedTemplateSummary,
+  ReportTemplateImportReport,
+} from "./report-template-import";
