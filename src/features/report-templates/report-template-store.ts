@@ -650,6 +650,7 @@ export function updateVariable(
   const vars = t.variables.map((v, i) => (i === vIdx ? next : v));
   replaceInternal(idx, { ...t, variables: vars, updatedAt: now() });
   commit();
+  logHistory(templateId, "variable_updated", `Variável atualizada: ${cur.key}.`, { variableId, key: cur.key });
   return getTemplate(templateId)!.variables[vIdx]!;
 }
 
