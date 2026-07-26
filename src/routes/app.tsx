@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/app/BottomNav";
 import { AuthGate } from "@/components/app/AuthGate";
 import { MockDomainProvider } from "@/components/app/MockDomainProvider";
 import { CopilotProvider } from "@/features/copilot/CopilotProvider";
+import { DemoDiagnosticsOverlay } from "@/components/app/DemoDiagnosticsOverlay";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
@@ -31,6 +32,7 @@ function AppLayout() {
                 <Outlet />
               </main>
               <BottomNav />
+              <DemoDiagnosticsOverlay />
             </SidebarInset>
           </SidebarProvider>
         </CopilotProvider>
