@@ -280,15 +280,20 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                   <div className="flex flex-wrap items-center gap-2">
                     <Select
                       value={activeSection.status}
-                      onValueChange={(v) =>
+                      onValueChange={guarded((v: string) =>
                         setSectionStatus(
                           doc.id,
                           activeSection.id,
                           v as ReportSectionStatus,
-                        )
-                      }
+                        ),
+                      )}
+                      disabled={frozen}
                     >
-                      <SelectTrigger className="w-44">
+                      <SelectTrigger
+                        className="w-44"
+                        aria-label="Status da seção"
+                        disabled={frozen}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -305,6 +310,8 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                       size="sm"
                       variant="secondary"
                       onClick={() => handleApproveSection(activeSection.id)}
+                      disabled={frozen}
+                      aria-disabled={frozen}
                       title="Valida e aprova a seção se todos os blocos estiverem preenchidos e revisados."
                     >
                       <ShieldCheck className="mr-1 h-4 w-4" />
@@ -313,13 +320,15 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
+                      disabled={frozen}
+                      aria-disabled={frozen}
+                      onClick={guarded(() =>
                         addBlock(doc.id, activeSection.id, {
                           title: "Novo bloco",
                           content: "",
                           origin: "manual",
-                        })
-                      }
+                        }),
+                      )}
                     >
                       <FilePlus2 className="mr-1 h-4 w-4" />
                       Adicionar bloco
