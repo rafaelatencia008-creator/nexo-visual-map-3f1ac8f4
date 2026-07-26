@@ -120,7 +120,7 @@ export function collectAvailableSources(): readonly CopilotSourceRecord[] {
       id: p.id,
       label: p.titulo,
       searchableText: txt(p.titulo, p.tipo, p.prioridade, p.status),
-      excerpt: p.descricao,
+      excerpt: undefined,
       route: "/app/pendencias",
       updatedAt: p.prazo,
       metadata: {

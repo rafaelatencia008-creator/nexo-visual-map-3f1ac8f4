@@ -54,17 +54,18 @@ export function applyAction(
         if (!q) return { ok: false, reason: "invalid", summary: "Quesito não encontrado." };
         const p = action.payload as { text?: string };
         addGapItem(q.id, {
-          kind: "documento",
+          kind: "documento_ausente",
+          priority: "media",
           description: String(p.text ?? "Lacuna sugerida pelo copiloto."),
         });
-        return { ok: true, summary: `Lacuna registrada em ${q.questionText.slice(0, 40)}.` };
+        return { ok: true, summary: `Lacuna registrada em ${q.text.slice(0, 40)}.` };
       }
       case "save_question_draft": {
         const q = getQuestion(action.targetId ?? "");
         if (!q) return { ok: false, reason: "invalid", summary: "Quesito não encontrado." };
         const p = action.payload as { draft?: string };
-        updateAnswer(q.id, { answerText: String(p.draft ?? "") });
-        return { ok: true, summary: `Rascunho salvo em ${q.questionText.slice(0, 40)}.` };
+        updateAnswer(q.id, { technicalAnswer: String(p.draft ?? "") });
+        return { ok: true, summary: `Rascunho salvo em ${q.text.slice(0, 40)}.` };
       }
       case "mark_question_in_analysis": {
         const q = getQuestion(action.targetId ?? "");
