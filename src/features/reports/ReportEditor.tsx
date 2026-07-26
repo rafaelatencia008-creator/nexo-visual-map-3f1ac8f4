@@ -185,11 +185,23 @@ export function ReportEditor({ reportId, onBack }: ReportEditorProps) {
         </div>
       </div>
 
+      {frozen && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800">
+          <strong>Documento congelado.</strong> A edição está bloqueada porque existe
+          uma versão fechada demonstrativa. Prévia, exportação e comparação continuam
+          disponíveis. Para editar novamente, reabra o documento na aba Versões.
+        </div>
+      )}
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList>
+        <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="editor">Editor</TabsTrigger>
           <TabsTrigger value="revisao">Revisão</TabsTrigger>
           <TabsTrigger value="previa">Prévia</TabsTrigger>
+          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+          <TabsTrigger value="versoes">Versões</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="editor" className="mt-4">
