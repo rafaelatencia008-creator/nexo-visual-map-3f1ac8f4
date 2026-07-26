@@ -16,6 +16,7 @@ import type {
   ReportTemplateSection,
   ReportTemplateSectionId,
   ReportTemplateSpecialty,
+  ReportTemplateStatus,
   ReportTemplateVariable,
   ReportTemplateVariableId,
   ReportTemplateVariableKind,
@@ -52,6 +53,7 @@ type TemplateSeed = {
   name: string;
   description: string;
   specialty: ReportTemplateSpecialty;
+  status?: ReportTemplateStatus;
   sections: readonly SectionSeed[];
   variables: readonly VariableSeed[];
 };
@@ -259,6 +261,7 @@ const SEEDS: readonly TemplateSeed[] = [
     description:
       "Modelo propositalmente incompleto — usado como base para novos modelos criados no editor.",
     specialty: "geral",
+    status: "rascunho",
     sections: [],
     variables: [],
   },
@@ -292,7 +295,7 @@ function seedToTemplate(seed: TemplateSeed): ReportTemplate {
     name: seed.name,
     description: seed.description,
     specialty: seed.specialty,
-    status: "publicado",
+    status: seed.status ?? "publicado",
     createdAt: FIXED_CREATED,
     updatedAt: FIXED_UPDATED,
     createdBy: MOCK_USER,

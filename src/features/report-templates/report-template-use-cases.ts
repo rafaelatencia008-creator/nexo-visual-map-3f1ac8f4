@@ -13,6 +13,7 @@ export {
   addSection,
   addVariable,
   archiveTemplate,
+  createManualTemplateVersion,
   createTemplate,
   duplicateTemplate,
   getSnapshot,
@@ -21,11 +22,13 @@ export {
   listTemplates,
   moveBlock,
   moveSection,
+  publishTemplate,
   reactivateTemplate,
   removeBlock,
   removeSection,
   removeVariable,
   resetReportTemplateStore,
+  returnTemplateToDraft,
   subscribe,
   updateBlock,
   updateSection,
@@ -34,3 +37,37 @@ export {
 } from "./report-template-store";
 
 export type { ReportTemplateSnapshot } from "./report-template-store";
+
+export {
+  createTemplateVersion,
+  getTemplateVersion,
+  getTemplateVersionsSnapshot,
+  listTemplateVersions,
+  resetTemplateVersionStore,
+  subscribeTemplateVersions,
+} from "./report-template-version-store";
+export type { ReportTemplateVersion } from "./report-template-version-store";
+
+export {
+  appendTemplateHistoryEvent,
+  getTemplateHistorySnapshot,
+  listTemplateHistory,
+  resetTemplateHistoryStore,
+  subscribeTemplateHistory,
+} from "./report-template-history-store";
+export type {
+  ReportTemplateHistoryAction,
+  ReportTemplateHistoryEvent,
+  ReportTemplateHistoryResult,
+} from "./report-template-history-store";
+
+export { compareReportTemplates } from "./report-template-version-diff";
+export type { ReportTemplateDiff } from "./report-template-version-diff";
+
+export { validateReportTemplate } from "./report-template-validation";
+export type {
+  ReportTemplateValidationCode,
+  ReportTemplateValidationIssue,
+  ReportTemplateValidationResult,
+  ReportTemplateValidationSeverity,
+} from "./report-template-validation";

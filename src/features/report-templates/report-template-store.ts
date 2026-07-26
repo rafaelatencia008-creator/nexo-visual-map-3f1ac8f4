@@ -16,6 +16,16 @@ import {
   INITIAL_TEMPLATE_COUNT,
 } from "./report-template-fixtures";
 import {
+  appendTemplateHistoryEvent,
+  resetTemplateHistoryStore,
+  type ReportTemplateHistoryAction,
+} from "./report-template-history-store";
+import {
+  createTemplateVersion,
+  resetTemplateVersionStore,
+} from "./report-template-version-store";
+import { validateReportTemplate } from "./report-template-validation";
+import {
   ReportTemplateError,
   type AddBlockInput,
   type AddSectionInput,
@@ -243,6 +253,7 @@ export function createTemplate(input: CreateTemplateInput): ReportTemplate {
   };
   internalTemplates = [...internalTemplates, next];
   commit();
+  logHistory(id, "template_created", `Modelo criado: ${name}.`, { name });
   return getTemplate(id)!;
 }
 
@@ -269,6 +280,7 @@ export function updateTemplateMetadata(
   };
   replaceInternal(idx, next);
   commit();
+  logHistory(id, "template_metadata_updated", "Metadados atualizados.");
   return getTemplate(id)!;
 }
 
@@ -306,6 +318,7 @@ export function duplicateTemplate(id: ReportTemplateId): ReportTemplate {
   };
   internalTemplates = [...internalTemplates, dup];
   commit();
+  logHistory(newId, "template_duplicated", `Modelo duplicado a partir de ${t.id}.`, { sourceId: t.id });
   return getTemplate(newId)!;
 }
 
@@ -314,6 +327,7 @@ export function archiveTemplate(id: ReportTemplateId): ReportTemplate {
   if (t.status === "arquivado") return getTemplate(id)!;
   replaceInternal(idx, { ...t, status: "arquivado", updatedAt: now() });
   commit();
+  logHistory(id, "template_archived", "Modelo arquivado.");
   return getTemplate(id)!;
 }
 
@@ -322,6 +336,7 @@ export function reactivateTemplate(id: ReportTemplateId): ReportTemplate {
   if (t.status !== "arquivado") return getTemplate(id)!;
   replaceInternal(idx, { ...t, status: "rascunho", updatedAt: now() });
   commit();
+  logHistory(id, "template_reactivated", "Modelo reativado.");
   return getTemplate(id)!;
 }
 
@@ -357,6 +372,7 @@ export function addSection(
   validateUniqueSectionIds(next.sections);
   replaceInternal(idx, next);
   commit();
+  logHistory(templateId, "section_added", `Seção adicionada: ${title}.`, { sectionId: newSection.id, title });
   return getTemplate(templateId)!.sections.find((s) => s.id === newSection.id)!;
 }
 
@@ -389,6 +405,7 @@ export function updateSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_updated", `Seção atualizada: ${nextTitle}.`, { sectionId });
   return getTemplate(templateId)!.sections[sIdx]!;
 }
 
@@ -407,6 +424,7 @@ export function removeSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_removed", "Seção removida.", { sectionId });
 }
 
 export function moveSection(
@@ -428,6 +446,7 @@ export function moveSection(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "section_reordered", `Seção reordenada (${direction}).`, { sectionId, direction });
 }
 
 // ---------- Blocos ----------
@@ -464,6 +483,7 @@ export function addBlock(
   });
   validateUniqueSectionIds(internalTemplates[idx]!.sections);
   commit();
+  logHistory(templateId, "block_added", `Bloco adicionado (${newBlock.kind}).`, { sectionId, blockId: newBlock.id, kind: newBlock.kind });
   const savedSection = getTemplate(templateId)!.sections[sIdx]!;
   return savedSection.blocks.find((b) => b.id === newBlock.id)!;
 }
@@ -504,6 +524,7 @@ export function updateBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_updated", "Bloco atualizado.", { sectionId, blockId });
   return getTemplate(templateId)!.sections[sIdx]!.blocks[bIdx]!;
 }
 
@@ -527,6 +548,7 @@ export function removeBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_removed", "Bloco removido.", { sectionId, blockId });
 }
 
 export function moveBlock(
@@ -553,6 +575,7 @@ export function moveBlock(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "block_reordered", `Bloco reordenado (${direction}).`, { sectionId, blockId, direction });
 }
 
 // ---------- Variáveis ----------
@@ -598,6 +621,7 @@ export function addVariable(
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "variable_added", `Variável adicionada: ${key}.`, { variableId: nv.id, key });
   return getTemplate(templateId)!.variables.find((v) => v.id === nv.id)!;
 }
 
@@ -626,6 +650,7 @@ export function updateVariable(
   const vars = t.variables.map((v, i) => (i === vIdx ? next : v));
   replaceInternal(idx, { ...t, variables: vars, updatedAt: now() });
   commit();
+  logHistory(templateId, "variable_updated", `Variável atualizada: ${cur.key}.`, { variableId, key: cur.key });
   return getTemplate(templateId)!.variables[vIdx]!;
 }
 
@@ -653,32 +678,136 @@ export function removeVariable(
   const vIdx = t.variables.findIndex((v) => v.id === variableId);
   if (vIdx === -1) throw new ReportTemplateError("variable_not_found", "Variável não encontrada.");
   if (!options?.force && isVariableInUse(templateId, variableId)) {
+    logHistory(templateId, "template_operation_blocked", "Remoção de variável bloqueada — em uso.", { variableId }, "blocked");
     throw new ReportTemplateError(
       "variable_in_use",
       "Variável está referenciada por blocos — use force=true para remover mesmo assim.",
     );
   }
+  const removedKey = t.variables[vIdx]!.key;
   replaceInternal(idx, {
     ...t,
     variables: t.variables.filter((_, i) => i !== vIdx),
     updatedAt: now(),
   });
   commit();
+  logHistory(templateId, "variable_removed", `Variável removida: ${removedKey}.`, { variableId, key: removedKey });
 }
 
 // ---------- Reset ----------
 
 /**
  * Restaura o estado inicial exatamente como as fixtures determinísticas.
- * Emite UMA única notificação para todos os assinantes.
+ * Também reinicia as stores auxiliares de versões e histórico. Emite UMA
+ * única notificação para os assinantes desta store.
  */
 export function resetReportTemplateStore(): void {
   seedInitial();
-  // seedInitial redefine mutationVersion=1; forçamos uma emissão única.
+  resetTemplateVersionStore();
+  resetTemplateHistoryStore();
   emit();
 }
 
 /** Total esperado inicial (para asserções externas). */
 export function initialTemplateCount(): number {
   return INITIAL_TEMPLATE_COUNT;
+}
+
+// ---------- LV-18.2 · Ciclo de vida e histórico ----------
+
+function logHistory(
+  templateId: ReportTemplateId,
+  action: ReportTemplateHistoryAction,
+  description: string,
+  metadata?: Record<string, unknown>,
+  result: "success" | "blocked" | "failure" = "success",
+): void {
+  try {
+    appendTemplateHistoryEvent({
+      templateId,
+      action,
+      description,
+      metadata,
+      result,
+    });
+  } catch (e) {
+    // Falha no histórico não deve corromper a store principal.
+    throw new ReportTemplateError(
+      "history_append_failed",
+      "Falha ao registrar histórico: " + (e as Error).message,
+    );
+  }
+}
+
+/** Publica um modelo de rascunho após validação, criando versão imutável. */
+export function publishTemplate(id: ReportTemplateId, reason?: string): ReportTemplate {
+  const { idx, t } = requireInternal(id);
+  if (t.status === "arquivado") {
+    logHistory(id, "template_transition_blocked", "Publicação bloqueada: arquivado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("template_archived", `Modelo ${id} está arquivado.`);
+  }
+  if (t.status === "publicado") {
+    logHistory(id, "template_transition_blocked", "Publicação bloqueada: já publicado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("invalid_transition", "Modelo já está publicado.");
+  }
+  const validation = validateReportTemplate(t);
+  logHistory(id, "template_validated", `Validação: ${validation.errors.length} erro(s), ${validation.warnings.length} aviso(s).`, {
+    errors: validation.errors.length,
+    warnings: validation.warnings.length,
+  });
+  if (!validation.valid) {
+    logHistory(id, "template_publication_blocked", "Publicação bloqueada por erros de validação.", { errors: validation.errors.length }, "blocked");
+    throw new ReportTemplateError(
+      "template_invalid",
+      "Modelo possui erros de validação — corrija antes de publicar.",
+      { errors: validation.errors.length },
+    );
+  }
+  const next: ReportTemplate = { ...t, status: "publicado", updatedAt: now() };
+  replaceInternal(idx, next);
+  commit();
+  const ver = createTemplateVersion({
+    template: getTemplate(id)!,
+    reason: reason?.trim() && reason.trim().length > 0 ? reason.trim() : "Publicação",
+    changeSummary: "Versão gerada automaticamente pela publicação.",
+  });
+  logHistory(id, "template_published", "Modelo publicado.", { versionNumber: ver.versionNumber });
+  logHistory(id, "version_created", `Versão ${ver.versionNumber} criada.`, { versionNumber: ver.versionNumber });
+  return getTemplate(id)!;
+}
+
+/** Retorna um modelo publicado para o estado de rascunho editável. */
+export function returnTemplateToDraft(id: ReportTemplateId): ReportTemplate {
+  const { idx, t } = requireInternal(id);
+  if (t.status === "arquivado") {
+    logHistory(id, "template_transition_blocked", "Retorno a rascunho bloqueado: arquivado", { from: t.status }, "blocked");
+    throw new ReportTemplateError("template_archived", `Modelo ${id} está arquivado.`);
+  }
+  if (t.status === "rascunho") {
+    return getTemplate(id)!; // no-op
+  }
+  replaceInternal(idx, { ...t, status: "rascunho", updatedAt: now() });
+  commit();
+  logHistory(id, "template_returned_to_draft", "Modelo retornado ao rascunho.");
+  return getTemplate(id)!;
+}
+
+/** Cria manualmente uma versão imutável do modelo atual — motivo obrigatório. */
+export function createManualTemplateVersion(
+  id: ReportTemplateId,
+  reason: string,
+  changeSummary?: string,
+) {
+  const t = getTemplate(id);
+  if (!t) throw new ReportTemplateError("template_not_found", `Modelo ${id} não encontrado.`);
+  const trimmed = (reason ?? "").trim();
+  if (trimmed.length === 0) {
+    throw new ReportTemplateError("version_reason_required", "Motivo é obrigatório para criar uma versão.");
+  }
+  const ver = createTemplateVersion({ template: t, reason: trimmed, changeSummary: changeSummary ?? "" });
+  logHistory(id, "version_created", `Versão ${ver.versionNumber} criada manualmente.`, {
+    versionNumber: ver.versionNumber,
+    reason: trimmed,
+  });
+  return ver;
 }

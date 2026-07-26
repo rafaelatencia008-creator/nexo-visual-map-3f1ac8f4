@@ -223,13 +223,14 @@ describe("LV-18.1 · Assinaturas", () => {
     u2();
   });
 
-  it("reset notifica assinantes", () => {
+  it("reset notifica assinantes exatamente uma vez", () => {
     let n = 0;
     const un = subscribe(() => n++);
     resetReportTemplateStore();
-    expect(n).toBeGreaterThanOrEqual(1);
+    expect(n).toBe(1);
     un();
   });
+
 });
 
 // ================= MODELOS =================
