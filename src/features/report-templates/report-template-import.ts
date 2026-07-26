@@ -159,23 +159,17 @@ export function previewReportTemplateImport(
   try {
     parsed = parseReportTemplateImport(json);
   } catch (e) {
-    if (e instanceof ReportTemplateError) {
-      appendTemplateHistoryEvent({
-        templateId: "rtpl-import" as ReportTemplateId,
-        action: "template_import_blocked",
-        description: `Preview bloqueado: ${e.code}`,
-        result: "blocked",
-        metadata: { code: e.code },
-      });
-    }
+    if (e instanceof ReportTemplateError) recordFailure(e);
     throw e;
   }
   const env = parsed.envelope;
   if (env.templates.length === 0) {
-    throw new ReportTemplateError(
+    const err = new ReportTemplateError(
       "import_empty",
       "Envelope não contém nenhum modelo.",
     );
+    recordFailure(err);
+    throw err;
   }
   const conflicts = detectConflicts(env);
   const warnings: ImportWarning[] = [];
