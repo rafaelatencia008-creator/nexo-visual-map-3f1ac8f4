@@ -35,6 +35,11 @@ import {
 } from "@/features/reports/report-mock-store";
 import { previewReportTemplateApplication } from "@/features/reports/report-template-application";
 import {
+  createTemplate,
+  addSection,
+  addBlock,
+  addVariable,
+  publishTemplate,
   resetReportTemplateStore,
   getTemplate as getReportTemplate,
 } from "@/features/report-templates/report-template-use-cases";
@@ -63,23 +68,43 @@ const REPO_ROOT = join(import.meta.dir, "..");
 
 // ---------- helpers ----------
 
-// Usa um modelo já publicado nas fixtures oficiais (rtpl-1001 —
-// Laudo Psicológico), evitando reconstruir/publicar um modelo em cada teste.
-const PUBLISHED_TEMPLATE_ID = "rtpl-1001";
-
 function seedReportFromTemplate(): ReportDocument {
-  const template = getReportTemplate(PUBLISHED_TEMPLATE_ID);
-  if (!template) throw new Error("Fixture rtpl-1001 não encontrada");
-  // Preenche variáveis obrigatórias com placeholders inertes.
-  const variables: Record<string, string | number | boolean> = {};
-  for (const v of template.variables) {
-    if (v.kind === "numero") variables[v.key] = 1;
-    else if (v.kind === "booleano") variables[v.key] = true;
-    else variables[v.key] = "valor";
-  }
+  const t = createTemplate({
+    name: "Modelo LV-19.1",
+    description: "Base determinística para o workspace",
+    specialty: "psicologia",
+  });
+  const secA = addSection(t.id, {
+    title: "Identificação",
+    description: "Cabeçalho",
+  });
+  addBlock(t.id, secA.id, {
+    kind: "paragrafo",
+    title: "Sujeito",
+    content: "Paciente {{nome}}",
+    variableRefs: ["nome"],
+  });
+  const secB = addSection(t.id, {
+    title: "Análise",
+    description: "Corpo do laudo",
+  });
+  addBlock(t.id, secB.id, {
+    kind: "paragrafo",
+    title: "Observação",
+    content: "Notas iniciais.",
+    variableRefs: [],
+  });
+  addVariable(t.id, {
+    key: "nome",
+    label: "Nome",
+    kind: "texto",
+    required: true,
+    defaultValue: "",
+  });
+  publishTemplate(t.id, "publicar");
   const preview = previewReportTemplateApplication({
-    templateId: template.id,
-    variables,
+    templateId: t.id,
+    variables: { nome: "João" },
   });
   return createReportFromTemplateApplication({
     application: preview,
