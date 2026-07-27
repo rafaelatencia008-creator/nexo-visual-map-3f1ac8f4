@@ -288,7 +288,10 @@ export type ReportHistoryEventKind =
   | "versao_impressa"
   | "versao_anterior_substituida"
   // ---------- LV-18.5 ----------
-  | "report_created_from_template";
+  | "report_created_from_template"
+  // ---------- LV-19.1 ----------
+  | "workspace_aberto"
+  | "bloco_atualizado";
 
 export type ReportHistoryEvent = {
   readonly id: string;
