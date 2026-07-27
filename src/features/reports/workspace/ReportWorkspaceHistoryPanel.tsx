@@ -116,7 +116,7 @@ export function ReportWorkspaceHistoryPanel({ reportId, snapshot }: Props) {
     return (
       <div data-testid="lv19-history-panel">
         <EmptyState
-          icon={<History className="h-6 w-6" aria-hidden />}
+          icon={History}
           title="Nenhum evento registrado"
           description="As alterações realizadas no workspace aparecerão aqui em ordem cronológica."
         />
