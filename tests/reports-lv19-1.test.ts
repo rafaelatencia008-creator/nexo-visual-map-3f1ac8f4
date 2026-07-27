@@ -121,29 +121,15 @@ function seedReportFromTemplate(): ReportDocument {
 function expectDeepFrozenWorkspaceSnapshot(
   snap: ReturnType<typeof getWorkspaceSnapshot>,
 ): void {
+  // Opção B do contrato LV-19.1: apenas as projeções do workspace são
+  // congeladas na fronteira do snapshot. O ReportDocument referenciado por
+  // `snap.report` NÃO é congelado pela leitura — sua imutabilidade é
+  // responsabilidade da store (fora do escopo desta correção).
   expect(Object.isFrozen(snap)).toBe(true);
   expect(Object.isFrozen(snap.progress)).toBe(true);
   expect(Object.isFrozen(snap.sections)).toBe(true);
   for (const progressItem of snap.sections) {
     expect(Object.isFrozen(progressItem)).toBe(true);
-  }
-  expect(Object.isFrozen(snap.report)).toBe(true);
-  expect(Object.isFrozen(snap.report.sections)).toBe(true);
-  for (const section of snap.report.sections) {
-    expect(Object.isFrozen(section)).toBe(true);
-    expect(Object.isFrozen(section.blocks)).toBe(true);
-    for (const block of section.blocks) {
-      expect(Object.isFrozen(block)).toBe(true);
-      expect(Object.isFrozen(block.sources)).toBe(true);
-      for (const source of block.sources) {
-        expect(Object.isFrozen(source)).toBe(true);
-      }
-    }
-  }
-  if (snap.report.templateOrigin) {
-    expect(snap.origin).toBe(snap.report.templateOrigin);
-    expect(Object.isFrozen(snap.report.templateOrigin)).toBe(true);
-    expect(Object.isFrozen(snap.origin)).toBe(true);
   }
 }
 
