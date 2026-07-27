@@ -549,6 +549,102 @@ export function markBlockReviewed(
   return next;
 }
 
+// ---------- LV-19.1 — operações atômicas do workspace ----------
+
+/**
+ * LV-19.1 — atualização atômica de um bloco.
+ *
+ * Aceita opcionalmente `title` e/ou `content`. Aplica UMA única mutação
+ * lógica no documento, emite UM único evento de histórico
+ * (`bloco_atualizado`) e dispara UMA notificação por domínio afetado
+ * (reports + history). Em caso de erro (documento/seção/bloco inexistente,
+ * congelado, patch vazio ou sem mudança efetiva) nada é alterado.
+ *
+ * Rebaixa seções `aprovada` para `em_elaboracao` na mesma mutação,
+ * preservando a semântica de LV-15. Não emite evento extra para o
+ * rebaixamento — ele é parte da mesma alteração atômica.
+ */
+export type UpdateBlockAtomicPatch = {
+  readonly title?: string;
+  readonly content?: string;
+};
+
+export function updateBlockAtomic(
+  reportId: string,
+  sectionId: string,
+  blockId: string,
+  patch: UpdateBlockAtomicPatch,
+): ReportDocument {
+  const doc = requireMutable(reportId, "atualizar bloco");
+  const section = doc.sections.find((s) => s.id === sectionId);
+  if (!section) {
+    throw new Error(`Seção não encontrada: ${sectionId}`);
+  }
+  const block = section.blocks.find((b) => b.id === blockId);
+  if (!block) {
+    throw new Error(`Bloco não encontrado: ${blockId}`);
+  }
+  const hasTitle = Object.prototype.hasOwnProperty.call(patch, "title");
+  const hasContent = Object.prototype.hasOwnProperty.call(patch, "content");
+  if (!hasTitle && !hasContent) {
+    throw new Error("Patch vazio: informe title e/ou content.");
+  }
+  const nextTitle = hasTitle ? (patch.title ?? "") : block.title;
+  const nextContent = hasContent ? (patch.content ?? "") : block.content;
+  const titleChanged = hasTitle && nextTitle !== block.title;
+  const contentChanged = hasContent && nextContent !== block.content;
+  if (!titleChanged && !contentChanged) {
+    throw new Error("Nenhuma alteração efetiva no bloco.");
+  }
+  const now = reportNow();
+  const nextBlock: ReportBlock = {
+    ...block,
+    title: nextTitle,
+    content: nextContent,
+    manuallyEdited: true,
+    reviewed: contentChanged ? false : block.reviewed,
+    lastEditedAt: now,
+  };
+  const demote = section.status === "aprovada";
+  const nextSection: ReportSection = {
+    ...section,
+    status: demote ? "em_elaboracao" : section.status,
+    blocks: section.blocks.map((b) => (b.id === blockId ? nextBlock : b)),
+  };
+  const nextSections = doc.sections.map((s) => (s.id === sectionId ? nextSection : s));
+  const nextDoc: ReportDocument = Object.freeze({
+    ...doc,
+    sections: nextSections,
+    updatedAt: now,
+  });
+  state.documents.set(nextDoc.id, nextDoc);
+  const parts: string[] = [];
+  if (titleChanged) parts.push("título");
+  if (contentChanged) parts.push("conteúdo");
+  pushHistory(
+    reportId,
+    "bloco_atualizado",
+    `Bloco atualizado (${parts.join(" e ")}).`,
+    { sectionId, blockId },
+  );
+  notify();
+  return nextDoc;
+}
+
+/**
+ * LV-19.1 — registra abertura do workspace para edição.
+ * Único evento no histórico, sem alteração de documento e sem notificação de reports.
+ */
+export function logWorkspaceOpened(reportId: string): ReportHistoryEvent {
+  requireDoc(reportId);
+  return pushHistory(
+    reportId,
+    "workspace_aberto",
+    "Laudo aberto para edição.",
+  );
+}
+
+
 /**
  * LV-15 (correção) — mutação interna privada para alterar status.
  * Não faz validação: usada por `setSectionStatus` (com bloqueio de "aprovada")
