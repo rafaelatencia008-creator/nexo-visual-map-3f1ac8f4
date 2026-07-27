@@ -33,7 +33,10 @@ import {
   subscribeReportHistory,
   subscribeReports,
 } from "@/features/reports/report-mock-store";
-import { previewReportTemplateApplication } from "@/features/reports/report-template-application";
+import {
+  createReportFromTemplate,
+  previewReportTemplateApplication,
+} from "@/features/reports/report-template-application";
 import {
   createTemplate,
   addSection,
