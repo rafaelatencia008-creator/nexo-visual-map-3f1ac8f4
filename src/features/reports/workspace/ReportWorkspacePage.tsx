@@ -19,6 +19,7 @@ interface Props {
 }
 
 export function ReportWorkspacePage({ reportId }: Props) {
+  const navigate = useNavigate();
   const snapshot = useReportWorkspace(reportId);
   const firstSectionId = snapshot?.report.sections[0]?.id;
   const [activeId, setActiveId] = useState<string | undefined>(firstSectionId);
