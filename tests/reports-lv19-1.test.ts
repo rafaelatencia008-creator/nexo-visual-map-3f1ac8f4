@@ -658,13 +658,15 @@ describe("LV-19.1 · Auditoria estática", () => {
     }
   });
 
-  it("a LV-19.3 não foi iniciada (histórico e auditoria estática)", () => {
-    // A LV-19.2 pode criar `src/routes/app.laudos.$reportId.tsx` e
-    // `src/features/reports/workspace/*`. A LV-19.3 (histórico visual +
-    // auditoria estática) permanece não iniciada.
+  it("a LV-19.4 não foi iniciada (versões editáveis, exportação, colaboração)", () => {
+    // A LV-19.3 introduz `ReportWorkspaceHistoryPanel.tsx` e
+    // `ReportWorkspaceAuditPanel.tsx`. Fatias posteriores (LV-19.4+) devem
+    // permanecer não iniciadas: nenhum painel de versões editáveis,
+    // exportação PDF/DOCX ou colaboração em tempo real.
     for (const rel of [
-      "src/features/reports/workspace/ReportWorkspaceHistoryPanel.tsx",
-      "src/features/reports/workspace/ReportWorkspaceAuditPanel.tsx",
+      "src/features/reports/workspace/ReportWorkspaceVersionsPanel.tsx",
+      "src/features/reports/workspace/ReportWorkspaceExportPanel.tsx",
+      "src/features/reports/workspace/ReportWorkspaceCollaborationPanel.tsx",
     ]) {
       let exists = true;
       try {
