@@ -91,17 +91,68 @@ export function deriveReportProgress(
   });
 }
 
+/**
+ * Cache referencial da projeção do workspace.
+ *
+ * Chaveado pela referência IMUTÁVEL do `ReportDocument`. A store cria um
+ * novo `ReportDocument` a cada mutação atômica (via spread), portanto:
+ *   - Leituras sem mutação retornam o MESMO objeto de snapshot (===).
+ *   - Após mutação válida, a chave muda e uma nova projeção é gerada.
+ *   - Leituras subsequentes voltam a estabilizar na nova projeção.
+ *   - Relatórios distintos jamais compartilham projeção (identidade WeakMap).
+ *
+ * O WeakMap NÃO é uma nova store: não guarda estado de domínio, não
+ * persiste, e é coletado junto com o próprio `ReportDocument`.
+ */
+const snapshotCache = new WeakMap<ReportDocument, ReportWorkspaceSnapshot>();
+
+/**
+ * Congela profundamente o `ReportDocument` no local, na fronteira do
+ * snapshot. Não clona: preserva `snapshot.report === doc` e a estabilidade
+ * referencial. `Object.freeze` é idempotente e não altera dados de domínio.
+ */
+function deepFreezeReportInPlace(doc: ReportDocument): void {
+  for (const section of doc.sections) {
+    for (const block of section.blocks) {
+      if (block.sources && !Object.isFrozen(block.sources)) {
+        for (const src of block.sources) Object.freeze(src);
+        Object.freeze(block.sources);
+      }
+      Object.freeze(block);
+    }
+    if (!Object.isFrozen(section.blocks)) Object.freeze(section.blocks);
+    Object.freeze(section);
+  }
+  if (!Object.isFrozen(doc.sections)) Object.freeze(doc.sections);
+  if (doc.templateOrigin && !Object.isFrozen(doc.templateOrigin)) {
+    Object.freeze(doc.templateOrigin);
+  }
+  if (!Object.isFrozen(doc)) Object.freeze(doc);
+}
+
 export function deriveWorkspaceSnapshot(
   report: ReportDocument,
 ): ReportWorkspaceSnapshot {
+  const cached = snapshotCache.get(report);
+  if (cached) return cached;
+  deepFreezeReportInPlace(report);
   const sections = Object.freeze(
     report.sections.map((s) => deriveSectionProgress(s)),
   );
   const progress = deriveReportProgress(report);
-  return Object.freeze({
+  const snap: ReportWorkspaceSnapshot = Object.freeze({
     report,
     sections,
     progress,
     origin: report.templateOrigin,
   });
+  snapshotCache.set(report, snap);
+  return snap;
+}
+
+/** Inspeção de cache para testes de auditoria; não usado em produção. */
+export function __peekWorkspaceSnapshotCache(
+  report: ReportDocument,
+): ReportWorkspaceSnapshot | undefined {
+  return snapshotCache.get(report);
 }
