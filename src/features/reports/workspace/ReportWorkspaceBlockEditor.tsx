@@ -250,20 +250,3 @@ function BlockCard({
   );
 }
 
-/**
- * Resolve o `sectionId` do bloco a partir do documento localizado via fachada.
- * Evita passar o id via prop (o snapshot já é fonte única) e mantém o editor
- * independente de props redundantes.
- */
-function findSectionId(blockId: string, reportId: string): string {
-  // Import tardio para evitar acoplamento em módulo — resolvido a partir da
-  // fachada (não da store) pois `tryLocateReport` é reexportada de use-cases.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { tryLocateReport } = require("../report-workspace-use-cases") as typeof import("../report-workspace-use-cases");
-  const doc = tryLocateReport(reportId);
-  if (!doc) throw new ReportWorkspaceError("report_not_found");
-  for (const s of doc.sections) {
-    if (s.blocks.some((b) => b.id === blockId)) return s.id;
-  }
-  throw new ReportWorkspaceError("report_block_not_found");
-}
