@@ -8,11 +8,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { EmptyState } from "@/components/app/states";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logWorkspaceOpened } from "../report-workspace-use-cases";
 import { useReportWorkspace } from "./useReportWorkspace";
 import { ReportWorkspaceHeader } from "./ReportWorkspaceHeader";
 import { ReportWorkspaceSectionsNav } from "./ReportWorkspaceSectionsNav";
 import { ReportWorkspaceBlockEditor } from "./ReportWorkspaceBlockEditor";
+import { ReportWorkspaceHistoryPanel } from "./ReportWorkspaceHistoryPanel";
+import { ReportWorkspaceAuditPanel } from "./ReportWorkspaceAuditPanel";
 
 interface Props {
   readonly reportId: string;
@@ -99,6 +102,25 @@ export function ReportWorkspacePage({ reportId }: Props) {
           )}
         </div>
       </div>
+
+      <Tabs defaultValue="historico" data-testid="lv19-workspace-tabs">
+        <TabsList>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+        </TabsList>
+        <TabsContent value="historico" className="mt-3">
+          <ReportWorkspaceHistoryPanel
+            reportId={reportId}
+            snapshot={snapshot}
+          />
+        </TabsContent>
+        <TabsContent value="auditoria" className="mt-3">
+          <ReportWorkspaceAuditPanel
+            reportId={reportId}
+            snapshot={snapshot}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
