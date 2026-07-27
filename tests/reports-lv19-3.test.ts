@@ -92,6 +92,9 @@ function seedReport(): string {
   publishTemplate(t.id, "publicar");
   const r = createReportFromTemplate({
     templateId: t.id,
+    title: "Laudo LV-19.3",
+    caseId: "cas-lv19-3",
+    caseLabel: "Caso LV-19.3",
     variableValues: { nome: "Maria" },
   });
   return r.report.id;
