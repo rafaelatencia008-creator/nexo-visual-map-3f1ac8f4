@@ -104,7 +104,7 @@ function seedReportFromTemplate(): ReportDocument {
   publishTemplate(t.id, "publicar");
   const preview = previewReportTemplateApplication({
     templateId: t.id,
-    variables: { nome: "João" },
+    variableValues: { nome: "João" },
   });
   return createReportFromTemplateApplication({
     application: preview,
