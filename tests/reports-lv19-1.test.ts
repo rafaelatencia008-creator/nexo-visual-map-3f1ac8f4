@@ -47,9 +47,12 @@ import {
   getTemplate as getReportTemplate,
 } from "@/features/report-templates/report-template-use-cases";
 import {
+  __peekWorkspaceSnapshotCache,
   deriveReportProgress,
   deriveSectionProgress,
   deriveSectionStatus,
+} from "@/features/reports/report-workspace-derivation";
+import {
   deriveWorkspaceSnapshot,
   getWorkspaceSnapshot,
   listWorkspaceHistory,
@@ -113,6 +116,35 @@ function seedReportFromTemplate(): ReportDocument {
     variableValues: { nome: "João" },
   });
   return result.report;
+}
+
+function expectDeepFrozenWorkspaceSnapshot(
+  snap: ReturnType<typeof getWorkspaceSnapshot>,
+): void {
+  expect(Object.isFrozen(snap)).toBe(true);
+  expect(Object.isFrozen(snap.progress)).toBe(true);
+  expect(Object.isFrozen(snap.sections)).toBe(true);
+  for (const progressItem of snap.sections) {
+    expect(Object.isFrozen(progressItem)).toBe(true);
+  }
+  expect(Object.isFrozen(snap.report)).toBe(true);
+  expect(Object.isFrozen(snap.report.sections)).toBe(true);
+  for (const section of snap.report.sections) {
+    expect(Object.isFrozen(section)).toBe(true);
+    expect(Object.isFrozen(section.blocks)).toBe(true);
+    for (const block of section.blocks) {
+      expect(Object.isFrozen(block)).toBe(true);
+      expect(Object.isFrozen(block.sources)).toBe(true);
+      for (const source of block.sources) {
+        expect(Object.isFrozen(source)).toBe(true);
+      }
+    }
+  }
+  if (snap.report.templateOrigin) {
+    expect(snap.origin).toBe(snap.report.templateOrigin);
+    expect(Object.isFrozen(snap.report.templateOrigin)).toBe(true);
+    expect(Object.isFrozen(snap.origin)).toBe(true);
+  }
 }
 
 beforeEach(() => {
@@ -337,7 +369,10 @@ describe("LV-19.1 · updateBlock (atômico)", () => {
 describe("LV-19.1 · Estabilidade referencial", () => {
   it("mantém identidade do snapshot completo sem mutação", () => {
     const doc = seedReportFromTemplate();
+    const reportRef = locateReport(doc.id);
+    expect(__peekWorkspaceSnapshotCache(reportRef)).toBeUndefined();
     const s1 = getWorkspaceSnapshot(doc.id);
+    expect(__peekWorkspaceSnapshotCache(reportRef)).toBe(s1);
     const s2 = getWorkspaceSnapshot(doc.id);
     expect(s2).toBe(s1);
     expect(s2.report).toBe(s1.report);
@@ -347,11 +382,17 @@ describe("LV-19.1 · Estabilidade referencial", () => {
 
   it("muda identidade após mutação válida e reestabiliza em leituras subsequentes", () => {
     const doc = seedReportFromTemplate();
+    const reportRefBefore = locateReport(doc.id);
     const before = getWorkspaceSnapshot(doc.id);
+    expect(__peekWorkspaceSnapshotCache(reportRefBefore)).toBe(before);
     updateBlock(doc.id, doc.sections[0].id, doc.sections[0].blocks[0].id, {
       content: "novo",
     });
+    const reportRefAfter = locateReport(doc.id);
+    expect(reportRefAfter).not.toBe(reportRefBefore);
+    expect(__peekWorkspaceSnapshotCache(reportRefAfter)).toBeUndefined();
     const after = getWorkspaceSnapshot(doc.id);
+    expect(__peekWorkspaceSnapshotCache(reportRefAfter)).toBe(after);
     expect(after).not.toBe(before);
     expect(after.report).not.toBe(before.report);
     const after2 = getWorkspaceSnapshot(doc.id);
@@ -364,12 +405,16 @@ describe("LV-19.1 · Estabilidade referencial", () => {
   it("relatórios diferentes não compartilham snapshot", () => {
     const a = seedReportFromTemplate();
     const b = seedReportFromTemplate();
+    const reportA = locateReport(a.id);
+    const reportB = locateReport(b.id);
     const sa = getWorkspaceSnapshot(a.id);
     const sb = getWorkspaceSnapshot(b.id);
     expect(sa).not.toBe(sb);
     expect(sa.report).not.toBe(sb.report);
     expect(sa.sections).not.toBe(sb.sections);
     expect(sa.progress).not.toBe(sb.progress);
+    expect(__peekWorkspaceSnapshotCache(reportA)).toBe(sa);
+    expect(__peekWorkspaceSnapshotCache(reportB)).toBe(sb);
   });
 });
 
@@ -377,25 +422,7 @@ describe("LV-19.1 · Congelamento profundo do snapshot", () => {
   it("congela todas as camadas visíveis pela fronteira do snapshot", () => {
     const doc = seedReportFromTemplate();
     const snap = getWorkspaceSnapshot(doc.id);
-    expect(Object.isFrozen(snap)).toBe(true);
-    expect(Object.isFrozen(snap.progress)).toBe(true);
-    expect(Object.isFrozen(snap.sections)).toBe(true);
-    for (const item of snap.sections) {
-      expect(Object.isFrozen(item)).toBe(true);
-    }
-    expect(Object.isFrozen(snap.report)).toBe(true);
-    expect(Object.isFrozen(snap.report.sections)).toBe(true);
-    for (const section of snap.report.sections) {
-      expect(Object.isFrozen(section)).toBe(true);
-      expect(Object.isFrozen(section.blocks)).toBe(true);
-      for (const block of section.blocks) {
-        expect(Object.isFrozen(block)).toBe(true);
-        expect(Object.isFrozen(block.sources)).toBe(true);
-      }
-    }
-    if (snap.report.templateOrigin) {
-      expect(Object.isFrozen(snap.report.templateOrigin)).toBe(true);
-    }
+    expectDeepFrozenWorkspaceSnapshot(snap);
   });
 
   it("mantém o congelamento após mutação atômica no novo snapshot", () => {
@@ -405,16 +432,7 @@ describe("LV-19.1 · Congelamento profundo do snapshot", () => {
       content: "conteúdo revisado",
     });
     const snap = getWorkspaceSnapshot(doc.id);
-    expect(Object.isFrozen(snap)).toBe(true);
-    expect(Object.isFrozen(snap.report)).toBe(true);
-    expect(Object.isFrozen(snap.report.sections)).toBe(true);
-    for (const section of snap.report.sections) {
-      expect(Object.isFrozen(section)).toBe(true);
-      expect(Object.isFrozen(section.blocks)).toBe(true);
-      for (const block of section.blocks) {
-        expect(Object.isFrozen(block)).toBe(true);
-      }
-    }
+    expectDeepFrozenWorkspaceSnapshot(snap);
   });
 });
 

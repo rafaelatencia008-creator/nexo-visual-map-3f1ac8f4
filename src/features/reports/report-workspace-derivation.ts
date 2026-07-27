@@ -1,8 +1,9 @@
 /**
  * LV-19.1 — Derivações puras do workspace de laudo.
  *
- * Funções determinísticas, sem estado, sem I/O e sem dependência da store.
- * Recebem entidades já lidas do domínio e devolvem projeções congeladas.
+ * Funções determinísticas, sem estado de domínio, sem I/O e sem dependência
+ * da store. Recebem entidades já lidas do domínio e devolvem projeções
+ * congeladas, estabilizadas por cache WeakMap referencial.
  *
  * Regra canônica ÚNICA de status derivado de seção:
  *   vazia       → nenhum bloco com conteúdo significativo (trim).
