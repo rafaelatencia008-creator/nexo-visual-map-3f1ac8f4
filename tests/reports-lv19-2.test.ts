@@ -189,9 +189,6 @@ describe("LV-19.2 — Snapshot consumido pela UI", () => {
 });
 
 describe("LV-19.2 — Regra canônica de status refletida na UI", () => {
-  beforeEach(() => {
-    resetReportsForTests();
-  });
 
   it("seção sem conteúdo é derivada como 'vazia'", () => {
     const id = seedReport();
