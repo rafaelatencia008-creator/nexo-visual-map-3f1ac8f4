@@ -17,9 +17,19 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  createReport,
-  resetReportsForTests,
+  resetReportClock,
+  resetReportIdCounter,
+  resetReportStore,
 } from "@/features/reports/report-mock-store";
+import {
+  addBlock,
+  addSection,
+  addVariable,
+  createTemplate,
+  publishTemplate,
+  resetReportTemplateStore,
+} from "@/features/report-templates/report-template-use-cases";
+import { createReportFromTemplate } from "@/features/reports/report-template-application";
 import {
   getWorkspaceSnapshot,
   logWorkspaceOpened,
@@ -31,10 +41,15 @@ import {
 } from "@/features/reports/report-workspace-use-cases";
 
 const WORKSPACE_DIR = join(
-  process.cwd(),
+  import.meta.dir,
+  "..",
   "src/features/reports/workspace",
 );
-const ROUTE_FILE = join(process.cwd(), "src/routes/app.laudos.$reportId.tsx");
+const ROUTE_FILE = join(
+  import.meta.dir,
+  "..",
+  "src/routes/app.laudos.$reportId.tsx",
+);
 const PAGE_FILE = join(WORKSPACE_DIR, "ReportWorkspacePage.tsx");
 
 function walk(dir: string): string[] {
@@ -49,14 +64,55 @@ function walk(dir: string): string[] {
 }
 
 function seedReport(): string {
-  const doc = createReport({
-    title: "Laudo LV-19.2",
-    templateId: "laudo_psicologico",
-    caseId: "case-lv19-2",
-    caseLabel: "Caso LV-19.2",
+  const t = createTemplate({
+    name: "Modelo LV-19.2",
+    description: "Workspace fatia visual",
+    specialty: "psicologia",
   });
-  return doc.id;
+  const secA = addSection(t.id, {
+    title: "Identificação",
+    description: "Cabeçalho",
+  });
+  addBlock(t.id, secA.id, {
+    kind: "paragrafo",
+    title: "Sujeito",
+    content: "Paciente {{nome}}",
+    variableRefs: ["nome"],
+  });
+  const secB = addSection(t.id, {
+    title: "Análise",
+    description: "Corpo",
+  });
+  addBlock(t.id, secB.id, {
+    kind: "paragrafo",
+    title: "Observação",
+    content: "Notas iniciais.",
+    variableRefs: [],
+  });
+  addVariable(t.id, {
+    key: "nome",
+    label: "Nome",
+    kind: "texto",
+    required: true,
+    defaultValue: "",
+  });
+  publishTemplate(t.id, "publicar");
+  const r = createReportFromTemplate({
+    templateId: t.id,
+    title: "Laudo LV-19.2",
+    caseId: "cas-lv19-2",
+    caseLabel: "Caso LV-19.2",
+    variableValues: { nome: "Maria" },
+  });
+  return r.report.id;
 }
+
+beforeEach(() => {
+  resetReportStore();
+  resetReportTemplateStore();
+  resetReportIdCounter(9500);
+  resetReportClock();
+});
 
 describe("LV-19.2 — Isolamento arquitetural", () => {
   const uiFiles = [ROUTE_FILE, ...walk(WORKSPACE_DIR)].filter((p) =>
