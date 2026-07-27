@@ -335,21 +335,86 @@ describe("LV-19.1 · updateBlock (atômico)", () => {
 // ============================================================================
 
 describe("LV-19.1 · Estabilidade referencial", () => {
-  it("mantém referência quando não há mutação", () => {
+  it("mantém identidade do snapshot completo sem mutação", () => {
     const doc = seedReportFromTemplate();
     const s1 = getWorkspaceSnapshot(doc.id);
     const s2 = getWorkspaceSnapshot(doc.id);
-    expect(s1.report).toBe(s2.report);
+    expect(s2).toBe(s1);
+    expect(s2.report).toBe(s1.report);
+    expect(s2.sections).toBe(s1.sections);
+    expect(s2.progress).toBe(s1.progress);
   });
 
-  it("muda referência do documento após mutação válida", () => {
+  it("muda identidade após mutação válida e reestabiliza em leituras subsequentes", () => {
     const doc = seedReportFromTemplate();
-    const before = getWorkspaceSnapshot(doc.id).report;
+    const before = getWorkspaceSnapshot(doc.id);
     updateBlock(doc.id, doc.sections[0].id, doc.sections[0].blocks[0].id, {
       content: "novo",
     });
-    const after = getWorkspaceSnapshot(doc.id).report;
+    const after = getWorkspaceSnapshot(doc.id);
     expect(after).not.toBe(before);
+    expect(after.report).not.toBe(before.report);
+    const after2 = getWorkspaceSnapshot(doc.id);
+    expect(after2).toBe(after);
+    expect(after2.report).toBe(after.report);
+    expect(after2.sections).toBe(after.sections);
+    expect(after2.progress).toBe(after.progress);
+  });
+
+  it("relatórios diferentes não compartilham snapshot", () => {
+    const a = seedReportFromTemplate();
+    const b = seedReportFromTemplate();
+    const sa = getWorkspaceSnapshot(a.id);
+    const sb = getWorkspaceSnapshot(b.id);
+    expect(sa).not.toBe(sb);
+    expect(sa.report).not.toBe(sb.report);
+    expect(sa.sections).not.toBe(sb.sections);
+    expect(sa.progress).not.toBe(sb.progress);
+  });
+});
+
+describe("LV-19.1 · Congelamento profundo do snapshot", () => {
+  it("congela todas as camadas visíveis pela fronteira do snapshot", () => {
+    const doc = seedReportFromTemplate();
+    const snap = getWorkspaceSnapshot(doc.id);
+    expect(Object.isFrozen(snap)).toBe(true);
+    expect(Object.isFrozen(snap.progress)).toBe(true);
+    expect(Object.isFrozen(snap.sections)).toBe(true);
+    for (const item of snap.sections) {
+      expect(Object.isFrozen(item)).toBe(true);
+    }
+    expect(Object.isFrozen(snap.report)).toBe(true);
+    expect(Object.isFrozen(snap.report.sections)).toBe(true);
+    for (const section of snap.report.sections) {
+      expect(Object.isFrozen(section)).toBe(true);
+      expect(Object.isFrozen(section.blocks)).toBe(true);
+      for (const block of section.blocks) {
+        expect(Object.isFrozen(block)).toBe(true);
+        expect(Object.isFrozen(block.sources)).toBe(true);
+      }
+    }
+    if (snap.report.templateOrigin) {
+      expect(Object.isFrozen(snap.report.templateOrigin)).toBe(true);
+    }
+  });
+
+  it("mantém o congelamento após mutação atômica no novo snapshot", () => {
+    const doc = seedReportFromTemplate();
+    getWorkspaceSnapshot(doc.id);
+    updateBlock(doc.id, doc.sections[0].id, doc.sections[0].blocks[0].id, {
+      content: "conteúdo revisado",
+    });
+    const snap = getWorkspaceSnapshot(doc.id);
+    expect(Object.isFrozen(snap)).toBe(true);
+    expect(Object.isFrozen(snap.report)).toBe(true);
+    expect(Object.isFrozen(snap.report.sections)).toBe(true);
+    for (const section of snap.report.sections) {
+      expect(Object.isFrozen(section)).toBe(true);
+      expect(Object.isFrozen(section.blocks)).toBe(true);
+      for (const block of section.blocks) {
+        expect(Object.isFrozen(block)).toBe(true);
+      }
+    }
   });
 });
 
