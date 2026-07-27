@@ -105,17 +105,14 @@ function seedReportFromTemplate(): ReportDocument {
     defaultValue: "",
   });
   publishTemplate(t.id, "publicar");
-  const preview = previewReportTemplateApplication({
+  const result = createReportFromTemplate({
     templateId: t.id,
-    variableValues: { nome: "João" },
-  });
-  return createReportFromTemplateApplication({
-    application: preview,
     title: "Laudo LV-19.1",
     caseId: "cas-1",
     caseLabel: "Caso Demo",
-    authorLabel: "Perito Mock",
+    variableValues: { nome: "João" },
   });
+  return result.report;
 }
 
 beforeEach(() => {
