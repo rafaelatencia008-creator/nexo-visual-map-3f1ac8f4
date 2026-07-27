@@ -658,11 +658,13 @@ describe("LV-19.1 · Auditoria estática", () => {
     }
   });
 
-  it("nenhuma rota ou componente de UI foi criado nesta fatia", () => {
-    // LV-19.1 termina antes da UI (LV-19.2).
+  it("a LV-19.3 não foi iniciada (histórico e auditoria estática)", () => {
+    // A LV-19.2 pode criar `src/routes/app.laudos.$reportId.tsx` e
+    // `src/features/reports/workspace/*`. A LV-19.3 (histórico visual +
+    // auditoria estática) permanece não iniciada.
     for (const rel of [
-      "src/routes/app.laudos.$reportId.tsx",
-      "src/features/reports/workspace",
+      "src/features/reports/workspace/ReportWorkspaceHistoryPanel.tsx",
+      "src/features/reports/workspace/ReportWorkspaceAuditPanel.tsx",
     ]) {
       let exists = true;
       try {
