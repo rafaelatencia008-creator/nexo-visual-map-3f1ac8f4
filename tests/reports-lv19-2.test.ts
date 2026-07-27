@@ -148,9 +148,6 @@ describe("LV-19.2 — Isolamento arquitetural", () => {
 });
 
 describe("LV-19.2 — Snapshot consumido pela UI", () => {
-  beforeEach(() => {
-    resetReportsForTests();
-  });
 
   it("hook virtual: subscribeWorkspace + getWorkspaceSnapshot é estável entre leituras", () => {
     const id = seedReport();
