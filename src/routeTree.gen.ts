@@ -59,6 +59,7 @@ import { Route as AppAgendaIndexRouteImport } from './routes/app.agenda.index'
 import { Route as AppProcessosNovoRouteImport } from './routes/app.processos.novo'
 import { Route as AppPeritosNovoRouteImport } from './routes/app.peritos.novo'
 import { Route as AppPericiasNovaRouteImport } from './routes/app.pericias.nova'
+import { Route as AppLaudosReportIdRouteImport } from './routes/app.laudos.$reportId'
 import { Route as AppClientesNovoRouteImport } from './routes/app.clientes.novo'
 import { Route as AppAgendaNovoRouteImport } from './routes/app.agenda.novo'
 import { Route as AppAgendaAppointmentIdRouteImport } from './routes/app.agenda.$appointmentId'
@@ -322,6 +323,11 @@ const AppPericiasNovaRoute = AppPericiasNovaRouteImport.update({
   path: '/pericias/nova',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLaudosReportIdRoute = AppLaudosReportIdRouteImport.update({
+  id: '/$reportId',
+  path: '/$reportId',
+  getParentRoute: () => AppLaudosRoute,
+} as any)
 const AppClientesNovoRoute = AppClientesNovoRouteImport.update({
   id: '/clientes/novo',
   path: '/clientes/novo',
@@ -406,7 +412,7 @@ export interface FileRoutesByFullPath {
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
-  '/app/laudos': typeof AppLaudosRoute
+  '/app/laudos': typeof AppLaudosRouteWithChildren
   '/app/modelos': typeof AppModelosRoute
   '/app/organizacao': typeof AppOrganizacaoRoute
   '/app/pendencias': typeof AppPendenciasRoute
@@ -424,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
   '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
+  '/app/laudos/$reportId': typeof AppLaudosReportIdRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
@@ -466,7 +473,7 @@ export interface FileRoutesByTo {
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
-  '/app/laudos': typeof AppLaudosRoute
+  '/app/laudos': typeof AppLaudosRouteWithChildren
   '/app/modelos': typeof AppModelosRoute
   '/app/organizacao': typeof AppOrganizacaoRoute
   '/app/pendencias': typeof AppPendenciasRoute
@@ -484,6 +491,7 @@ export interface FileRoutesByTo {
   '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
   '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
+  '/app/laudos/$reportId': typeof AppLaudosReportIdRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
@@ -530,7 +538,7 @@ export interface FileRoutesById {
   '/app/entrevistas': typeof AppEntrevistasRoute
   '/app/equipe': typeof AppEquipeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
-  '/app/laudos': typeof AppLaudosRoute
+  '/app/laudos': typeof AppLaudosRouteWithChildren
   '/app/modelos': typeof AppModelosRoute
   '/app/organizacao': typeof AppOrganizacaoRoute
   '/app/pendencias': typeof AppPendenciasRoute
@@ -548,6 +556,7 @@ export interface FileRoutesById {
   '/app/agenda/$appointmentId': typeof AppAgendaAppointmentIdRoute
   '/app/agenda/novo': typeof AppAgendaNovoRoute
   '/app/clientes/novo': typeof AppClientesNovoRoute
+  '/app/laudos/$reportId': typeof AppLaudosReportIdRoute
   '/app/pericias/nova': typeof AppPericiasNovaRoute
   '/app/peritos/novo': typeof AppPeritosNovoRoute
   '/app/processos/novo': typeof AppProcessosNovoRoute
@@ -613,6 +622,7 @@ export interface FileRouteTypes {
     | '/app/agenda/$appointmentId'
     | '/app/agenda/novo'
     | '/app/clientes/novo'
+    | '/app/laudos/$reportId'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
@@ -673,6 +683,7 @@ export interface FileRouteTypes {
     | '/app/agenda/$appointmentId'
     | '/app/agenda/novo'
     | '/app/clientes/novo'
+    | '/app/laudos/$reportId'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
@@ -736,6 +747,7 @@ export interface FileRouteTypes {
     | '/app/agenda/$appointmentId'
     | '/app/agenda/novo'
     | '/app/clientes/novo'
+    | '/app/laudos/$reportId'
     | '/app/pericias/nova'
     | '/app/peritos/novo'
     | '/app/processos/novo'
@@ -1128,6 +1140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPericiasNovaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/laudos/$reportId': {
+      id: '/app/laudos/$reportId'
+      path: '/$reportId'
+      fullPath: '/app/laudos/$reportId'
+      preLoaderRoute: typeof AppLaudosReportIdRouteImport
+      parentRoute: typeof AppLaudosRoute
+    }
     '/app/clientes/novo': {
       id: '/app/clientes/novo'
       path: '/clientes/novo'
@@ -1224,6 +1243,18 @@ const AppAgendaRouteWithChildren = AppAgendaRoute._addFileChildren(
   AppAgendaRouteChildren,
 )
 
+interface AppLaudosRouteChildren {
+  AppLaudosReportIdRoute: typeof AppLaudosReportIdRoute
+}
+
+const AppLaudosRouteChildren: AppLaudosRouteChildren = {
+  AppLaudosReportIdRoute: AppLaudosReportIdRoute,
+}
+
+const AppLaudosRouteWithChildren = AppLaudosRoute._addFileChildren(
+  AppLaudosRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRouteWithChildren
   AppAjudaRoute: typeof AppAjudaRoute
@@ -1233,7 +1264,7 @@ interface AppRouteChildren {
   AppEntrevistasRoute: typeof AppEntrevistasRoute
   AppEquipeRoute: typeof AppEquipeRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
-  AppLaudosRoute: typeof AppLaudosRoute
+  AppLaudosRoute: typeof AppLaudosRouteWithChildren
   AppModelosRoute: typeof AppModelosRoute
   AppOrganizacaoRoute: typeof AppOrganizacaoRoute
   AppPendenciasRoute: typeof AppPendenciasRoute
@@ -1269,7 +1300,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEntrevistasRoute: AppEntrevistasRoute,
   AppEquipeRoute: AppEquipeRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
-  AppLaudosRoute: AppLaudosRoute,
+  AppLaudosRoute: AppLaudosRouteWithChildren,
   AppModelosRoute: AppModelosRoute,
   AppOrganizacaoRoute: AppOrganizacaoRoute,
   AppPendenciasRoute: AppPendenciasRoute,
@@ -1344,13 +1375,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
