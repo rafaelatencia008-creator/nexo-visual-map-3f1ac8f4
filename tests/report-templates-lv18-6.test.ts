@@ -210,15 +210,16 @@ describe("LV-18.6 · Fachada `report-template-use-cases`", () => {
     expect(list.some((t) => t.id === created.id)).toBe(true);
   });
 
-  it("resetReportTemplateStore limpa via repositório", () => {
+  it("resetReportTemplateStore restaura estado inicial via repositório", () => {
+    const baseline = useCases.getSnapshot().templates.length;
     useCases.createTemplate({
       name: "Temp",
       description: "",
       specialty: "geral",
     });
-    expect(useCases.getSnapshot().templates.length).toBeGreaterThan(0);
+    expect(useCases.getSnapshot().templates.length).toBe(baseline + 1);
     useCases.resetReportTemplateStore();
-    expect(useCases.getSnapshot().templates.length).toBe(0);
+    expect(useCases.getSnapshot().templates.length).toBe(baseline);
   });
 });
 
