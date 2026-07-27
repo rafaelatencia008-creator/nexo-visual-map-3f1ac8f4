@@ -8,11 +8,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { EmptyState } from "@/components/app/states";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logWorkspaceOpened } from "../report-workspace-use-cases";
 import { useReportWorkspace } from "./useReportWorkspace";
 import { ReportWorkspaceHeader } from "./ReportWorkspaceHeader";
 import { ReportWorkspaceSectionsNav } from "./ReportWorkspaceSectionsNav";
 import { ReportWorkspaceBlockEditor } from "./ReportWorkspaceBlockEditor";
+import { ReportWorkspaceHistoryPanel } from "./ReportWorkspaceHistoryPanel";
+import { ReportWorkspaceAuditPanel } from "./ReportWorkspaceAuditPanel";
 
 interface Props {
   readonly reportId: string;
