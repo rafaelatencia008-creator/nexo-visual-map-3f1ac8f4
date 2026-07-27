@@ -108,35 +108,24 @@ export function deriveReportProgress(
 const snapshotCache = new WeakMap<ReportDocument, ReportWorkspaceSnapshot>();
 
 /**
- * Congela profundamente o `ReportDocument` no local, na fronteira do
- * snapshot. Não clona: preserva `snapshot.report === doc` e a estabilidade
- * referencial. `Object.freeze` é idempotente e não altera dados de domínio.
+ * Deriva o snapshot congelado do workspace.
+ *
+ * Congelamento (opção B do contrato LV-19.1): apenas as PROJEÇÕES criadas
+ * pelo workspace são congeladas — `snapshot`, `snapshot.progress`,
+ * `snapshot.sections` (array) e cada `SectionProgress`. O `ReportDocument`
+ * referenciado por `snapshot.report` NÃO é congelado aqui, para preservar:
+ *   - ausência de efeitos colaterais na leitura;
+ *   - `snapshot.report === documento localizado` (identidade);
+ *   - a estabilidade do cache WeakMap por identidade.
+ *
+ * O congelamento estrutural do domínio permanece responsabilidade da store
+ * (invariantes de criação/mutação), fora do escopo desta correção.
  */
-function deepFreezeReportInPlace(doc: ReportDocument): void {
-  for (const section of doc.sections) {
-    for (const block of section.blocks) {
-      if (block.sources && !Object.isFrozen(block.sources)) {
-        for (const src of block.sources) Object.freeze(src);
-        Object.freeze(block.sources);
-      }
-      Object.freeze(block);
-    }
-    if (!Object.isFrozen(section.blocks)) Object.freeze(section.blocks);
-    Object.freeze(section);
-  }
-  if (!Object.isFrozen(doc.sections)) Object.freeze(doc.sections);
-  if (doc.templateOrigin && !Object.isFrozen(doc.templateOrigin)) {
-    Object.freeze(doc.templateOrigin);
-  }
-  if (!Object.isFrozen(doc)) Object.freeze(doc);
-}
-
 export function deriveWorkspaceSnapshot(
   report: ReportDocument,
 ): ReportWorkspaceSnapshot {
   const cached = snapshotCache.get(report);
   if (cached) return cached;
-  deepFreezeReportInPlace(report);
   const sections = Object.freeze(
     report.sections.map((s) => deriveSectionProgress(s)),
   );

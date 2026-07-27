@@ -121,29 +121,15 @@ function seedReportFromTemplate(): ReportDocument {
 function expectDeepFrozenWorkspaceSnapshot(
   snap: ReturnType<typeof getWorkspaceSnapshot>,
 ): void {
+  // Opção B do contrato LV-19.1: apenas as projeções do workspace são
+  // congeladas na fronteira do snapshot. O ReportDocument referenciado por
+  // `snap.report` NÃO é congelado pela leitura — sua imutabilidade é
+  // responsabilidade da store (fora do escopo desta correção).
   expect(Object.isFrozen(snap)).toBe(true);
   expect(Object.isFrozen(snap.progress)).toBe(true);
   expect(Object.isFrozen(snap.sections)).toBe(true);
   for (const progressItem of snap.sections) {
     expect(Object.isFrozen(progressItem)).toBe(true);
-  }
-  expect(Object.isFrozen(snap.report)).toBe(true);
-  expect(Object.isFrozen(snap.report.sections)).toBe(true);
-  for (const section of snap.report.sections) {
-    expect(Object.isFrozen(section)).toBe(true);
-    expect(Object.isFrozen(section.blocks)).toBe(true);
-    for (const block of section.blocks) {
-      expect(Object.isFrozen(block)).toBe(true);
-      expect(Object.isFrozen(block.sources)).toBe(true);
-      for (const source of block.sources) {
-        expect(Object.isFrozen(source)).toBe(true);
-      }
-    }
-  }
-  if (snap.report.templateOrigin) {
-    expect(snap.origin).toBe(snap.report.templateOrigin);
-    expect(Object.isFrozen(snap.report.templateOrigin)).toBe(true);
-    expect(Object.isFrozen(snap.origin)).toBe(true);
   }
 }
 
@@ -433,6 +419,47 @@ describe("LV-19.1 · Congelamento profundo do snapshot", () => {
     });
     const snap = getWorkspaceSnapshot(doc.id);
     expectDeepFrozenWorkspaceSnapshot(snap);
+  });
+
+  it("getWorkspaceSnapshot não muda o estado estrutural do ReportDocument", () => {
+    const doc = seedReportFromTemplate();
+    const located = locateReport(doc.id);
+
+    const docFrozenBefore = Object.isFrozen(located);
+    const sectionsArrFrozenBefore = Object.isFrozen(located.sections);
+    const sectionsFrozenBefore = located.sections.map((s) => ({
+      section: Object.isFrozen(s),
+      blocks: Object.isFrozen(s.blocks),
+      eachBlock: s.blocks.map((b) => ({
+        block: Object.isFrozen(b),
+        sources: Object.isFrozen(b.sources),
+      })),
+    }));
+    const originFrozenBefore = located.templateOrigin
+      ? Object.isFrozen(located.templateOrigin)
+      : null;
+
+    getWorkspaceSnapshot(doc.id);
+    // leitura repetida também não deve introduzir congelamento novo
+    getWorkspaceSnapshot(doc.id);
+
+    expect(Object.isFrozen(located)).toBe(docFrozenBefore);
+    expect(Object.isFrozen(located.sections)).toBe(sectionsArrFrozenBefore);
+    located.sections.forEach((s, i) => {
+      expect(Object.isFrozen(s)).toBe(sectionsFrozenBefore[i].section);
+      expect(Object.isFrozen(s.blocks)).toBe(sectionsFrozenBefore[i].blocks);
+      s.blocks.forEach((b, j) => {
+        expect(Object.isFrozen(b)).toBe(
+          sectionsFrozenBefore[i].eachBlock[j].block,
+        );
+        expect(Object.isFrozen(b.sources)).toBe(
+          sectionsFrozenBefore[i].eachBlock[j].sources,
+        );
+      });
+    });
+    if (located.templateOrigin) {
+      expect(Object.isFrozen(located.templateOrigin)).toBe(originFrozenBefore);
+    }
   });
 });
 
