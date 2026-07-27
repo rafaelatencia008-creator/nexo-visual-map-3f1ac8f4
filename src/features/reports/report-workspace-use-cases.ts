@@ -28,6 +28,8 @@ import type {
 } from "./report-types";
 import {
   ReportWorkspaceError,
+  type ReportSectionProgress,
+  type ReportWorkspaceProgress,
   type ReportWorkspaceSnapshot,
   type SectionDerivedStatus,
 } from "./report-workspace-types";
@@ -36,7 +38,9 @@ import {
 
 export type {
   ApproveSectionResult,
+  ReportSectionProgress,
   ReportWorkspaceListener,
+  ReportWorkspaceProgress,
   ReportWorkspaceRepository,
   ReportWorkspaceSnapshot,
   SectionDerivedStatus,
