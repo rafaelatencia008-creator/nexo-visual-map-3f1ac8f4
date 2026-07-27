@@ -163,9 +163,11 @@ function SectionActions({
 
 function BlockCard({
   reportId,
+  sectionId,
   block,
 }: {
   reportId: string;
+  sectionId: string;
   block: ReportBlock;
 }) {
   const [title, setTitle] = useState(block.title);
@@ -187,7 +189,7 @@ function BlockCard({
     if (title !== block.title) patch.title = title;
     if (content !== block.content) patch.content = content;
     try {
-      updateBlock(reportId, /* sectionId is resolved via doc */ findSectionId(block.id, reportId), block.id, patch);
+      updateBlock(reportId, sectionId, block.id, patch);
     } catch (err) {
       if (err instanceof ReportWorkspaceError) {
         if (err.code === "report_workspace_no_change") return;
@@ -195,7 +197,6 @@ function BlockCard({
       } else {
         toast.error("Não foi possível salvar as alterações.");
       }
-      // reverte visual em caso de erro
       setTitle(block.title);
       setContent(block.content);
     }
