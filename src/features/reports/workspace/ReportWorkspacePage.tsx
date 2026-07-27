@@ -59,11 +59,10 @@ export function ReportWorkspacePage({ reportId }: Props) {
         <EmptyState
           title="Laudo não encontrado"
           description="Este laudo pode ter sido removido ou o link está incorreto."
-          action={
-            <Button asChild variant="outline">
-              <Link to="/app/laudos">Voltar para laudos</Link>
-            </Button>
-          }
+          action={{
+            label: "Voltar para laudos",
+            onClick: () => navigate({ to: "/app/laudos" }),
+          }}
         />
       </div>
     );
