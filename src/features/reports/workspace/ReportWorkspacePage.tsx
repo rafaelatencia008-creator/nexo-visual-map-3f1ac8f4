@@ -6,8 +6,7 @@
  * Estritamente não acessa `report-mock-store` — validado por teste estático.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "@tanstack/react-router";
 import { EmptyState } from "@/components/app/states";
 import { logWorkspaceOpened } from "../report-workspace-use-cases";
 import { useReportWorkspace } from "./useReportWorkspace";
