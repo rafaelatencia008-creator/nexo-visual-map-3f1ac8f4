@@ -92,7 +92,12 @@ export function ReportWorkspaceBlockEditor({
       ) : (
         <div className="space-y-4">
           {section.blocks.map((block) => (
-            <BlockCard key={block.id} reportId={reportId} block={block} />
+            <BlockCard
+              key={block.id}
+              reportId={reportId}
+              sectionId={section.id}
+              block={block}
+            />
           ))}
         </div>
       )}
